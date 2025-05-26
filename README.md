@@ -17,3 +17,4 @@ See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 The authors claiming copyright, if they wish to be known, can list their names here...
 
 * Kevin Wan
+* Abdullah Faisal
