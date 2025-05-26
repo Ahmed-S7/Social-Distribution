@@ -10,7 +10,7 @@ Make a distributed social network!
 
 ## License
 
-* Choose an OSI approved license, name it here, and copy the license text to a file called `LICENSE`.
+See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 ## Copyright
 
