@@ -18,3 +18,4 @@ The authors claiming copyright, if they wish to be known, can list their names h
 
 * Kevin Wan
 * Abdullah Faisal
+* Maro Erivona
