@@ -1,5 +1,17 @@
+appdirs==1.4.4
 asgiref==3.8.1
 Django==5.2.3
+django-extensions==4.1
+django-stubs==5.2.0
+django-stubs-ext==5.2.0
 djangorestframework==3.16.0
+jedi==0.19.2
 Markdown==3.8
+parso==0.8.4
+prompt_toolkit==3.0.51
+ptpython==3.0.30
+Pygments==2.19.1
 sqlparse==0.5.3
+types-PyYAML==6.0.12.20250516
+typing_extensions==4.14.0
+wcwidth==0.2.13
