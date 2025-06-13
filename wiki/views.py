@@ -5,7 +5,13 @@ from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.shortcuts import redirect
+from django.http import Http404
+from django.contrib.auth.views import LoginView
+from django.contrib.auth import login
+from django.shortcuts import redirect
 # Create your views here.
 
 class PageViewSet(viewsets.ModelViewSet):
@@ -26,3 +32,33 @@ class RemotePostReceiver(APIView):
             serializer.save()
             return Response({"status": "received"})
         return Response(serializer.errors, status=400)
+
+@login_required
+def user_wiki(request, username):
+    if request.user.username != username:
+        raise Http404("You are not allowed to view this page.")
+
+    return render(request, 'wiki.html') 
+
+def register(request):
+    """ creates a new user account """
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if password == confirm_password:
+            if User.objects.filter(username=username).exists():
+                return render(request, 'register.html', {'error': 'Username already taken.'})
+            
+            User.objects.create_user(username=username, password=password)
+            return redirect('login') 
+        else:
+            return render(request, 'register.html', {'error': 'Passwords do not match.'})
+    return render(request, 'register.html')
+
+class MyLoginView(LoginView):
+    def form_valid(self, form):
+        login(self.request, form.get_user())
+        username = self.request.user.username
+        return redirect('user-wiki', username=username)

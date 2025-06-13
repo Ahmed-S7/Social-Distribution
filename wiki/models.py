@@ -24,3 +24,5 @@ class RemotePost(models.Model):
     author = models.CharField(max_length=100)
     content = models.TextField()
     received_at = models.DateTimeField(auto_now_add=True)
+
+
