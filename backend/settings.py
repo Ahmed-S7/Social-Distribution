@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-15_5^o*=oewa!v5c&d5zw2r^av+$%pza5uh%(^0$742o&s_(p@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,7 +77,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# HEROKU DATABASE
+
 if os.environ.get("DATABASE_URL") != None:
     # Running on Heroku
     DATABASES = {
@@ -139,3 +140,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGOUT_REDIRECT_URL = '/login/'
 LOGIN_URL = '/login/'   # redirect user to login page if not authenticated
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
