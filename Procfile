@@ -1,0 +1,1 @@
+web: gunicorn s25-project-white.wsgi 
