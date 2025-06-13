@@ -1,1 +1,1 @@
-web: gunicorn s25-project-white.wsgi 
+web: gunicorn backend.wsgi 
