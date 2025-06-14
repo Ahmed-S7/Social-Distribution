@@ -71,7 +71,6 @@ def register(request):
                 
                 
             errors = " ".join(errorList)
-            print(errors)
             return render(request, 'register.html', {'error': errors})
             
     

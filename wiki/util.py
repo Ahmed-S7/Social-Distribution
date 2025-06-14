@@ -37,5 +37,4 @@ def saveNewAuthor(user, username):
         return newAuthor
     
     except Exception as e:
-        print("failed")
         return HttpResponse(str(e), status=500)
