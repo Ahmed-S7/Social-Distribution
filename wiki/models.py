@@ -77,3 +77,42 @@ class Author(models.Model):
     profileImage  = models.URLField(blank=True, null=True, default="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y")
     
     web = models.URLField(blank=True, null=True, default=None)
+    
+    
+#The following model is derived from Stackoverflow.com: https://stackoverflow.com/questions/58794639/how-to-make-follower-following-system-with-django-model, June 14, 2025+ 
+class AuthorFollowing(models.Model):
+    '''
+    Model representing all of the instances where an author is followed or following someone\n
+    This is effectively a *followers* and *following* list\n
+    **"following"** in related_name means the list of authors that **"follower" has followed** (the author's following list)\n
+    **"followers"** in related_name means a list of the authors that **"following" author has been followed by** (author's follower list\n
+    '''
+    follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE)
+    following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE)
+    date_followed = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ("follower", "following")
+        
+
+class RequestStatus(models.TextChoices):
+    """
+    stores the possible follow request states 
+    """
+    REQUESTING = "requesting", "Requesting"
+    ACCEPTED = "accepted", "Accepted"
+    REJECTED = "rejected", "Rejected"
+        
+    
+class FollowRequest(models.Model):
+    """Models a follow Request"""
+    
+    type = models.CharField(default="follow")
+    summary = models.CharField(default="You have recieved a follow request!")
+    
+    requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE) #store an association of every author that a given author is requesting 
+    requestedAccount = models.ForeignKey(Author, related_name="followRequests", on_delete=models.CASCADE)
+    
+    state = models.CharField(max_length=15, choices=RequestStatus.choices, default=RequestStatus.REQUESTING)
+    class Meta:
+        unique_together = ("requester", "requestedAccount")
