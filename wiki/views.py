@@ -1,17 +1,18 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions
-from .models import Page, Like, RemotePost
-from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer
+from .models import Page, Like, RemotePost, Author
+from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User 
 from django.shortcuts import redirect
 from django.http import Http404
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
 from django.shortcuts import redirect
+from .util import validUserName, saveNewAuthor
 # Create your views here.
 
 class PageViewSet(viewsets.ModelViewSet):
@@ -45,16 +46,35 @@ def register(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
+        confirm_password = request.POST.get('confirm_password', "").strip()
 
-        if password == confirm_password:
+        userIsValid = validUserName(username)
+        
+        if userIsValid and password == confirm_password: 
+                
             if User.objects.filter(username=username).exists():
+                
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
-            User.objects.create_user(username=username, password=password)
+            user = User.objects.create_user(username=username, password=password)
+            newAuthor = saveNewAuthor(user, username) 
             return redirect('login') 
+        
         else:
-            return render(request, 'register.html', {'error': 'Passwords do not match.'})
+            errorList= []
+            
+            if password != confirm_password:
+                errorList.append("Passwords do not match")
+
+            if not userIsValid:
+                errorList.append("Username must be under 150 characters")
+                
+                
+            errors = " ".join(errorList)
+            print(errors)
+            return render(request, 'register.html', {'error': errors})
+            
+    
     return render(request, 'register.html')
 
 class MyLoginView(LoginView):
