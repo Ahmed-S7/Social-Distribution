@@ -28,6 +28,8 @@ class Author(models.Model):
     
     github = models.URLField(blank=True, null=True, default=None)
     
+    serial = models.UUIDField(default=None, null=True, unique=True)
+    
     profileImage  = models.URLField(blank=True, null=True, default="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y")
     
     web = models.URLField(blank=True, null=True, default=None)
@@ -39,7 +41,10 @@ class Author(models.Model):
     def getFollowRequestsRecieved(self)->list:
         '''Returns a list of all of the follow requests recieved by an author'''
         return list(self.follow_requests.all())
-   
+    
+    def __str__(self):
+        return self.displayName
+       
    
    
 class Page(models.Model):
@@ -76,8 +81,8 @@ class AuthorFollowing(models.Model):
     **"following"** in related_name means the list of authors that **"follower" has followed** (the author's following list)\n
     **"followers"** in related_name means a list of the authors that **"following" author has been followed by** (author's follower list\n
     '''
-    follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=True)
-    following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=True)
+    follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
+    following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
     date_followed = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -115,8 +120,8 @@ class FollowRequest(models.Model):
     
     type = models.CharField(default="follow")
     summary = models.CharField(default="You have recieved a follow request!")
-    requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=True) 
-    requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=True)
+    requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
+    requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
     class Meta:
@@ -153,6 +158,7 @@ class FollowRequest(models.Model):
     def save(self, *args, **kwargs):
          if self.requester == self.requested_account:
              raise ValidationError("You cannot send yourself a follow request.")
+         
          return super().save(*args,**kwargs)
              
             

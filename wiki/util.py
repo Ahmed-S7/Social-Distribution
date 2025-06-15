@@ -22,7 +22,8 @@ def validUserName(username):
 def saveNewAuthor(user, username):
     '''Saves a new author instance'''
     
-    serial = uuid.uuid4()
+    serial_id = uuid.uuid4()
+    
     try:
         newAuthor = Author(
                     
@@ -31,12 +32,16 @@ def saveNewAuthor(user, username):
         authorURL = f"http://s25-project-white/api/authors/{user.id}",
                     
         displayName = username,
+        
+        serial = serial_id,
                     
-        web = f"http://s25-project-white/api/{serial}"
+        web = f"http://s25-project-white/api/{serial_id}"
         
         )
         newAuthor.save()
         return newAuthor
     
     except Exception as e:
-        return HttpResponse(str(e), status=500)
+        print("IT FAILED")
+        print(e)
+        return None

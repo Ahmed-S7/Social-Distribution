@@ -1,0 +1,20 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'wiki/style.css' %}">
+<h2>Authors</h2>
+
+<section class="authors_list">
+<ul class="author_list">
+    {% for author in authors %}
+        <li class="author">
+            <img src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
+            <p>{{ author.displayName }}</p>
+            <section class="buttons">
+                <form method="GET" action="{% url 'wiki:view_external_profile' author.serial %}">
+                    {% csrf_token %}
+                    <button type="submit">View Profile</button>
+                </form>
+            </section>
+        </li>
+    {% endfor %}
+</ul>
+</section>

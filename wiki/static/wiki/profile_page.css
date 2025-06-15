@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+html{
+    font-family: 'Nunito', sans-serif;
+    background-color: azure; 
+}
+h1,h2{
+    color:rgb(0, 26, 128);
+}
+
+.author_profile{
+    justify-content: center;
+    align-items: center;
+    text-align:center;
+}
+
+.author_profile .follow_button{
+     font-family: 'Nunito', sans-serif;
+     background-color: rgb(110, 226, 226);
+     border-radius: 0.5em;
+     font-variant: small-caps;
+     font-weight: bold;
+     font-size:small;
+}
+

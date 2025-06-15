@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+{%load static%}
+<link rel="stylesheet" href="{% static 'wiki/style.css' %}">
 <html lang="en">
     <body>
         <h1>Welcome to your Wiki Page, {{ request.user.username }}!</h1>

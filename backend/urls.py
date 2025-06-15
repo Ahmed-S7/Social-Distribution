@@ -20,7 +20,6 @@ from django.contrib.auth import views as auth_views
 
 
 urlpatterns = [
+    path('s25-project-white/', include('wiki.urls', namespace='wiki')),
     path('admin/', admin.site.urls),
-    path('api/', include('wiki.urls')),
-    path('', include('wiki.urls')),
 ]

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author
+from .models import Page, Like, RemotePost, Author, FollowRequest
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):
@@ -27,3 +27,13 @@ class AuthorSerializer(serializers.ModelSerializer):
         fields = ["type", "id", "host", "displayName", "github", "profileImage", "web"]
         
         
+class FollowRequestSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(source="type")
+    summary = serializers.CharField(source="summary")
+    actor = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
+    object = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
+    
+    class Meta:
+        model= FollowRequest
+        fields = ["type","summary","actor", "object"]
+    

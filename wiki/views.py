@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author
+from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing
 from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -15,6 +15,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
+from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import redirect
 from django.contrib import messages
 from .util import validUserName, saveNewAuthor
@@ -64,7 +65,7 @@ def register(request):
             
             user = User.objects.create_user(username=username, password=password)
             newAuthor = saveNewAuthor(user, username) 
-            return redirect('login') 
+            return redirect('wiki:login') 
         
         else:
             errorList= []
@@ -84,7 +85,7 @@ class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
         username = self.request.user.username
-        return redirect('user-wiki', username=username)
+        return redirect('wiki:user-wiki', username=username)
     
 @api_view(['GET'])
 def get_authors(request):
@@ -127,4 +128,61 @@ def get_authors(request):
     return Response({"type": "authors",
                         "authors":serializer.data})    
     
+@login_required   
+@require_GET 
+def view_authors(request):
+    current_user = request.user
+   
+    #######DEBUGGING PURPOSES##########
+    #print(current_user)
+    ###################################
     
+    #retrieve all authors except for the current author
+    authors = Author.objects.exclude(user=current_user)
+    
+    return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
+    
+@login_required       
+def view_external_profile(request, author_serial):
+    
+    
+    profile_viewing = Author.objects.get(serial=author_serial)
+    if profile_viewing:
+    
+        return render(request, "external_profile.html", {"author": profile_viewing})
+    else:
+        return Http404("Profile Does Not Exist")
+    
+    
+@login_required    
+def view_following(request):
+    
+    pass
+    
+@login_required   
+def follow_profile(request, author_serial):
+    
+    
+    
+    '''
+    Creates and sends a follow request object to a user's inbox
+    #TODO: send follow request with status "requesting" to corresponding account's inbox
+    - do not allow duplicate follows
+        - make views reflect this
+    - allow recipient to accept follow request
+        - update follow request status to accepted
+    - allow recipient to reject follow request
+        - update follow request status to rejected 
+    - add follower to reciever
+    - add followed user to sender
+    - if both accounts follow each other:
+        - add friends
+    '''
+    
+    return HttpResponseRedirect('')#place holder
+    pass
+    
+    
+@api_view(['GET'])
+def view_inbox(request):
+    pass
