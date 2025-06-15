@@ -1,17 +1,22 @@
+from django.db.models import Q
 from django.shortcuts import render
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author
 from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User 
 from django.shortcuts import redirect
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
+from django.urls import reverse
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
 from django.shortcuts import redirect
+from django.contrib import messages
 from .util import validUserName, saveNewAuthor
 # Create your views here.
 
@@ -36,10 +41,12 @@ class RemotePostReceiver(APIView):
 
 @login_required
 def user_wiki(request, username):
-    if request.user.username != username:
-        raise Http404("You are not allowed to view this page.")
-
+    if request.user.username != username or request.user.is_superuser:
+        raise PermissionDenied("You are not allowed to view this page.")
+   
     return render(request, 'wiki.html') 
+    
+  
 
 def register(request):
     """ creates a new user account """
@@ -51,9 +58,8 @@ def register(request):
         userIsValid = validUserName(username)
         
         if userIsValid and password == confirm_password: 
-                
-            if User.objects.filter(username=username).exists():
-                
+            
+            if User.objects.filter(username__iexact=username).exists():
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
             user = User.objects.create_user(username=username, password=password)
@@ -69,11 +75,9 @@ def register(request):
             if not userIsValid:
                 errorList.append("Username must be under 150 characters")
                 
-                
             errors = " ".join(errorList)
             return render(request, 'register.html', {'error': errors})
             
-    
     return render(request, 'register.html')
 
 class MyLoginView(LoginView):
@@ -81,3 +85,46 @@ class MyLoginView(LoginView):
         login(self.request, form.get_user())
         username = self.request.user.username
         return redirect('user-wiki', username=username)
+    
+@api_view(['GET'])
+def get_authors(request):
+    """
+    Gets the list of all authors on the application
+    
+        Example Usages:
+    
+        To get a list of all authors (no pagination):
+    
+        Use: "GET /s25-project-white/api/authors/"
+        
+         - this returns Json in the following format: 
+         
+             {
+                "type": "authors",      
+                "authors":[
+                    {
+                        "type":"author",
+                        "id":"http://nodeaaaa/api/authors/111",
+                        "host":"http://nodeaaaa/api/",
+                        "displayName":"Greg Johnson",
+                        "github": "http://github.com/gjohnson",
+                        "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
+                        "web": "http://nodeaaaa/authors/greg"
+                    },
+                    {
+                        // A second author object...
+                    },
+                    {
+                        // A third author object...
+                    }
+                ]
+            }
+    """
+  
+
+    authors = Author.objects.all()
+    serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
+    return Response({"type": "authors",
+                        "authors":serializer.data})    
+    
+    

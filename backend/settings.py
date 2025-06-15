@@ -140,5 +140,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGOUT_REDIRECT_URL = '/login/'
 LOGIN_URL = '/login/'   # redirect user to login page if not authenticated
-
-STATIC_ROOT = BASE_DIR / "staticfiles"
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True

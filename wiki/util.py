@@ -1,6 +1,7 @@
 from .serializers import AuthorSerializer
 from .models import Author
 from django.http import HttpResponse
+import uuid
 
 
 def validUserName(username):
@@ -21,6 +22,7 @@ def validUserName(username):
 def saveNewAuthor(user, username):
     '''Saves a new author instance'''
     
+    serial = uuid.uuid4()
     try:
         newAuthor = Author(
                     
@@ -30,7 +32,7 @@ def saveNewAuthor(user, username):
                     
         displayName = username,
                     
-        web = f"http://s25-project-white/api/{username}"
+        web = f"http://s25-project-white/api/{serial}"
         
         )
         newAuthor.save()
