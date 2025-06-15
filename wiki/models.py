@@ -1,6 +1,7 @@
 from django.db import models
 import uuid
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 class Author(models.Model):
@@ -81,7 +82,11 @@ class AuthorFollowing(models.Model):
     
     class Meta:
         unique_together = ("follower", "following")
-        
+    
+    def save(self, *args, **kwargs):
+         if self.follower == self.following:
+             raise ValidationError("You cannot follow Yourself")
+         return super().save(*args,**kwargs)  
 
 class RequestState(models.TextChoices):
     """
@@ -139,10 +144,17 @@ class FollowRequest(models.Model):
         if isinstance(new_state, RequestState):
             self.state = new_state.value
             self.save()
+            
+            
         else:
             raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
         
-        
+    def save(self, *args, **kwargs):
+         if self.requester == self.requested_account:
+             raise ValidationError("You cannot send yourself a follow request.")
+         return super().save(*args,**kwargs)
+             
+            
 
         
     
