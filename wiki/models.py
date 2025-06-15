@@ -82,7 +82,8 @@ class AuthorFollowing(models.Model):
     
     class Meta:
         unique_together = ("follower", "following")
-    
+        
+    #derived from stackoverflow.com: https://stackoverflow.com/questions/67658422/how-to-overwrite-save-method-in-django-model-form, "How to overwrite the save method in django model form", June 15, 2025
     def save(self, *args, **kwargs):
          if self.follower == self.following:
              raise ValidationError("You cannot follow Yourself")
