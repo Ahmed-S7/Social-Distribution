@@ -17,9 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-
+from wiki.views import MyLoginView
 
 urlpatterns = [
+    path ('', MyLoginView.as_view(template_name='login.html'), name='login'),
     path('s25-project-white/', include('wiki.urls', namespace='wiki')),
     path('admin/', admin.site.urls),
 ]
