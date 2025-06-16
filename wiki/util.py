@@ -23,7 +23,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(user, username):
+def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
@@ -39,8 +39,12 @@ def saveNewAuthor(user, username):
         displayName = username,
         
         serial = serial_id,
-                    
-        web = f"http://s25-project-white/authors/{string_serial}"
+        
+        profileImage=profileImage or "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
+
+        github=github,
+
+        web=web or f"http://s25-project-white/authors/{string_serial}"
         
         )
         newAuthor.save()

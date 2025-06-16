@@ -1,0 +1,24 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+
+<section class="author_profile">
+    <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
+    <h3>{{ author.displayName }}</h3>
+    {% if author.github %}
+    <p>{{ author.github}} </p>
+    {% else  %}
+    <p>GitHub Profile Not Found</p>
+    {% endif %}
+    <form method="post" action="{% url 'wiki:logout' %}">
+    {% csrf_token %}
+    <button type="submit">Logout</button>
+    </form>
+    <div class="profile_buttons">
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <button type="button">Go Back to Stream</button>
+    </a>
+
+    <a href="{% url 'wiki:create_entry' %}">
+        <button type="button">Add Entry</button>
+    </div>
+</section>
