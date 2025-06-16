@@ -1,9 +1,12 @@
 from .serializers import AuthorSerializer
 from .models import Author
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 import uuid
+from django.shortcuts import redirect
 import traceback
-
+from rest_framework.response import Response
+from urllib.parse import urlparse
+from django.http import Http404, HttpResponseRedirect, HttpResponseServerError
 
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
@@ -48,3 +51,41 @@ def saveNewAuthor(user, username):
         print(f"Exception: {e}")
         traceback.print_exc()
         return None
+    
+def get_author_id(request):
+    absolute_url = request.build_absolute_uri()
+        
+    parsed = urlparse(absolute_url)
+        
+    stringified_url =str(parsed.path)
+
+    print(stringified_url)
+        
+    id = stringified_url.strip().split('/')[-1]
+        
+    return id
+    
+def get_logged_author(user):
+    '''get the author that is currently logged in'''
+    try:
+        current_user = user.username
+        current_author = Author.objects.get(displayName=current_user)
+        return current_author
+    
+    except Exception as e:
+        print(f"Failed to get current author: {e} ")
+        return False
+          
+def is_valid_serial(id):
+    
+    try:
+        
+        id = uuid.UUID(id)
+        
+        return True
+            
+    except Exception as e:
+        
+        return False
+        
+        

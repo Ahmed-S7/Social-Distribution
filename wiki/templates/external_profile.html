@@ -11,8 +11,9 @@
             {% else  %}
             <p>GitHub Profile Not Found</p>
             {% endif %}
-    
 
-            <button class="follow_button" onclick='location.href="{% url "wiki:follow_profile" author.serial %}"'>Follow Profile</button> 
-    
+            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+            {% csrf_token %}
+            <button class="follow_button" type="submit">Follow Profile</button> 
+            </form>
 </section>

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author, FollowRequest
+from .models import Page, Like, RemotePost, Author, FollowRequest, InboxItem
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):
@@ -35,4 +35,16 @@ class FollowRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model= FollowRequest
         fields = ["type","summary","actor", "object"]
+        
+    
+class InboxItemSerializer(serializers.ModelSerializer):
+    author = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
+    type = serializers.CharField(source="type")
+    content = serializers.JSONField(source="content")
+    created_at = serializers.DateTimeField(source="created_at")
+    
+    class Meta:
+        model = InboxItem
+        fields = ["type", "author", "content", "created_at"]
+    
     

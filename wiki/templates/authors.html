@@ -9,10 +9,9 @@
             <img src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
             <p>{{ author.displayName }}</p>
             <section class="buttons">
-                <form method="GET" action="{% url 'wiki:view_external_profile' author.serial %}">
-                    {% csrf_token %}
+                <a href="{% url 'wiki:view_external_profile' author.serial %}">
                     <button type="submit">View Profile</button>
-                </form>
+                </a>
             </section>
         </li>
     {% endfor %}

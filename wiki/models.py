@@ -42,16 +42,10 @@ class InboxObjectType(models.TextChoices):
     FOLLOW = "Follow", "follow"
     LIKE = "like", "Like"
     COMMENT = "comment", "Comment"
-    
 
-class InboxObject(BaseModel):
-    '''A general model for all of the different objects that can be pushed to the inbox (do not allow none for type, validate before saving)'''
     
-    type = models.CharField(
-        max_length = 20,
-        choices=InboxObjectType.choices,
-        default=None
-    )
+    
+    
     
     #content = models.JSONField(_(""), encoder=, decoder=)
     
@@ -230,6 +224,11 @@ class FollowRequest(BaseModel):
         
     Get the state of a given follow request:\n
         - followrequest.get_request_state()
+        
+    FIELDS:
+    - requester: the author sending the follow request
+    - requested_account: the author recieving the follow request
+    - state: that state of the follow request (requesting, accepted, or rejected)
     """
     
     type = models.CharField(default="follow")
@@ -273,9 +272,21 @@ class FollowRequest(BaseModel):
              raise ValidationError("You cannot send yourself a follow request.")
          
          return super().save(*args,**kwargs)
-             
-            
-
+    def __str__(self):
+        return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  
+        
+class InboxItem(BaseModel):
+    '''A general model for all of the different objects that can be pushed to the inbox (do not allow none for type, validate before saving)'''
+    
+    author = models.ForeignKey(Author, related_name="inbox", on_delete=models.CASCADE)
+    type = models.CharField(
+        max_length = 20,
+        choices=InboxObjectType.choices,
+        default=None
+    )
+    content = models.JSONField()
+    created_at =models.DateTimeField(auto_now_add=True)
+    
         
     
        
