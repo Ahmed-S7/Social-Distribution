@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing
 from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
@@ -11,7 +11,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User 
 from django.shortcuts import redirect
-from django.http import Http404, HttpResponseRedirect, HttpResponseServerError
+from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseServerError
 from django.urls import reverse
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
@@ -331,5 +331,17 @@ def create_entry(request):
     """
     Create a new wiki entry.
     """
-    ####### FOR CREATING A NEW ENTRY #######
-    pass
+    ####### FOR CREATING A NEW ENTRY ######
+    if request.method == 'POST':
+        # Example: get data from POST and save your entry
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        # TODO: validate + save to database
+
+        # TEMPORARY: Just return confirmation
+        return HttpResponse(f"Entry '{title}' created successfully!")
+    
+    else:
+        # GET: Show form to create entry
+        return render(request, 'create_entry.html')
+

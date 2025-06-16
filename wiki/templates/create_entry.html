@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Entry</title>
+</head>
+<body>
+  <h1>Create a New Entry</h1>
+  <form method="post">
+    {% csrf_token %}
+    <textarea name="content" rows="10" cols="50" placeholder="Write your entry..."></textarea><br>
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>
