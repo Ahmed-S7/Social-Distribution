@@ -35,9 +35,28 @@ class VisibilityOptions(models.TextChoices):
     FRIENDS_ONLY = "friends_only", "Friends_only"
     DELETED = "deleted", "Deleted"    
 
-class InboxObject(BaseModel):
+
+class InboxObjectType(models.TextChoices):
+    '''stores all of the possible inbox item types'''
     
-    pass
+    FOLLOW = "Follow", "follow"
+    LIKE = "like", "Like"
+    COMMENT = "comment", "Comment"
+    
+
+class InboxObject(BaseModel):
+    '''A general model for all of the different objects that can be pushed to the inbox (do not allow none for type, validate before saving)'''
+    
+    type = models.CharField(
+        max_length = 20,
+        choices=InboxObjectType.choices,
+        default=None
+    )
+    
+    #content = models.JSONField(_(""), encoder=, decoder=)
+    
+    
+   
     
     
 class Author(BaseModel):
@@ -56,7 +75,7 @@ class Author(BaseModel):
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
      
-    authorURL = models.URLField(unique=True)# formatted as: "http://white/api/authors/[authorID]"
+    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://white/api/authors/[authorID]"
      
     host = models.URLField(default=f"http://s25-project-white/api/")
     
@@ -64,7 +83,7 @@ class Author(BaseModel):
     
     github = models.URLField(blank=True, null=True, default=None)
     
-    serial = models.UUIDField(default=None, null=True, unique=True)
+    serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
     
     profileImage  = models.URLField(blank=True, null=True, default="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y")
     
@@ -88,10 +107,7 @@ class Author(BaseModel):
     def is_friends_with(self, other_author):
         pass
         
-        
-        
-        
-    
+      
     def __str__(self):
         return self.displayName
     
@@ -185,8 +201,6 @@ class AuthorFollowing(BaseModel):
     class Meta:
         unique_together = ("follower", "following")
         
-        
-    
         
     #derived from stackoverflow.com: https://stackoverflow.com/questions/67658422/how-to-overwrite-save-method-in-django-model-form, "How to overwrite the save method in django model form", June 15, 2025
     def save(self, *args, **kwargs):

@@ -20,8 +20,7 @@ class RemotePostSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AuthorSerializer(serializers.ModelSerializer):
-    id = serializers.URLField(source="authorURL")
-
+    
     class Meta:
         model= Author
         fields = ["type", "id", "host", "displayName", "github", "profileImage", "web"]

@@ -36,9 +36,9 @@ class Author(BaseModel):
     web = models.URLField(blank=True, null=False, default=None)
 '''
 class AuthorAdmin(admin.ModelAdmin):
-    list_display = ["authorURL", "displayName", "is_deleted","github","profileImage","host"]
+    list_display = ["id", "displayName", "is_deleted","github","profileImage","host"]
     list_filter = ["is_deleted", "host"]
-    list_editable = ['displayName']
+    list_editable = ['displayName', 'github']
     
     search_fields = ["displayName", "github"]
  

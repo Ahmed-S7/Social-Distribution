@@ -96,7 +96,7 @@ def get_authors(request):
     
         To get a list of all authors (no pagination):
     
-        Use: "GET /s25-project-white/api/authors/"
+        Use: "GET http://s25-project-white/api/authors/"
         
          - this returns Json in the following format: 
          
@@ -127,7 +127,47 @@ def get_authors(request):
     serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
     return Response({"type": "authors",
                         "authors":serializer.data})    
+
+@api_view(['GET'])
+def get_author(request):
+    """
+    Gets the list of all authors on the application
     
+        Example Usages:
+    
+        To get a list of all authors (no pagination):
+    
+        Use: "GET http://s25-project-white/api/authors/{}"
+        
+         - this returns Json in the following format: 
+         
+             {
+                "type": "authors",      
+                "authors":[
+                    {
+                        "type":"author",
+                        "id":"http://nodeaaaa/api/authors/{serial}",
+                        "host":"http://nodeaaaa/api/",
+                        "displayName":"Greg Johnson",
+                        "github": "http://github.com/gjohnson",
+                        "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
+                        "web": "http://nodeaaaa/authors/{SERIAL}"
+                    },
+                    {
+                        // A second author object...
+                    },
+                    {
+                        // A third author object...
+                    }
+                ]
+            }
+    """
+  
+
+    authors = Author.objects.all()
+    serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
+    return Response({"type": "authors",
+                        "authors":serializer.data})
 @login_required   
 @require_GET 
 def view_authors(request):
@@ -141,7 +181,7 @@ def view_authors(request):
     authors = Author.objects.exclude(user=current_user)
     
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
-    
+
 @login_required       
 def view_external_profile(request, author_serial):
     
