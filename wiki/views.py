@@ -67,6 +67,9 @@ def register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
+        github = request.POST.get('github') or None
+        profileImage = request.POST.get('profileImage') or None
+        web = request.POST.get('web') or None
 
         userIsValid = validUserName(username)
         
@@ -76,7 +79,7 @@ def register(request):
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
             user = User.objects.create_user(username=username, password=password)
-            newAuthor = saveNewAuthor(user, username) 
+            newAuthor = saveNewAuthor(user, username, github, profileImage, web)
             return redirect('wiki:login') 
         
         else:
@@ -309,4 +312,24 @@ def check_inbox(request):
     
 @api_view(['GET'])
 def view_inbox(request):
+    pass
+
+@login_required
+def profile_view(request):
+    """
+    View the profile of the currently logged in user.
+    """
+    try:
+        author = Author.objects.get(user=request.user)
+    except Author.DoesNotExist:
+        raise Http404("Author profile does not exist.")
+
+    return render(request, 'profile.html', {'author': author})
+
+@login_required
+def create_entry(request):
+    """
+    Create a new wiki entry.
+    """
+    ####### FOR CREATING A NEW ENTRY #######
     pass

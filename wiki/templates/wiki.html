@@ -1,8 +1,16 @@
 <!DOCTYPE html>
-{%load static%}
-<link rel="stylesheet" href="{% static 'wiki/style.css' %}">
 <html lang="en">
-    <body>
-        <h1>Welcome to your Wiki Page, {{ request.user.username }}!</h1>
-    </body>
+<head>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'wiki/style.css' %}">
+    <title>Welcome</title>
+</head>
+<body>
+    <h1>Welcome to SocialDistribution, {{ request.user.username }}!</h1>
+        <a href="{% url 'wiki:profile' %}">
+            <button type="button">Profile</button>
+        </a>
+
+
+</body>
 </html>
