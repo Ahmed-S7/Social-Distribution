@@ -46,13 +46,6 @@ class InboxObjectType(models.TextChoices):
     
     
     
-    
-    #content = models.JSONField(_(""), encoder=, decoder=)
-    
-    
-   
-    
-    
 class Author(BaseModel):
     """
     **Model that represents an author object in the application**\n

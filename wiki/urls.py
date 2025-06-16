@@ -10,6 +10,7 @@ router = DefaultRouter()
 router.register(r'pages', PageViewSet)
 
 urlpatterns = [
+    # Profile related URLs
     path('admin/', admin.site.urls),
     path('', MyLoginView.as_view(template_name='login.html'), name='login'),
     path('logout/', LogoutView.as_view(next_page='wiki:login'), name='logout'),
@@ -18,9 +19,12 @@ urlpatterns = [
     path('profile/', profile_view, name='profile'),
     path('create_entry/', create_entry, name='create_entry'),
 
+    # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
     path('api/author/<str:author_serial>', get_author, name='get_author'),
     path('api/author/<str:author_serial>/', get_author, name='get_author'),
+    
+    # User Author URLS
     path('authors/', view_authors, name='view_authors'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
