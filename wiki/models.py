@@ -116,8 +116,15 @@ class Author(BaseModel):
                 author.save()
         except: #only requires an update if the user has an associated author
             pass
-  
-   
+
+
+class Entry(BaseModel):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Page(BaseModel):
     title = models.CharField(max_length=100, unique=True)
     content = models.TextField()

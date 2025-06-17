@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing
+from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry
 from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -334,12 +334,11 @@ def create_entry(request):
         # Example: get data from POST and save your entry
         title = request.POST.get('title')
         content = request.POST.get('content')
-        # TODO: validate + save to database
-
-        # TEMPORARY: Just return confirmation
-        return HttpResponse(f"Entry '{title}' created successfully!")
-    
-    else:
-        # GET: Show form to create entry
-        return render(request, 'create_entry.html')
+        if title and content:
+            Entry.objects.create(author=request.user, title=title, content=content)
+            return HttpResponse(f"Entry '{title}' created successfully!")
+        else:
+            return HttpResponse("Both title and content are required.")
+    # GET: Show form to create entry
+    return render(request, 'create_entry.html')
 
