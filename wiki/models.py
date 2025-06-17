@@ -290,7 +290,7 @@ class FollowRequest(BaseModel):
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
-    #created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         constraints = [
             models.UniqueConstraint(

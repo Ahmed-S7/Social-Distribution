@@ -44,7 +44,7 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    list_display = ["requester", "requested_account", "state", "is_deleted"]
+    list_display = ["requester", "requested_account", "state", "is_deleted","created_at"]
     list_editable = ["state", "is_deleted"]
     
 class AuthorFollowingAdmin(admin.ModelAdmin):
