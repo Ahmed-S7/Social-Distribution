@@ -20,6 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.core.exceptions import ObjectDoesNotExist
 from .util import validUserName, saveNewAuthor, get_author_id, is_valid_serial, get_logged_author
 from urllib.parse import urlparse
 import uuid
@@ -334,21 +335,78 @@ def follow_success_page(request, author_serial):
     
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
-    current_user = request.user
-    author = get_logged_author(current_user)
-    parsed_serial  = uuid.UUID(author_serial)
-    requestedAuthor = Author.objects.get(serial=parsed_serial)
+    requestedAuthor = Author.objects.get(serial=author_serial)
     
     return render(request,"follow_success.html", {'author':requestedAuthor})
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def check_author_inbox(request, author_serial):
 
-    return render(request,"inbox.html")
+@login_required
+def check_follow_requests(request, username):
+    
+        print(username)
+        if request.user.is_staff or request.user.is_superuser:
+            return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
+
+        requestedAuthor = Author.objects.get(user=request.user)
+        
+        incoming_follow_requests =[FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING).first()]
+       
+        if not incoming_follow_requests:
+            incoming_follow_requests = []
+
+        return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+
+@login_required
+def process_follow_request(request, author_serial, request_id):
+    
+    if request.user.is_staff or request.user.is_superuser:
+        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
+    requestedAuthor = Author.objects.get(serial=author_serial)
+    
+    choice = request.POST.get("action")
+    
+    if choice.lower() == "accept":
+        ''''
+        
+        IN PROGRESS
+        
+        #if follow request gets accepted, 
+        follow_request = FollowRequest.objects.filter(id=request_id).first()
+    
+        try:
+            follower = follow_request.requester
+                
+        except follower.DoesNotExist:
+            return Http404("Follow request was not found between you and this author")
+        
+        #create a following from requester to to requested
+        new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
+        new_following.save()
+        
+        
+            
+        # check if there is now a mutual follow
+        if 
+        '''   
+            
+        pass
+   
+    
+    
+    incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)
+        
+    return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+    
+    
+   
+    
+    
+    
+    
+    
 
 @api_view(['GET'])
-def view_inbox(request):
+def check_remote_inbox(request):
     pass
 
 @login_required

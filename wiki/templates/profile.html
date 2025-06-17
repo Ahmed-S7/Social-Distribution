@@ -17,7 +17,12 @@
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Go Back to Stream</button>
     </a>
-
+    <a href="{% url 'wiki:check_follow_requests' request.user.username %}">
+        <button type="button">Check Inbox</button>
+    </a>
+    <a href="{% url 'wiki:view_authors' %}">
+        <button type="button">Browse Authors </button>
+    </a>
     <a href="{% url 'wiki:create_entry' %}">
         <button type="button">Add Entry</button>
     </div>

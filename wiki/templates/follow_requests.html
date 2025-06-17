@@ -1,0 +1,23 @@
+<h1>Incoming Follow Requests For {{author.displayName}}</h1>
+
+
+<body>
+<section class="follow requests">
+
+
+{%for request in follow_requests%}
+
+
+<h3>{{request.requester}} has requested to follow you!</h3>
+<form action="{% url 'wiki:process_follow_request' author.serial request.id %}" method="POST">
+        {%csrf_token%}
+        <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
+        <button class="reject_follow" name="action" value="reject"  type="submit">Reject</button> 
+</form>
+
+{%endfor%}
+
+
+</section>
+
+</body>
