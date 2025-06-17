@@ -13,6 +13,14 @@
                     <button type="submit">View Profile</button>
                 </a>
             </section>
+            <div class="default_buttons">
+                <a href="{% url 'wiki:profile' %}">
+                    <button type="button">Back to Profile</button>
+                </a>
+                <a href="{% url 'wiki:user-wiki' request.user.username %}">
+                    <button type="button">Back to Stream</button>
+                </a>
+            </div>
         </li>
     {% endfor %}
 </ul>

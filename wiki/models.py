@@ -87,6 +87,10 @@ class Author(BaseModel):
     def get_web_url(self):
         return self.web
     
+    def get_inbox_items(self):
+        
+        return InboxItem.objects.get(author=self)
+    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
@@ -126,7 +130,18 @@ class Entry(BaseModel):
     title = models.CharField(max_length=200)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    id = models.URLField(unique=True, primary_key=True) 
+    serial = models.UUIDField(default=uuid.uuid4, unique=True) 
+    def get_entry_url(self):
+        return f"http://s25-project-white/entry/{self.serial}"
+    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = self.get_entry_url()
+        return super().save(*args, **kwargs)
 
+    def __str__(self):
+        return self.title
 
 class Page(BaseModel):
     title = models.CharField(max_length=100, unique=True)
@@ -190,6 +205,12 @@ class AuthorFollowing(BaseModel):
     
     **"following"** in related_name means the list of authors that **"follower" has followed** (the author's following list)\n
     **"followers"** in related_name means a list of the authors that **"following" author has been followed by** (author's follower list\n
+    
+    FIELDS: 
+    
+    follower: the one who initiated the following
+    
+    following: the one getting followed
     '''
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
@@ -204,6 +225,10 @@ class AuthorFollowing(BaseModel):
          if self.follower == self.following:
              raise ValidationError("You cannot follow Yourself")
          return super().save(*args,**kwargs)  
+     
+    def __str__(self):
+        
+        return f"{self.follower} Now Follows {self.following}"
 
 class RequestState(models.TextChoices):
     """
@@ -239,6 +264,7 @@ class FollowRequest(BaseModel):
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
+    #created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -326,9 +352,24 @@ class InboxItem(BaseModel):
     content = models.JSONField()
     created_at =models.DateTimeField(auto_now_add=True)
     
+    def get_follow_requester_name(self):
+        try:
+            return self.get_content().get("actor")["displayName"]
+        except Exception as e:
+            raise e
+        
+    def get_follow_request_state(self):
+        try:
+            return self.get_content().get("state")
+        except Exception as e:
+            raise e
+      
     
     def get_content(self):
         return self.content
+   
+        
+
     
        
         
