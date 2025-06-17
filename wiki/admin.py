@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry
+from .models import Page, Like, RemotePost,InboxItem, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend
 
 # Register your models here.
 
@@ -36,8 +36,8 @@ class Author(BaseModel):
     web = models.URLField(blank=True, null=False, default=None)
 '''
 class AuthorAdmin(admin.ModelAdmin):
-    list_display = ["id", "displayName", "is_deleted","github","profileImage","host"]
-    list_filter = ["is_deleted", "host"]
+    list_display = ["id","web","host","displayName", "is_deleted","github","profileImage"]
+    list_filter =  ["is_deleted", "host"]
     list_editable = ['displayName', 'github', "is_deleted", "profileImage"]
     
     search_fields = ["displayName", "github"]
@@ -54,3 +54,5 @@ admin.site.register(AuthorFollowing)
 admin.site.register(Author, AuthorAdmin)
 admin.site.register(Entry)
 admin.site.register(FollowRequest, FollowRequestAdmin)
+admin.site.register(AuthorFriend)
+admin.site.register(InboxItem)

@@ -1,6 +1,6 @@
 from django.db import models
 import uuid
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import Manager, QuerySet, Q
@@ -8,6 +8,7 @@ from django.dispatch import receiver
 # Create your models here.
 
 
+        
 #The following soft-deletion logic (AppQuerySet, AppManager and BaseModel) was derived from Medium's article: https://medium.com/@tomisinabiodun/implementing-soft-delete-in-django-an-intuitive-guide-5c0f95da7f0d, June 15, 2025
 class AppQuerySet(QuerySet):
     def delete(self):
@@ -43,9 +44,8 @@ class InboxObjectType(models.TextChoices):
     LIKE = "like", "Like"
     COMMENT = "comment", "Comment"
 
-    
-    
-    
+ 
+      
 class Author(BaseModel):
     """
     **Model that represents an author object in the application**\n
@@ -83,6 +83,9 @@ class Author(BaseModel):
     def get_follow_requests_recieved(self)->list:
         '''Returns a list of all of the follow requests recieved by an author'''
         return list(self.follow_requests.all())
+    
+    def get_web_url(self):
+        return self.web
     
     def get_friends(self):
         '''
@@ -291,7 +294,14 @@ class FollowRequest(BaseModel):
          return super().save(*args,**kwargs)
     def __str__(self):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  
+
+#derived from copilot: "[all users that are deleted should have corresponding deleted authors]", June, 2025
+@receiver(post_delete, sender=Author)
+def delete_related_user(sender, instance, **kwargs):
+    if instance.user:
+        instance.user.delete()       
         
+    
 class InboxItem(BaseModel):
     '''A general model for all of the different objects that can be pushed to the inbox 
     
@@ -317,7 +327,8 @@ class InboxItem(BaseModel):
     created_at =models.DateTimeField(auto_now_add=True)
     
     
-        
+    def get_content(self):
+        return self.content
     
        
         

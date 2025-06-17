@@ -1,0 +1,13 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+
+<section class="author_profile">
+    <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
+    <h3>{{ author.displayName }}</h3>
+    {% if author.github %}
+    <p>{{ author.github }} </p>
+    {% else %}
+    <p>GitHub Profile Not Found</p>
+    {% endif %}
+    <h2>FOLLOW REQUEST SENT</h2>
+</section

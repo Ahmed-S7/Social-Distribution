@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author, FollowRequest, InboxItem
+from .models import Page, Like, RemotePost, Author, FollowRequest, InboxItem, InboxObjectType
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):

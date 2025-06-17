@@ -1,9 +1,10 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .models import Page, Like, RemotePost, Author,InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
 from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view
+from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -16,11 +17,15 @@ from django.urls import reverse
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import redirect
 from django.contrib import messages
 from .util import validUserName, saveNewAuthor, get_author_id, is_valid_serial, get_logged_author
 from urllib.parse import urlparse
 import uuid
+import requests
+import json
+from django.middleware.csrf import get_token
 # Create your views here.
 
 class PageViewSet(viewsets.ModelViewSet):
@@ -64,8 +69,6 @@ def user_wiki(request, username):
 def register(request):
     """ creates a new user account """
     if request.method == 'POST':
-        if request.user.username != username or request.user.is_superuser:
-            raise PermissionDenied("You are not allowed to view this page.")
         
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -250,98 +253,99 @@ def view_following(request):
     
     pass
  
- 
- 
-    
+
 @login_required  
-@require_POST 
+@require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
     if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
-    
+        return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
+
     current_user = request.user
-    print(current_user)
+    print(f"Current user is: {current_user}\n")
+    
     if get_logged_author(current_user):
         requesting_account = get_logged_author(current_user)
-    
-        parsed_serial  = uuid.UUID(author_serial)
-    
-        #Create the follow request object
-        try: 
+
+        parsed_serial = uuid.UUID(author_serial)
+
+        try:
             requested_account = Author.objects.get(serial=parsed_serial)
-            
+
             follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
-            
-    
-            follow_request.summary=(str(follow_request))
+            follow_request.summary = str(follow_request)
+
             ########CHECKING OUTPUT###############
             print(f"{str(follow_request)}\n")
-            
             print(f"REQUESTING AUTHOR: {requesting_account}\n")
-            
             print(f"AUTHOR REQUESTED: {requested_account}\n")
             ###################################################
-        
-        
-            #serialize the follow request
-            try:    
-               
-                #####################FOR TESTING#######################################
-                #requesting_author_serialized = AuthorSerializer(requesting_account).data 
-                #requested_author_serialized = AuthorSerializer(requested_account).data 
-                #print(AuthorSerializer(requesting_account).data)
-                #print(AuthorSerializer(requested_account).data)
-                #####################FOR TESTING#######################################
-                        
-                serialized_follow_request = FollowRequestSerializer(follow_request, data={
-                    "type":"follow"  
-                }, partial=True)
-                
-                if serialized_follow_request.is_valid():
-                    
-                    try:
-                        serialized_follow_request.save()      
-                            
-                    except Exception as e:
-                        print(e)
-                        return HttpResponseServerError(e)
-                
-                            
-                print(f"\nSERIALIZED FOLLOW REQUEST: \n\n'{serialized_follow_request.data}'")
-            
-                #Create the inbox Item
-                new_inbox_item = InboxItem(author=requesting_account, type="follow", content=serialized_follow_request.data)
 
-                serialized_inbox_item = InboxItemSerializer (new_inbox_item, data={
-                    "type":"follow"    
-                }, partial=True)
-                
-                if serialized_inbox_item.is_valid():
+            inbox_url = f"{requested_account.get_web_url()}/inbox/"
+            print(inbox_url)
+
+            try:
+                serialized_follow_request = FollowRequestSerializer(
+                    follow_request, data={
+                        "type":"follow",
+                    },partial=True
+
+                )
+
+                if serialized_follow_request.is_valid():
+                    print("Follow Request serializer is valid")
+
+                    # Save follow request to DB
+                    saved_follow_request = serialized_follow_request.save()
+
+                    #make the inbox JSON content
+                    inbox_content = serialized_follow_request.data
                     
-                    serialized_inbox_item.save()
                     
-                    print(serialized_follow_request).data
-                
-                
+                    newInboxItem = InboxItem(
+                        author=requested_account,
+                        type=InboxObjectType.FOLLOW,
+                        content=inbox_content
+                    )
+
+                    try:
+                        newInboxItem.save()
+                        print("Inbox item successfully saved")
                     
-                  
+                    #Exceptions and structure adjusted using copilot: https://www.bing.com/search?pglt=427&q=copilot&cvid=882b9688f1804581bd4975fbe80acc49&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQDIGCAQQABhAMgYIBRAAGEAyBggGEAAYQDIGCAcQABhAMgYICBAAGEDSAQc5MDJqMGoxqAIAsAIA&FORM=ANNTA1&PC=EDGEDB, "[Adjust the structure of these error messages]", June, 2025
+                    except Exception as e:
+                        saved_follow_request.delete()  # Rollback follow request
+                        return HttpResponseServerError(f"Failed to save Inbox Item: {e}")
+
+                else:
+                    return HttpResponseServerError(f"FollowRequest serializer errors: {serialized_follow_request.errors}")
+
             except Exception as e:
-                
-                print(f"COULD NOT SERIALIZE FOLLOW REQUEST: {e}")
-                return HttpResponseServerError("FAILED TO AUTHENTICATE FOLLOW REQUEST")
-      
-    
+                return HttpResponseServerError(f"Failed to validate follow request and inbox item: {e}")
+
         except Exception as e:
-            return HttpResponseServerError(f"Failed to created follow request: {e}")
-        
-        return redirect("wiki:view_external_profile", author_serial=author_serial)#place holder
-   
-    return HttpResponse("NO USER IS CURRENTLY LOGGED IN, OR WE WERE UNABLE TO LOCATE YOUR PROFILE")
-    
-@require_GET
+            return HttpResponseServerError(f"Failed to create follow request: {e}")
+
+    return redirect('wiki:successful_follow', author_serial=author_serial)
+
+           
+
 @login_required
-def check_inbox(request, author_serial):
-     pass
+def follow_success_page(request, author_serial):
+    
+    if request.user.is_staff or request.user.is_superuser:
+        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
+    current_user = request.user
+    author = get_logged_author(current_user)
+    parsed_serial  = uuid.UUID(author_serial)
+    requestedAuthor = Author.objects.get(serial=parsed_serial)
+    
+    return render(request,"follow_success.html", {'author':requestedAuthor})
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def check_author_inbox(request, author_serial):
+
+    return render(request,"inbox.html")
 
 @api_view(['GET'])
 def view_inbox(request):
@@ -377,3 +381,84 @@ def create_entry(request):
     # GET: Show form to create entry
     return render(request, 'create_entry.html')
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''IGNORE FOR NOW, FOR API IT MAY BECOME USEFUL
+                    
+                    try:
+                        response = requests.post(
+                            inbox_url,
+                            json=serial_follow_data,
+                            headers={'Content-Type': 'application/json'}
+                        )
+
+                        if response.status_code == 201:
+                            print("SUCCEEDED TO POST THE REQUEST")
+
+                            # Save to our local inbox
+                            newInboxItem = InboxItem(
+                                author=requested_account,
+                                type=InboxObjectType.FOLLOW,
+                                content=serial_follow_data
+                            )
+                            newInboxItem.save()
+                            serialized_follow_request.save()
+
+                            print("sent the follow request to recipient inbox")
+                        else:
+                            print(f"Failed with status {response.status_code}")
+                            print(f"Response: {response.text}")
+                            return HttpResponseServerError("Remote inbox rejected the follow request.")
+
+                    except Exception as e:
+                        print(f"Failed to send request: {e}")
+                        return HttpResponseServerError(f"Failed to send request: {e}")
+
+                
+    
+            except Exception as e:
+         
+                return HttpResponseServerError(f"Unexpected error occurred: {e}")
+        except Exception as e:
+            
+                return HttpResponseServerError(f"Unexpected error occurred: {e}")
+            
+    return redirect("wiki:successful_follow", author_serial=author_serial)
+    #return redirect('wiki:successful_follow', author_serial=author_serial)'''
