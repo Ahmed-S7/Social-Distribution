@@ -44,7 +44,7 @@ def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
 
         github=github,
 
-        web=web or f"http://s25-project-white/authors/{string_serial}"
+        web = f"http://s25-project-white/authors/{string_serial}"
         
         )
         newAuthor.save()

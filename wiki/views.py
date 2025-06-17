@@ -69,7 +69,6 @@ def register(request):
         confirm_password = request.POST.get('confirm_password', "").strip()
         github = request.POST.get('github') or None
         profileImage = request.POST.get('profileImage') or None
-        web = request.POST.get('web') or None
 
         userIsValid = validUserName(username)
         
@@ -79,7 +78,7 @@ def register(request):
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
             user = User.objects.create_user(username=username, password=password)
-            newAuthor = saveNewAuthor(user, username, github, profileImage, web)
+            newAuthor = saveNewAuthor(user, username, github, profileImage)
             return redirect('wiki:login') 
         
         else:
