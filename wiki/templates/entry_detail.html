@@ -3,6 +3,10 @@
 
 <h2>{{ entry.title }}</h2>
 <p>{{ entry.content }}</p>
+{% if entry.image %}
+    <img src="{{ entry.image.url }}" alt="Post image">
+{% endif %}
+
 <p><em>By {{ entry.author.username }}</em></p>
 
 <div class="default_buttons">
