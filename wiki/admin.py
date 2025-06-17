@@ -44,12 +44,13 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    list_display = ("")
+    list_display = ["requester", "requested_account", "state", "is_deleted"]
+    list_editable = ["state", "is_deleted"]
     
 admin.site.register(Page)
 admin.site.register(Like)
 admin.site.register(RemotePost)
-admin.site.register(FollowRequest)
 admin.site.register(AuthorFollowing)
 admin.site.register(Author, AuthorAdmin)
 admin.site.register(Entry)
+admin.site.register(FollowRequest, FollowRequestAdmin)

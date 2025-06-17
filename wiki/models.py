@@ -3,7 +3,7 @@ import uuid
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models import Manager, QuerySet
+from django.db.models import Manager, QuerySet, Q
 from django.dispatch import receiver
 # Create your models here.
 
@@ -237,7 +237,14 @@ class FollowRequest(BaseModel):
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
     class Meta:
-        unique_together = ("requester", "requested_account", "state")
+        constraints = [
+            models.UniqueConstraint(
+            fields=['requester', 'requested_account', 'state'],
+            condition=Q(is_deleted=False),
+            name='unique_active_follow_request'
+        )
+            
+        ]
         
     def get_request_state(self)->str:
         return self.state
@@ -261,8 +268,7 @@ class FollowRequest(BaseModel):
         '''
         if isinstance(new_state, RequestState):
             self.state = new_state.value
-            self.save()
-            
+            self.save() 
             
         else:
             raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
@@ -272,13 +278,14 @@ class FollowRequest(BaseModel):
              raise ValidationError("You cannot send yourself a follow request.")
          
          #Validation Error Raised if a follow request already exists with:  
-         if FollowRequest.objects.filter(
+         if self.state == RequestState.REQUESTING and not self.is_deleted and FollowRequest.objects.filter(
              requester=self.requester, # the same requesting user
              requested_account=self.requested_account, # the same requested user
-             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING] #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
+             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING], #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
+             is_deleted = False
              ).exclude(pk=self.pk).exists():
             
-            raise ValidationError("You already have an active follow request or relationship with this user")
+            raise ValidationError("User already has an active follow request or relationship with this user")
         
        
          return super().save(*args,**kwargs)
