@@ -72,6 +72,14 @@
                     </div>
                 </div>
                 <div class="post-content">{{ entry.content }}</div>
+
+                {% if entry.image %}
+                    <div style="margin: 1em 0;">
+                        <img src="{{ entry.image.url }}" alt="Post image"
+                             style="max-width: 100%; border-radius: 10px;" />
+                    </div>
+                {% endif %}
+
                 <div class="post-footer">
                     <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
                         {% csrf_token %}
