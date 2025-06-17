@@ -136,6 +136,7 @@ class Entry(BaseModel):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     content = models.TextField()
+    image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 

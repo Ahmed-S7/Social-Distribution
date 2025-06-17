@@ -29,6 +29,7 @@ import json
 from django.middleware.csrf import get_token
 # Create your views here.
 
+
 class PageViewSet(viewsets.ModelViewSet):
     queryset = Page.objects.all().order_by('-updated')
     serializer_class = PageSerializer
@@ -472,13 +473,14 @@ def create_entry(request):
     """
     Create a new wiki entry.
     """
-    ####### FOR CREATING A NEW ENTRY ######
     if request.method == 'POST':
         # Example: get data from POST and save your entry
         title = request.POST.get('title')
         content = request.POST.get('content')
+        image = request.FILES.get('image')
+
         if title and content:
-            entry = Entry.objects.create(author=request.user, title=title, content=content)
+            entry = Entry.objects.create(author=request.user, title=title, content=content, image=image)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
             return HttpResponse("Both title and content are required.")

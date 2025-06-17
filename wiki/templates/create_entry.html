@@ -3,14 +3,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Create Entry</title>
+  <title>Create Post</title>
 </head>
 <body>
-  <h1>Create a New Entry</h1>
-  <form method="post">
+  <h1>Create a New Post</h1>
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <input type="text" name="title" placeholder="Title" required><br>
     <textarea name="content" rows="10" cols="50" placeholder="Write your entry..." required></textarea><br>
+    <input type="file" name="image"><br>
     <button type="submit">Submit</button>
   </form>
 </body>
