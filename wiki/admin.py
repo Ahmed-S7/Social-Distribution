@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing
+from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry
 
 # Register your models here.
 
@@ -52,3 +52,4 @@ admin.site.register(RemotePost)
 admin.site.register(FollowRequest)
 admin.site.register(AuthorFollowing)
 admin.site.register(Author, AuthorAdmin)
+admin.site.register(Entry)
