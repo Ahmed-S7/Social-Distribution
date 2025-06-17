@@ -27,22 +27,15 @@ class AuthorSerializer(serializers.ModelSerializer):
         
         
 class FollowRequestSerializer(serializers.ModelSerializer):
-    type = serializers.CharField(source="type")
-    summary = serializers.CharField(source="summary")
-    actor = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
-    object = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
-    
+    actor = AuthorSerializer(source="requester")
+    object = AuthorSerializer(source="requested_account")
     class Meta:
         model= FollowRequest
-        fields = ["type","summary","actor", "object"]
+        fields = ["type","summary", "actor", "object"]
         
     
 class InboxItemSerializer(serializers.ModelSerializer):
-    author = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all())
-    type = serializers.CharField(source="type")
-    content = serializers.JSONField(source="content")
-    created_at = serializers.DateTimeField(source="created_at")
-    
+
     class Meta:
         model = InboxItem
         fields = ["type", "author", "content", "created_at"]

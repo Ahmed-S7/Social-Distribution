@@ -237,7 +237,7 @@ class FollowRequest(BaseModel):
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
     class Meta:
-        unique_together = ("requester", "requested_account")
+        unique_together = ("requester", "requested_account", "state")
         
     def get_request_state(self)->str:
         return self.state
@@ -279,7 +279,8 @@ class FollowRequest(BaseModel):
              ).exclude(pk=self.pk).exists():
             
             raise ValidationError("You already have an active follow request or relationship with this user")
-         
+        
+       
          return super().save(*args,**kwargs)
     def __str__(self):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  
@@ -296,7 +297,8 @@ class InboxItem(BaseModel):
     content = models.JSONField()
     created_at =models.DateTimeField(auto_now_add=True)
     
-        
+    def __str__(self):
+        return f" Inbox item from: {str(self.author)}\nInbox Item Type: {self.type}\nItem Content:\n{str(self.content)}\nCreated at:{str(self.created_at)}"    
     
        
         

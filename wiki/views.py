@@ -1,8 +1,8 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry
-from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer, AuthorSerializer
+from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry, InboxItem
+from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -64,6 +64,9 @@ def user_wiki(request, username):
 def register(request):
     """ creates a new user account """
     if request.method == 'POST':
+        if request.user.username != username or request.user.is_superuser:
+            raise PermissionDenied("You are not allowed to view this page.")
+        
         username = request.POST.get('username')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
@@ -232,8 +235,7 @@ def view_external_profile(request, author_serial):
         profile_viewing = Author.objects.get(serial=author_serial)     
         return render(request, "external_profile.html", {"author": profile_viewing})
     else:
-        print("profile DNE")
-        return redirect("wiki:view_authors")
+        return HttpResponseRedirect("wiki:view_authors")
         
         
         
@@ -254,20 +256,20 @@ def view_following(request):
 @login_required  
 @require_POST 
 def follow_profile(request, author_serial):
+    if request.user.is_staff or request.user.is_superuser:
+        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
     
     current_user = request.user
-    
+    print(current_user)
     if get_logged_author(current_user):
         requesting_account = get_logged_author(current_user)
     
         parsed_serial  = uuid.UUID(author_serial)
     
-        try:
-            
-            Author.objects.get(serial=parsed_serial)
-            
+        #Create the follow request object
+        try: 
             requested_account = Author.objects.get(serial=parsed_serial)
-
+            
             follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
             
     
@@ -279,26 +281,56 @@ def follow_profile(request, author_serial):
             
             print(f"AUTHOR REQUESTED: {requested_account}\n")
             ###################################################
-            
-            #TODO: serialize the follow request, save it, send it to the requested author's inbox
-            
-            
-            
-            '''
-            Creates and sends a follow request object to a user's inbox
-            #TODO: send follow request with status "requesting" to corresponding account's inbox
-            - do not allow duplicate follows
-                - make views reflect this
-            - allow recipient to accept follow request
-                - update follow request status to accepted
-            - allow recipient to reject follow request
-                - update follow request status to rejected 
-            - add follower to reciever
-            - add followed user to sender
-            - if both accounts follow each other:
-                - add friends
-            '''
         
+        
+            #serialize the follow request
+            try:    
+               
+                #####################FOR TESTING#######################################
+                #requesting_author_serialized = AuthorSerializer(requesting_account).data 
+                #requested_author_serialized = AuthorSerializer(requested_account).data 
+                #print(AuthorSerializer(requesting_account).data)
+                #print(AuthorSerializer(requested_account).data)
+                #####################FOR TESTING#######################################
+                        
+                serialized_follow_request = FollowRequestSerializer(follow_request, data={
+                    "type":"follow"  
+                }, partial=True)
+                
+                if serialized_follow_request.is_valid():
+                    
+                    try:
+                        serialized_follow_request.save()      
+                            
+                    except Exception as e:
+                        print(e)
+                        return HttpResponseServerError(e)
+                
+                            
+                print(f"\nSERIALIZED FOLLOW REQUEST: \n\n'{serialized_follow_request.data}'")
+            
+                #Create the inbox Item
+                new_inbox_item = InboxItem(author=requesting_account, type="follow", content=serialized_follow_request.data)
+
+                serialized_inbox_item = InboxItemSerializer (new_inbox_item, data={
+                    "type":"follow"    
+                }, partial=True)
+                
+                if serialized_inbox_item.is_valid():
+                    
+                    serialized_inbox_item.save()
+                    
+                    print(serialized_follow_request).data
+                
+                
+                    
+                  
+            except Exception as e:
+                
+                print(f"COULD NOT SERIALIZE FOLLOW REQUEST: {e}")
+                return HttpResponseServerError("FAILED TO AUTHENTICATE FOLLOW REQUEST")
+      
+    
         except Exception as e:
             return HttpResponseServerError(f"Failed to created follow request: {e}")
         
@@ -306,12 +338,11 @@ def follow_profile(request, author_serial):
    
     return HttpResponse("NO USER IS CURRENTLY LOGGED IN, OR WE WERE UNABLE TO LOCATE YOUR PROFILE")
     
-   
+@require_GET
 @login_required
-def check_inbox(request):
-    
-    pass 
-    
+def check_inbox(request, author_serial):
+     pass
+
 @api_view(['GET'])
 def view_inbox(request):
     pass
