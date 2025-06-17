@@ -137,7 +137,18 @@ class Entry(BaseModel):
     title = models.CharField(max_length=200)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    id = models.URLField(unique=True, primary_key=True) 
+    serial = models.UUIDField(default=uuid.uuid4, unique=True) 
+    def get_entry_url(self):
+        return f"http://s25-project-white/entry/{self.serial}"
+    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = self.get_entry_url()
+        return super().save(*args, **kwargs)
 
+    def __str__(self):
+        return self.title
 
 class Page(BaseModel):
     title = models.CharField(max_length=100, unique=True)

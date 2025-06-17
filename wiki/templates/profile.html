@@ -13,6 +13,8 @@
     {% csrf_token %}
     <button type="submit">Logout</button>
     </form>
+
+
     <div class="profile_buttons">
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Go Back to Stream</button>
@@ -25,5 +27,20 @@
     </a>
     <a href="{% url 'wiki:create_entry' %}">
         <button type="button">Add Entry</button>
+    </a>
     </div>
+
+
+    <h3>Your Entries</h3>
+    {% if entries %}
+    <ul class="entry_list">
+        {% for entry in entries %}
+            <li>
+                <a href="{% url 'wiki:entry_detail' entry.serial %}">
+                    <strong>{{ entry.title }}</strong> — {{ entry.created_at|date:"M d, Y H:i" }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 </section>

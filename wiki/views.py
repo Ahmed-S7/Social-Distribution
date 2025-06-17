@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author,AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
@@ -464,8 +464,8 @@ def profile_view(request):
         author = Author.objects.get(user=request.user)
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
-
-    return render(request, 'profile.html', {'author': author})
+    entries = Entry.objects.filter(author=request.user).order_by('-created_at')    # displays entries from newest first
+    return render(request, 'profile.html', {'author': author, 'entries': entries})
 
 @login_required
 def create_entry(request):
@@ -478,16 +478,17 @@ def create_entry(request):
         title = request.POST.get('title')
         content = request.POST.get('content')
         if title and content:
-            Entry.objects.create(author=request.user, title=title, content=content)
-            return HttpResponse(f"Entry '{title}' created successfully!")
+            entry = Entry.objects.create(author=request.user, title=title, content=content)
+            return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
             return HttpResponse("Both title and content are required.")
     # GET: Show form to create entry
     return render(request, 'create_entry.html')
 
-
-
-
+@login_required
+def entry_detail(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    return render(request, 'entry_detail.html', {'entry': entry})
 
 
 
