@@ -202,7 +202,7 @@ def get_author(request, author_serial):
             
             serializer = AuthorSerializer()
         
-            serializer =AuthorSerializer(author) #many=True specifies that the input is not just a single question
+            serializer =AuthorSerializer(author)
         return Response(serializer.data)
 
 
@@ -219,7 +219,6 @@ def view_authors(request):
     
     #retrieve all authors except for the current author
     authors = Author.objects.exclude(user=current_user)
-    
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
 @require_GET
