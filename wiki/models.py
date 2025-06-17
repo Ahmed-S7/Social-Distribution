@@ -160,11 +160,19 @@ class Page(BaseModel):
         return self.title
 
 class Like(BaseModel):
-    page = models.ForeignKey(Page, on_delete=models.CASCADE, related_name='likes')
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('page', 'user')
+        unique_together = ('entry', 'user')
+
+class Comment(BaseModel):
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 
 class RemotePost(BaseModel):
     origin = models.URLField()
