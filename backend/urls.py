@@ -18,9 +18,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from wiki.views import MyLoginView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path ('', MyLoginView.as_view(template_name='login.html'), name='login'),
     path('s25-project-white/', include('wiki.urls', namespace='wiki')),
     path('admin/', admin.site.urls),
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
