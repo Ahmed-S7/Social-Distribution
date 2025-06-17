@@ -29,6 +29,7 @@ import json
 from django.middleware.csrf import get_token
 # Create your views here.
 
+
 class PageViewSet(viewsets.ModelViewSet):
     queryset = Page.objects.all().order_by('-updated')
     serializer_class = PageSerializer
