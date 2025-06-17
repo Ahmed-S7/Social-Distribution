@@ -1,8 +1,8 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author,InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
-from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
+from .models import Page, Like, RemotePost, Author,AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
 from rest_framework.decorators import action, api_view
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -366,9 +366,6 @@ def process_follow_request(request, author_serial, request_id):
     choice = request.POST.get("action")
     
     if choice.lower() == "accept":
-        ''''
-        
-        IN PROGRESS
         
         #if follow request gets accepted, 
         follow_request = FollowRequest.objects.filter(id=request_id).first()
@@ -379,22 +376,71 @@ def process_follow_request(request, author_serial, request_id):
         except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-        #create a following from requester to to requested
+        #set the follow  request state to accepted
+        follow_request.set_request_state(RequestState.ACCEPTED)
+        
+        #create a following from requester to requested
         new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
-        new_following.save()
+        new_following_serializer = AuthorFollowingSerializer(new_following, data={
+            "follower":new_following.follower.id,
+            "following":new_following.following.id,
+        }, partial=True)
         
+        print(new_following_serializer)
+        if new_following_serializer.is_valid():
+            try:
+                new_following_serializer.save()
+            except Exception as e:
+                incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)    
+                return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+               # return HttpResponseServerError("Unable to accept follow request, make sure this author does not already follow you.")
+
+        else:
+            
+            return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
+            
+        # check if there is now a mutual following
+        if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
+
+            #if there is, add these two users as friends using the author friends object
+            new_friendship = AuthorFriend(friending=requestedAuthor, friended=follower)
+            
+            friendship_serializer = AuthorFriendSerializer(new_friendship, data={
+                "friending":new_friendship.friending.id,
+                "friended":new_friendship.friended.id,
+            },partial=True) 
+            
+            if friendship_serializer.is_valid():
+                
+                friendship_serializer.save()  
+                
+            else:
+                
+                return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")
+                
+                    
+
+          
+            
+    else:
+        #if follow request is denied,
+         follow_request = FollowRequest.objects.filter(id=request_id).first()
+    
+         try:
+            follower = follow_request.requester
+                
+         except follower.DoesNotExist:
+            return Http404("Follow request was not found between you and this author")
         
-            
-        # check if there is now a mutual follow
-        if 
-        '''   
-            
-        pass
+         #Set the request state to rejected 
+         follow_request.set_request_state(RequestState.REJECTED)
+         
+         #SOFT DELETE the follow request so the requester may request again
+         follow_request.is_deleted=True
    
     
     
-    incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)
-        
+    incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)    
     return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
     
     

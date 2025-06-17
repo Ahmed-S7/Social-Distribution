@@ -1,12 +1,12 @@
+{%load static%}
 <h1>Incoming Follow Requests For {{author.displayName}}</h1>
 
 
 <body>
 <section class="follow requests">
 
-
+{%if request.id%}
 {%for request in follow_requests%}
-
 
 <h3>{{request.requester}} has requested to follow you!</h3>
 <form action="{% url 'wiki:process_follow_request' author.serial request.id %}" method="POST">
@@ -17,7 +17,9 @@
 
 {%endfor%}
 
-
+{%else%}
+<h3>NO FOLLOW REQUESTS FOUND</h3>
+{%endif%}
 </section>
 
 </body>

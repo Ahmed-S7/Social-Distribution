@@ -85,10 +85,11 @@ class Author(BaseModel):
         return list(self.follow_requests.all())
     
     def get_web_url(self):
+        '''Get the fully qualified URL to an author's page'''
         return self.web
     
     def get_inbox_items(self):
-        
+        '''return the JSON content of a user's inbox'''
         return InboxItem.objects.get(author=self)
     
     def get_friends(self):
@@ -97,8 +98,14 @@ class Author(BaseModel):
         '''
         pass
     
-    
+    def is_following(self, other_author):
+        '''Check if an author currently follows another author'''
+        return AuthorFollowing.objects.filter(follower=self, following=other_author).exists()
+        
     def is_friends_with(self, other_author):
+        '''checks if an author is friends with another author'''
+        
+        
         pass
         
       
@@ -157,6 +164,14 @@ class RemotePost(BaseModel):
     
 
 class AuthorFriend(BaseModel):
+        '''
+        represents a friendship between 2 authors
+        
+        friending: is the arbitrary friend A
+        friended: is the arbitrary friend B
+        
+        IMPORTANT: to collect all of a user's friendships, you must get all of the friend items where the user is Friend A OR Friend B
+        '''
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
         friended = models.ForeignKey(Author, related_name="friend_b", null=False, on_delete=models.CASCADE)
         friended_at =  models.DateTimeField(auto_now_add=True)
@@ -206,18 +221,28 @@ class AuthorFollowing(BaseModel):
     date_followed = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        unique_together = ("follower", "following")
-        
+        constraints = [
+                models.UniqueConstraint(
+                fields=['follower', 'following'],
+                condition=Q(is_deleted=False),
+                name='unique_active_following'
+            )
+                
+            ]
         
     #derived from stackoverflow.com: https://stackoverflow.com/questions/67658422/how-to-overwrite-save-method-in-django-model-form, "How to overwrite the save method in django model form", June 15, 2025
     def save(self, *args, **kwargs):
          if self.follower == self.following:
              raise ValidationError("You cannot follow Yourself")
+         
+         if self.follower.is_deleted or self.following.is_deleted:
+            raise ValidationError("Cannot follow or be followed by a deleted author")
+        
          return super().save(*args,**kwargs)  
      
     def __str__(self):
         
-        return f"{self.follower} Now Follows {self.following}"
+        return f"{self.follower} Has Followed {self.following}"
 
 class RequestState(models.TextChoices):
     """
@@ -296,7 +321,7 @@ class FollowRequest(BaseModel):
              raise ValidationError("You cannot send yourself a follow request.")
          
          #Validation Error Raised if a follow request already exists with:  
-         if self.state == RequestState.REQUESTING and not self.is_deleted and FollowRequest.objects.filter(
+         if  not self.is_deleted and FollowRequest.objects.filter(
              requester=self.requester, # the same requesting user
              requested_account=self.requested_account, # the same requested user
              state__in=[RequestState.ACCEPTED, RequestState.REQUESTING], #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author, FollowRequest, InboxItem, InboxObjectType
+from .models import Page, Like, RemotePost, Author,AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):
@@ -33,7 +33,17 @@ class FollowRequestSerializer(serializers.ModelSerializer):
         model= FollowRequest
         fields = ["type","summary", "actor", "object"]
         
-    
+class AuthorFriendSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthorFriend
+        fields = ['friending','friended','friended_at']
+        
+        
+class AuthorFollowingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthorFollowing
+        fields = ['follower', 'following',  'date_followed']
+        
 class InboxItemSerializer(serializers.ModelSerializer):
 
     class Meta:
