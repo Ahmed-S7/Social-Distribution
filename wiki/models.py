@@ -271,6 +271,15 @@ class FollowRequest(BaseModel):
          if self.requester == self.requested_account:
              raise ValidationError("You cannot send yourself a follow request.")
          
+         #Validation Error Raised if a follow request already exists with:  
+         if FollowRequest.objects.filter(
+             requester=self.requester, # the same requesting user
+             requested_account=self.requested_account, # the same requested user
+             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING] #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
+             ).exclude(pk=self.pk).exists():
+            
+            raise ValidationError("You already have an active follow request or relationship with this user")
+         
          return super().save(*args,**kwargs)
     def __str__(self):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  

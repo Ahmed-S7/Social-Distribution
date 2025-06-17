@@ -51,19 +51,17 @@ def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
         return newAuthor
     
     except Exception as e:
-        print("IT FAILED")
         print(f"Exception: {e}")
-        traceback.print_exc()
         return None
     
+    
 def get_author_id(request):
+    
     absolute_url = request.build_absolute_uri()
         
     parsed = urlparse(absolute_url)
         
     stringified_url =str(parsed.path)
-
-    print(stringified_url)
         
     id = stringified_url.strip().split('/')[-1]
         
@@ -73,7 +71,7 @@ def get_logged_author(user):
     '''get the author that is currently logged in'''
     try:
         current_user = user.username
-        current_author = Author.objects.get(displayName=current_user)
+        current_author = Author.objects.get(displayName=current_user, is_deleted=False)
         return current_author
     
     except Exception as e:

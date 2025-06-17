@@ -78,8 +78,12 @@ def register(request):
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
             user = User.objects.create_user(username=username, password=password)
+            
+            #Save new author or raise an error
             newAuthor = saveNewAuthor(user, username, github, profileImage)
-            return redirect('wiki:login') 
+            if newAuthor:
+                return redirect('wiki:login') 
+            raise HttpResponseServerError("Unable to save profile")
         
         else:
             errorList= []
@@ -300,7 +304,7 @@ def follow_profile(request, author_serial):
         
         return redirect("wiki:view_external_profile", author_serial=author_serial)#place holder
    
-    raise Http404("NO USER IS CURRENTLY LOGGED IN, OR WE WERE UNABLE TO LOCATE YOUR PROFILE")
+    return HttpResponse("NO USER IS CURRENTLY LOGGED IN, OR WE WERE UNABLE TO LOCATE YOUR PROFILE")
     
    
 @login_required
@@ -320,7 +324,7 @@ def profile_view(request):
     try:
         author = Author.objects.get(user=request.user)
     except Author.DoesNotExist:
-        raise Http404("Author profile does not exist.")
+        return HttpResponse("Author profile does not exist.")
 
     return render(request, 'profile.html', {'author': author})
 
