@@ -33,8 +33,8 @@ def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
         newAuthor = Author(
                     
         user = user,
-        
-        id = f"http://s25-project-white/api/authors/{string_serial}",
+        #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
+        id = f"http://127.0.0.1:8000/s25-project-white/api/authors/{string_serial}",
                     
         displayName = username,
         
@@ -43,8 +43,8 @@ def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
         profileImage=profileImage or "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
 
         github=github,
-
-        web = f"http://s25-project-white/authors/{string_serial}"
+        #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
+        web = f"http://127.0.0.1:8000/s25-project-white/authors/{string_serial}" 
         
         )
         newAuthor.save()

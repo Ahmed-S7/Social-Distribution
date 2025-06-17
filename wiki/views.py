@@ -1,8 +1,8 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry, InboxItem
-from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer
+from .models import Page, Like, RemotePost, Author, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .serializers import PageSerializer, LikeSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated

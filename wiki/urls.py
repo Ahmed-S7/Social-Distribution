@@ -28,5 +28,6 @@ urlpatterns = [
     path('authors/', view_authors, name='view_authors'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
-    path('api/authors/<str:author_serial>/inbox', check_inbox, name='check_inbox' )
+    path('api/authors/<str:author_serial>/inbox', check_inbox, name='check_inbox' ),
+
 ]

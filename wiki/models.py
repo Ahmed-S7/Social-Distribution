@@ -286,7 +286,19 @@ class FollowRequest(BaseModel):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  
         
 class InboxItem(BaseModel):
-    '''A general model for all of the different objects that can be pushed to the inbox (do not allow none for type, validate before saving)'''
+    '''A general model for all of the different objects that can be pushed to the inbox 
+    
+    FIELDS:
+    
+    author: the author posting the inbox item
+    
+    type: the type of inbox item
+    
+    content: the JSON in the inbox item
+    
+    created_at: the time that the inbox item was posted
+
+    '''
     
     author = models.ForeignKey(Author, related_name="inbox", on_delete=models.CASCADE)
     type = models.CharField(
@@ -297,8 +309,8 @@ class InboxItem(BaseModel):
     content = models.JSONField()
     created_at =models.DateTimeField(auto_now_add=True)
     
-    def __str__(self):
-        return f" Inbox item from: {str(self.author)}\nInbox Item Type: {self.type}\nItem Content:\n{str(self.content)}\nCreated at:{str(self.created_at)}"    
+    
+        
     
        
         
