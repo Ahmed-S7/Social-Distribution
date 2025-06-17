@@ -38,7 +38,7 @@ class Author(BaseModel):
 class AuthorAdmin(admin.ModelAdmin):
     list_display = ["id", "displayName", "is_deleted","github","profileImage","host"]
     list_filter = ["is_deleted", "host"]
-    list_editable = ['displayName', 'github']
+    list_editable = ['displayName', 'github', "is_deleted", "profileImage"]
     
     search_fields = ["displayName", "github"]
  
