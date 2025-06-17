@@ -23,3 +23,10 @@ h1,h2{
      font-size:small;
 }
 
+.entry_list {
+    list-style-type: none;
+    padding: 0;
+}
+.entry_list li {
+    margin-bottom: 10px;
+}
