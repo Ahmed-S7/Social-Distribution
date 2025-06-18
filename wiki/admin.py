@@ -44,11 +44,11 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    list_display = ["requester", "requested_account", "state", "is_deleted","created_at"]
+    list_display = ["requester", "summary", "requested_account", "state", "is_deleted","created_at"]
     list_editable = ["state", "is_deleted"]
     
 class AuthorFollowingAdmin(admin.ModelAdmin):
-    list_display= ['follower','following', "id"]
+    list_display= ["id",'follower','following']
     search_fields= ['follower__displayName']
     
 admin.site.register(Page)

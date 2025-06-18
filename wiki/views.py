@@ -14,6 +14,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import redirect
 from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseServerError
 from django.urls import reverse
+from django.contrib import messages
 from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
 from django.views.decorators.http import require_GET, require_POST
@@ -276,6 +277,16 @@ def follow_profile(request, author_serial):
             follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
             follow_request.summary = str(follow_request)
 
+            if requesting_account.is_already_requesting(requested_account):
+                messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
+                return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+            
+            if requesting_account.is_following(requested_account):
+                messages.error(request,f"You already follow {requested_account}, maybe view their profile?")
+                return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+                
+            
+            
             ########CHECKING OUTPUT###############
             print(f"{str(follow_request)}\n")
             print(f"REQUESTING AUTHOR: {requesting_account}\n")

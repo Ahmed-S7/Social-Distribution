@@ -1,5 +1,13 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+{% if messages %}
+    <script>
+    {% for message in messages %}
+        alert("{{message|escapejs}}")
+    {%endfor%}
+    </script>
+    
+{% endif %}
 
 <section class="author_profile">
 

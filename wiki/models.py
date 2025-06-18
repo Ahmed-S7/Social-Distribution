@@ -92,6 +92,10 @@ class Author(BaseModel):
         '''return the JSON content of a user's inbox'''
         return InboxItem.objects.get(author=self)
     
+    def is_already_requesting(self, other_author):
+        '''checks if an autor is actively requesting a specific author'''
+        return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING).exists()
+    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
@@ -230,6 +234,7 @@ class AuthorFollowing(BaseModel):
     '''
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
+    summary = models.CharField(default=f"{follower} has followed {following}")
     date_followed = models.DateTimeField(auto_now_add=True)
     
     class Meta:
