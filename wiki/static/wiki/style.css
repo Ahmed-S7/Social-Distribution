@@ -1,7 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
-html{
+html, body{
     font-family: 'Nunito', sans-serif;
+     background-color: rgb(255, 255, 255); 
 }
 
 

@@ -9,6 +9,16 @@
     
 {% endif %}
 
+ <div class="default_buttons">
+                <a href="{% url 'wiki:profile' %}">
+
+                
+                    <button class="nav_button" type="button"> ↩ Back to Profile</button>
+                </a>
+                <a href="{% url 'wiki:user-wiki' request.user.username %}">
+                    <button class="nav_button" type="button">Back to Stream ↪</button>
+                </a>
+</div>
 <section class="author_profile">
 
 
@@ -32,19 +42,11 @@
 
             <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
                 {% csrf_token %}
-                <button class="follow_button" type="button">Follow Profile</button> 
+                <button class="follow_button" type="submit">Follow Profile</button> 
             </form>
+
             {% endif%}
 
 
-            <div class="default_buttons">
-                <a href="{% url 'wiki:profile' %}">
-
-                
-                    <button class="nav_button" type="button"> ↩ Back to Profile</button>
-                </a>
-                <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                    <button class="nav_button" type="button">Back to Stream ↪</button>
-                </a>
-            </div>
+           
 </section>
