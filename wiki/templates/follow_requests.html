@@ -21,11 +21,11 @@
 </section>
 <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
 <div class="default_buttons">
-    <a href="{% url 'wiki:profile' %}">
-        <button type="nav_button">Back to Profile</button>
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <button type="button">Back to Profile</button>
     </a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="nav_button">Back to Stream</button>
+        <button type="button">Back to Stream</button>
     </a>
 </div>
 </body>

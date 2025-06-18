@@ -74,7 +74,7 @@ class Author(BaseModel):
     
     serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
     
-    profileImage  = models.URLField(blank=True, null=True, default="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y")
+    profileImage = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
     

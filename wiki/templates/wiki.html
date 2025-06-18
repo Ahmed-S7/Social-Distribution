@@ -49,7 +49,7 @@
 <body>
     <h1>Welcome to SocialDistribution, {{ request.user.username }}!</h1>
 
-    <a href="{% url 'wiki:profile' %}">
+    <a href="{% url 'wiki:profile' request.user.username %}">
         <button type="button">Profile</button>
     </a>
     <a href="{% url 'wiki:create_entry' %}">

@@ -32,7 +32,7 @@
     <a href="{% url 'wiki:create_entry' %}">
         <button type="button">Add Entry</button>
     </a>
-        <a href="{% url 'wiki:edit_profile' %}">
+        <a href="{% url 'wiki:edit_profile' request.user.username %}">
         <button type="button">Edit Profile</button>
     </a>
     </div>
