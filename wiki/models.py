@@ -94,7 +94,7 @@ class Author(BaseModel):
     
     def is_already_requesting(self, other_author):
         '''checks if an autor is actively requesting a specific author'''
-        return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING).exists()
+        return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
     def get_friends(self):
         '''
@@ -104,7 +104,7 @@ class Author(BaseModel):
     
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
-        return AuthorFollowing.objects.filter(follower=self, following=other_author).exists()
+        return AuthorFollowing.objects.filter(follower=self, following=other_author, is_deleted=False).exists()
         
     def is_friends_with(self, other_author):
         '''checks if an author is friends with another author'''
@@ -242,7 +242,6 @@ class AuthorFollowing(BaseModel):
     '''
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
-    summary = models.CharField(default=f"{follower} has followed {following}")
     date_followed = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -355,7 +354,7 @@ class FollowRequest(BaseModel):
             
             raise ValidationError("User already has an active follow request or relationship with this user")
         
-       
+        
          return super().save(*args,**kwargs)
     def __str__(self):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  

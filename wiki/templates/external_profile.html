@@ -19,16 +19,32 @@
             {% else  %}
             <p>GitHub Profile Not Found</p>
             {% endif %}
+
+             {% if is_following %}
+
            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-            {% csrf_token %}
-            <button class="follow_button" type="submit">Follow Profile</button> 
+                {% csrf_token %}
+               <button class="unfollow_button" type="submit" >UnFollow Profile</button>
+ 
             </form>
+            
+            {% else %}
+
+            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                {% csrf_token %}
+                <button class="follow_button" type="button">Follow Profile</button> 
+            </form>
+            {% endif%}
+
+
             <div class="default_buttons">
                 <a href="{% url 'wiki:profile' %}">
-                    <button type="button">Back to Profile</button>
+
+                
+                    <button class="nav_button" type="button"> ↩ Back to Profile</button>
                 </a>
                 <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                    <button type="button">Back to Stream</button>
+                    <button class="nav_button" type="button">Back to Stream ↪</button>
                 </a>
             </div>
 </section>

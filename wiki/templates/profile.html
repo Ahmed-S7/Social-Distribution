@@ -11,7 +11,7 @@
     {% endif %}
     <form method="post" action="{% url 'wiki:logout' %}">
     {% csrf_token %}
-    <button type="submit">Logout</button>
+    <button class="logout_button" type="submit" >Logout</button>
     </form>
 
 
