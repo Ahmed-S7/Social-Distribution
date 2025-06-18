@@ -12,6 +12,13 @@
     <input type="text" name="title" placeholder="Title" required><br>
     <textarea name="content" rows="10" cols="50" placeholder="Write your entry..." required></textarea><br>
     <input type="file" name="image"><br>
+    <label for="visibility">Visibility:</label>
+    <select name="visibility" id="visibility">
+        <option value="PUBLIC">Public</option>
+        <option value="FRIENDS">Friends Only</option>
+        <option value="UNLISTED">Unlisted</option>
+    </select>
+
     <button type="submit">Submit</button>
   </form>
   <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
