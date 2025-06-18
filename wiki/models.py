@@ -137,7 +137,7 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     content = models.TextField()
     image = models.ImageField(upload_to='entry_images/', blank=True, null=True)

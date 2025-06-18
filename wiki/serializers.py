@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author,AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType
+from .models import Page, Like, RemotePost, Author,AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):
@@ -50,4 +50,13 @@ class InboxItemSerializer(serializers.ModelSerializer):
         model = InboxItem
         fields = ["type", "author", "content", "created_at"]
     
-    
+
+class EntrySerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Entry
+        fields = ['id', 'title', 'content', 'created_at', 'author', 'url']
+
+    def get_url(self, obj):
+        return f"http://s25-project-white/api/entries/{obj.serial}/"

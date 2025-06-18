@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
-from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
+from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User 
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseServerError
 from django.urls import reverse
 from django.contrib import messages
@@ -19,7 +19,6 @@ from django.contrib.auth.views import LoginView
 from django.contrib.auth import login
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import redirect
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
 from .util import validUserName, saveNewAuthor, get_author_id, is_valid_serial, get_logged_author
@@ -62,10 +61,11 @@ class RemotePostReceiver(APIView):
 def user_wiki(request, username):
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
-    entries = Entry.objects.filter(author=request.user).order_by('-created_at')
-    author = Author.objects.get(user=request.user)
+    author = get_object_or_404(Author, user=request.user)
+    entries = Entry.objects.filter(author=author).order_by('-created_at')
    
-    return render(request, 'wiki.html', {'entries': entries}) 
+    return render(request, 'wiki.html', {'entries': entries, 'author': author})
+
     
 
 @require_POST
@@ -506,7 +506,7 @@ def profile_view(request):
         author = Author.objects.get(user=request.user)
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
-    entries = Entry.objects.filter(author=request.user).order_by('-created_at')    # displays entries from newest first
+    entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     return render(request, 'profile.html', {'author': author, 'entries': entries})
 
 @login_required
@@ -521,7 +521,9 @@ def create_entry(request):
         image = request.FILES.get('image')
 
         if title and content:
-            entry = Entry.objects.create(author=request.user, title=title, content=content, image=image)
+            author = get_object_or_404(Author, user=request.user)
+            entry = Entry.objects.create(author=author, title=title, content=content, image=image)
+
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
             return HttpResponse("Both title and content are required.")
@@ -531,7 +533,39 @@ def create_entry(request):
 @login_required
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
+    is_owner = (entry.author.user == request.user)
+    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner})
+
+@login_required
+def edit_entry(request, entry_serial):
+    author = get_object_or_404(Author, user=request.user)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        image = request.FILES.get('image')
+
+        if title and content:
+            entry.title = title
+            entry.content = content
+            if image:
+                entry.image = image
+            if request.POST.get('remove_image'):
+               entry.image.delete(save=False)
+               entry.image = None
+            entry.save()
+            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        else:
+            return HttpResponse("Both title and content are required.")
+        
+    return render(request, 'edit_entry.html', {'entry': entry})
     return render(request, 'entry_detail.html', {'entry': entry})
+
+@api_view(['GET'])
+def entry_detail_api(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    serializer = EntrySerializer(entry)
+    return Response(serializer.data)
 
 
 
