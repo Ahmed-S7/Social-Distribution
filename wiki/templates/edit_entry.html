@@ -9,6 +9,12 @@
         <img src="{{ entry.image.url }}" alt="Current image" style="max-width:200px;"><br>
         <input type="checkbox" name="remove_image"> Remove current image<br>
     {% endif %}
+    <label for="visibility">Visibility:</label>
+    <select name="visibility" id="visibility">
+        <option value="PUBLIC">Public</option>
+        <option value="FRIENDS">Friends Only</option>
+        <option value="UNLISTED">Unlisted</option>
+    </select>
 
     <button type="submit">Save Changes</button>
     <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->

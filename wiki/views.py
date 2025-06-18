@@ -61,10 +61,39 @@ class RemotePostReceiver(APIView):
 def user_wiki(request, username):
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
-    author = get_object_or_404(Author, user=request.user)
-    entries = Entry.objects.filter(author=author).order_by('-created_at')
+    current_author = get_object_or_404(Author, user=request.user)
+
+    # Followed
+    followed_ids = AuthorFollowing.objects.filter(
+        follower=current_author,
+        is_deleted=False
+    ).values_list('following', flat=True)
+
+    # Friends
+    friend_pairs = AuthorFriend.objects.filter(
+        Q(friending=current_author) | Q(friended=current_author)
+    ).values_list('friending', 'friended')
+
+    friend_ids = set()
+    for friending_id, friended_id in friend_pairs:
+        if friending_id != current_author.id:
+            friend_ids.add(friending_id)
+        if friended_id != current_author.id:
+            friend_ids.add(friended_id)
+
+    # Combine all visible author IDs (yourself + followed + friends)
+    visible_author_ids = set(followed_ids) | friend_ids | {current_author.id}
+
+    entries = Entry.objects.filter(
+        ~Q(visibility='DELETED') & (
+            Q(visibility='PUBLIC') |
+            Q(author=current_author) |
+            Q(visibility='FRIENDS', author__id__in=friend_ids) |
+            Q(author__id__in=followed_ids)
+        )
+    ).order_by('-created_at')
    
-    return render(request, 'wiki.html', {'entries': entries, 'author': author})
+    return render(request, 'wiki.html', {'entries': entries})
 
     
 
@@ -583,10 +612,11 @@ def create_entry(request):
         title = request.POST.get('title')
         content = request.POST.get('content')
         image = request.FILES.get('image')
+        visibility = request.POST.get('visibility')
 
         if title and content:
             author = get_object_or_404(Author, user=request.user)
-            entry = Entry.objects.create(author=author, title=title, content=content, image=image)
+            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility)
 
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
@@ -608,7 +638,9 @@ def edit_entry(request, entry_serial):
         title = request.POST.get('title')
         content = request.POST.get('content')
         image = request.FILES.get('image')
-
+        visibility = request.POST.get('visibility')
+        if visibility in dict(Entry.VISIBILITY_CHOICES):
+            entry.visibility = visibility
         if title and content:
             entry.title = title
             entry.content = content

@@ -7,7 +7,7 @@
 
     <section class="author_profile">
         {% if author.profileImage %}
-            <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}" />
+            <img class="profile_image" src="{{ author.profileImage.url }}"" alt="{{ author.displayName }}" />
         {% endif %}
 
         <label for="profileImage">Change Profile Image (URL or File):</label>

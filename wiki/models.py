@@ -139,6 +139,12 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
+    VISIBILITY_CHOICES = [
+        ('PUBLIC', 'Public'),
+        ('FRIENDS', 'Friends Only'),
+        ('UNLISTED', 'Unlisted'),
+        ('DELETED', 'Deleted'),
+    ]
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -146,6 +152,7 @@ class Entry(BaseModel):
     created_at = models.DateTimeField(auto_now_add=True)
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 
+    visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
     def get_entry_url(self):
         return f"http://s25-project-white/entry/{self.serial}"
     
