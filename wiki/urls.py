@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
 from .views import MyLoginView, user_wiki, register,follow_success_page,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, create_entry, like_entry
-from .views import edit_entry, add_comment
+from .views import edit_entry, add_comment, like_comment
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -27,6 +27,7 @@ urlpatterns = [
     # Entry Related URLs
     path('entry/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
     path('entry/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
+    path('comment/<int:comment_id>/like/', like_comment, name='like-comment'),
     path('entry/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),
     path('create_entry/', create_entry, name='create_entry'),
     path('entry/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),

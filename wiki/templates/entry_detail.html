@@ -38,6 +38,13 @@
                     <div class="comment-content">
                         {{ comment.content }}
                     </div>
+                    <div class="comment-footer">
+                        <form method="post" action="{% url 'wiki:like-comment' comment.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="like-btn">❤️ Like</button>
+                        </form>
+                        <span>{{ comment.likes.count }} likes</span>
+                    </div>
                 </div>
             {% endfor %}
         </div>

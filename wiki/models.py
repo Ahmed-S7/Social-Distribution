@@ -186,7 +186,12 @@ class Comment(BaseModel):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+class CommentLike(BaseModel):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
+    user = models.ForeignKey(Author, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('comment', 'user')
 
 class RemotePost(BaseModel):
     origin = models.URLField()

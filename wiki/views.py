@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment
+from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -109,6 +109,7 @@ def like_entry(request, entry_serial):
 
     return redirect('wiki:user-wiki', username=request.user.username)
   
+
   
 
 def register(request):
@@ -699,7 +700,17 @@ def add_comment(request, entry_serial):
 
 
 
+@require_POST
+@login_required
+def like_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = Author.objects.get(user=request.user)
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
 
+    if not created:
+        like.delete()  # Toggle like off
+
+    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
 
 '''IGNORE FOR NOW, FOR API IT MAY BECOME USEFUL
                     
