@@ -1,9 +1,10 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
-
+<button class="logout_button" type="submit" >Logout</button>
+    </form>
 <section class="author_profile">
     <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
-    <h3>{{ author.displayName }}</h3>
+    <h3 class="display_name">{{ author.displayName }}</h3>
     {% if author.github %}
     <p>{{ author.github}} </p>
     {% else  %}
@@ -11,8 +12,7 @@
     {% endif %}
     <form method="post" action="{% url 'wiki:logout' %}">
     {% csrf_token %}
-    <button class="logout_button" type="submit" >Logout</button>
-    </form>
+    
 
 
     <div class="profile_buttons">

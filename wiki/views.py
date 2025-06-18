@@ -287,6 +287,7 @@ def follow_profile(request, author_serial):
     
     if get_logged_author(current_user):
         requesting_account = get_logged_author(current_user)
+        
 
         parsed_serial = uuid.UUID(author_serial)
 
@@ -358,9 +359,14 @@ def follow_profile(request, author_serial):
 
         except Exception as e:
             return HttpResponseServerError(f"Failed to create follow request: {e}")
+    if requested_account:
+        messages.success(request,f"You have successfully requested to follow {requested_account}! :)")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
-    messages.success(request,f"You have successfully requested to follow {requested_account}! :)")
-    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+    else:
+        messages.error(request,f"The author you request to follow might not exist :(")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+        
 
            
 
@@ -382,7 +388,7 @@ def check_follow_requests(request, username):
         requestedAuthor = Author.objects.get(user=request.user)
         
         
-        incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING).order_by('-created_at') 
+        incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
         print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
     
         if not incoming_follow_requests:

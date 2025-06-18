@@ -2,26 +2,45 @@
 <link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
 <h2>Authors</h2>
 
+    <section class="switch_from_author">
+                <a href="{% url 'wiki:profile' %}">
+                        <button class ="go_home_button" type="button">↩ Back to Profile</button>
+                </a>
+
+
+                <a href="{% url 'wiki:user-wiki' request.user.username %}">
+                    <button class="view_stre" type="button">Back to Stream ↪</button>
+                </a>
+    </section>
+
+
+
 <section class="authors_list">
+
 <ul class="author_list">
     {% for author in authors %}
-        <li class="author">
-            <img src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
-            <p>{{ author.displayName }}</p>
-            <section class="buttons">
-                <a href="{% url 'wiki:view_external_profile' author.serial %}">
-                    <button class="nav_button type="submit">View Profile</button>
-                </a>
-            </section>
-            <div class="default_buttons">
-                <a href="{% url 'wiki:profile' %}">
-                    <button class ="nav_button" type="button">Back to Profile</button>
-                </a>
-                <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                    <button class="nav_button" type="button">Back to Stream</button>
-                </a>
-            </div>
-        </li>
+        <section class="author">
+
+
+            <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
+            <p class="list_display_name">{{ author.displayName }}</p>
+
+
+                    <section class="default_buttons">
+
+                           
+                            <a href="{% url 'wiki:view_external_profile' author.serial %}">
+                                <button class="view_profile" type="submit">View Profile</button>
+                            </a>
+                          
+                            
+                           
+
+                    </section>
+
+
+        </section>
     {% endfor %}
 </ul>
+
 </section>
