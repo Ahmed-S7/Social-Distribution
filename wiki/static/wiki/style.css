@@ -1,4 +1,10 @@
-h2{
-    color:rgb(21, 103, 130);
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+html{
+    font-family: 'Nunito', sans-serif;
 }
 
+
+h1, h2{
+    color:rgb(0, 26, 128);
+}

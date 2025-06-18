@@ -14,7 +14,7 @@ h1,h2{
     text-align:center;
 }
 
-.author_profile .follow_button{
+.author_profile .follow_button {
      font-family: 'Nunito', sans-serif;
      background-color: rgb(110, 226, 226);
      border-radius: 0.5em;
@@ -28,5 +28,5 @@ h1,h2{
     padding: 0;
 }
 .entry_list li {
-    margin-bottom: 10px;
+    margin-bottom: 0.625em;
 }

@@ -353,23 +353,26 @@ def follow_success_page(request, author_serial):
     
     return render(request,"follow_success.html", {'author':requestedAuthor})
 
-
 @login_required
 def check_follow_requests(request, username):
     
-        print(username)
         if request.user.is_staff or request.user.is_superuser:
             return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
 
         requestedAuthor = Author.objects.get(user=request.user)
         
-        incoming_follow_requests =[FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING).first()]
-       
+        
+        incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING).order_by('-created_at') 
+        print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
+    
         if not incoming_follow_requests:
+        
             incoming_follow_requests = []
+           
 
-        return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+        return render(request, 'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
 
+@csrf_exempt
 @login_required
 def process_follow_request(request, author_serial, request_id):
     
@@ -405,8 +408,9 @@ def process_follow_request(request, author_serial, request_id):
             try:
                 new_following_serializer.save()
             except Exception as e:
-                incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)    
-                return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+                print(e)
+                return check_follow_requests(request, request.user.username)
+    
                # return HttpResponseServerError("Unable to accept follow request, make sure this author does not already follow you.")
 
         else:
@@ -432,10 +436,7 @@ def process_follow_request(request, author_serial, request_id):
                 
                 return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")
                 
-                    
-
-          
-            
+                      
     else:
         #if follow request is denied,
          follow_request = FollowRequest.objects.filter(id=request_id).first()
@@ -453,9 +454,10 @@ def process_follow_request(request, author_serial, request_id):
          follow_request.is_deleted=True
    
     
-    
-    incoming_follow_requests = FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING)    
-    return render(request,'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+
+    return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
+
+
     
     
    

@@ -5,21 +5,19 @@
 <body>
 <section class="follow requests">
 
-{%if request.id%}
-{%for request in follow_requests%}
+{% if follow_requests %}
+  {% for follow_request in follow_requests %}
+    <h3>{{ follow_request.requester }} has requested to follow you!</h3>
+    <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
+      {% csrf_token %}
+      <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
+      <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
+    </form>
+  {% endfor %}
+{% else %}
+  <h3>NO FOLLOW REQUESTS FOUND</h3>
+{% endif %}
 
-<h3>{{request.requester}} has requested to follow you!</h3>
-<form action="{% url 'wiki:process_follow_request' author.serial request.id %}" method="POST">
-        {%csrf_token%}
-        <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
-        <button class="reject_follow" name="action" value="reject"  type="submit">Reject</button> 
-</form>
-
-{%endfor%}
-
-{%else%}
-<h3>NO FOLLOW REQUESTS FOUND</h3>
-{%endif%}
 </section>
 
 </body>
