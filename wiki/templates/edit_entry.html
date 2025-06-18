@@ -1,0 +1,14 @@
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="text" name="title" value="{{ entry.title }}" required><br>
+    <textarea name="content" rows="10" cols="50" required>{{ entry.content }}</textarea><br>
+    <input type="file" name="image"><br>
+
+    {% if entry.image %}
+        <p>Current image:</p>
+        <img src="{{ entry.image.url }}" alt="Current image" style="max-width:200px;"><br>
+        <input type="checkbox" name="remove_image"> Remove current image<br>
+    {% endif %}
+
+    <button type="submit">Save Changes</button>
+</form>

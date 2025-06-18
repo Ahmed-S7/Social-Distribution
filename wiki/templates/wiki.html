@@ -62,11 +62,12 @@
         {% for entry in entries %}
             <div class="post-card">
                 <div class="post-header">
-                    <img src="{{ request.user.author.profileImage }}" alt="Profile image">
+                    <img src="{{ entry.author.profileImage }}" alt="Profile image">
+
                     <div>
                         <div class="post-title">{{ entry.title }}</div>
                         <small>
-                            Posted by <strong>{{ entry.author.username }}</strong>
+                            Posted by <strong>{{ entry.author.displayName }}</strong>
                             on {{ entry.created_at|date:"M d, Y H:i" }}
                         </small>
                     </div>
