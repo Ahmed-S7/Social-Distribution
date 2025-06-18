@@ -67,6 +67,8 @@ class Author(BaseModel):
     host = models.URLField(default=f"http://s25-project-white/api/")
     
     displayName = models.CharField(max_length=150)
+
+    description = models.TextField(blank=True, null=True, default="")
     
     github = models.URLField(blank=True, null=True, default=None)
     

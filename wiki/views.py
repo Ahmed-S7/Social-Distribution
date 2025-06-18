@@ -510,6 +510,30 @@ def profile_view(request):
     return render(request, 'profile.html', {'author': author, 'entries': entries})
 
 @login_required
+def edit_profile(request):
+    try:
+        author = Author.objects.get(user=request.user)
+    except Author.DoesNotExist:
+        return HttpResponse("Author profile does not exist.")
+
+    if request.method == 'POST':
+        displayName = request.POST.get('displayName')
+        github = request.POST.get('github')
+        description = request.POST.get('description')
+        if 'profileImage' in request.FILES:
+            image_file = request.FILES['profileImage']
+            from django.core.files.storage import default_storage
+            path = default_storage.save(f"profile_images/{image_file.name}", image_file)
+            author.profileImage = default_storage.url(path)
+        author.displayName = displayName
+        author.github = github
+        author.description = description
+        author.save()
+        return redirect('wiki:profile')
+
+    return render(request, 'edit_profile.html', {'author': author})
+
+@login_required
 def create_entry(request):
     """
     Create a new wiki entry.
