@@ -9,15 +9,13 @@
     
 {% endif %}
 
- <div class="default_buttons">
-                <a href="{% url 'wiki:profile' %}">
-
-                
-                    <button class="nav_button" type="button"> ↩ Back to Profile</button>
-                </a>
-                <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                    <button class="nav_button" type="button">Back to Stream ↪</button>
-                </a>
+<div class="default_buttons">
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <button type="button">Back to Profile</button>
+    </a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <button type="button">Back to Stream</button>
+    </a>
 </div>
 <section class="author_profile">
 

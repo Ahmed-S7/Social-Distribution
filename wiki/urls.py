@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PageViewSet, RemotePostReceiver, entry_detail, entry_detail_api, profile_view
+from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
 from .views import MyLoginView, user_wiki, register,follow_success_page,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, create_entry, like_entry
 from .views import edit_entry
 from django.contrib.auth.views import LogoutView
@@ -17,7 +17,12 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(next_page='wiki:login'), name='logout'),
     path('login/create_account/', register, name='register'),
     path('<str:username>/wiki/', user_wiki, name='user-wiki'),
-    path('profile/', profile_view, name='profile'),
+    path('<str:username>/profile/', profile_view, name='profile'),
+    path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
+
+    # Profile related API
+    path('api/<str:username>/profile/edit/', edit_profile_api, name='edit_profile_api'),
+    path('api/<str:username>/profile/', edit_profile_api, name='edit_profile_api'),
 
     # Entry Related URLs
     path('entry/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
@@ -25,7 +30,9 @@ urlpatterns = [
     path('create_entry/', create_entry, name='create_entry'),
     path('entry/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
 
-    path('api/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
+    # Entry Related API
+    path('api/entry/<uuid:entry_serial>/edit/', entry_detail_api, name='entry_detail_api'),
+    path('api/entry/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
 
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),

@@ -67,12 +67,14 @@ class Author(BaseModel):
     host = models.URLField(default=f"http://s25-project-white/api/")
     
     displayName = models.CharField(max_length=150)
+
+    description = models.TextField(blank=True, null=True, default="")
     
     github = models.URLField(blank=True, null=True, default=None)
     
     serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
     
-    profileImage  = models.URLField(blank=True, null=True, default="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y")
+    profileImage = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
     

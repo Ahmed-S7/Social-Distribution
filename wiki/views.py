@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -498,16 +498,80 @@ def check_remote_inbox(request):
     pass
 
 @login_required
-def profile_view(request):
+def profile_view(request, username):
     """
     View the profile of the currently logged in user.
     """
     try:
-        author = Author.objects.get(user=request.user)
+        author = Author.objects.get(user__username=username)
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
     entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     return render(request, 'profile.html', {'author': author, 'entries': entries})
+
+@login_required
+def edit_profile(request, username):
+    try:
+        author = Author.objects.get(user__username=username)
+    except Author.DoesNotExist:
+        return HttpResponse("Author profile does not exist.")
+
+    if request.method == 'POST':
+        new_username = request.POST.get('displayName')
+        github = request.POST.get('github')
+        description = request.POST.get('description')
+        image_file = request.FILES.get('profileImage')
+
+        # Check if the new username is already taken by someone else
+        if new_username and new_username != request.user.username:
+            if User.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                return render(request, 'edit_profile.html', {
+                    'author': author,
+                    'error': 'Username is already taken.'
+                })
+
+            request.user.username = new_username
+            request.user.save()
+            author.displayName = new_username
+
+        author.github = github
+        author.description = description
+
+        if image_file:
+            author.profileImage = image_file
+
+        author.save()
+        return redirect('wiki:profile', username=new_username)
+
+    return render(request, 'edit_profile.html', {'author': author})
+
+@api_view(['PUT', 'GET']) 
+def edit_profile_api(request, username):
+    """
+    GET /api/profile/edit/{username}/
+    View the author's profile.
+
+    PUT /api/profile/edit/{username}/
+    Edits the author's profile.
+    """
+    try:
+        author = Author.objects.get(user__username=username)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = AuthorSerializer(author)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PUT
+    serializer = AuthorSerializer(author, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 @login_required
 def create_entry(request):
@@ -559,13 +623,27 @@ def edit_entry(request, entry_serial):
             return HttpResponse("Both title and content are required.")
         
     return render(request, 'edit_entry.html', {'entry': entry})
-    return render(request, 'entry_detail.html', {'entry': entry})
 
-@api_view(['GET'])
+
+@api_view(['GET', 'PUT'])
 def entry_detail_api(request, entry_serial):
+    """
+    GET /api/entries/<entry_serial>/ — View a single entry
+    PUT /api/entries/<entry_serial>/edit/ — Update a single entry (only by the author)
+    """
     entry = get_object_or_404(Entry, serial=entry_serial)
-    serializer = EntrySerializer(entry)
-    return Response(serializer.data)
+
+    if request.method == 'GET':
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    serializer = EntrySerializer(entry, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 

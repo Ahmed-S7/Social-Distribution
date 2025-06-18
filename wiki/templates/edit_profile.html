@@ -1,0 +1,41 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+
+<form method="post" action="{% url 'wiki:edit_profile' request.user.username%}" enctype="multipart/form-data">
+
+    {% csrf_token %}
+
+    <section class="author_profile">
+        {% if author.profileImage %}
+            <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}" />
+        {% endif %}
+
+        <label for="profileImage">Change Profile Image (URL or File):</label>
+        <input type="file" id="profileImage" name="profileImage" accept="image/*" class="editable_input" />
+
+        <label for="displayName">Display Name:</label>
+        <input type="text" id="displayName" name="displayName" value="{{ author.displayName }}" class="editable_input" required />
+
+        <label for="description">Description:</label>
+        <textarea id="description" name="description" class="editable_input">{% if author.description %}{{ author.description }}{% endif %}</textarea>
+
+        <label for="github">GitHub URL:</label>
+        <input type="url" id="github" name="github" value="{{ author.github|default_if_none:'' }}" class="editable_input" />
+
+        <button class="save_button" type="submit">Save Changes</button>
+
+        {% if error %}
+        <p class="error-message">{{ error }}</p>
+        {% endif %}
+    </section>
+    
+    <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
+<div class="default_buttons">
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <button type="button">Back to Profile</button>
+    </a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <button type="button">Back to Stream</button>
+    </a>
+</div>
+</form>

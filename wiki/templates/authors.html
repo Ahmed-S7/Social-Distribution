@@ -3,14 +3,12 @@
 <h2>Authors</h2>
 
     <section class="switch_from_author">
-                <a href="{% url 'wiki:profile' %}">
-                        <button class ="go_home_button" type="button">↩ Back to Profile</button>
-                </a>
-
-
-                <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                    <button class="view_stre" type="button">Back to Stream ↪</button>
-                </a>
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <button type="nav_button">Back to Profile</button>
+    </a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <button type="nav_button">Back to Stream</button>
+    </a>
     </section>
 
 
