@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -109,6 +109,7 @@ def like_entry(request, entry_serial):
 
     return redirect('wiki:user-wiki', username=request.user.username)
   
+
   
 
 def register(request):
@@ -628,7 +629,8 @@ def create_entry(request):
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     is_owner = (entry.author.user == request.user)
-    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner})
+    comments = entry.comments.filter(is_deleted=False).order_by('created_at')
+    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
 
 @login_required
 def edit_entry(request, entry_serial):
@@ -689,9 +691,38 @@ def entry_detail_api(request, entry_serial):
 
 
 
+@require_POST
+@login_required
+def add_comment(request, entry_serial):
+    """
+    Add a comment to an entry.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    content = request.POST.get('content', '').strip()
+    
+    if content:
+        comment = Comment.objects.create(
+            entry=entry,
+            author=author,
+            content=content
+        )
+    return redirect('wiki:entry_detail', entry_serial=entry_serial)
 
 
 
+@require_POST
+@login_required
+def like_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = Author.objects.get(user=request.user)
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+
+    if not created:
+        like.delete()  # Toggle like off
+
+
+    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
 
 
 

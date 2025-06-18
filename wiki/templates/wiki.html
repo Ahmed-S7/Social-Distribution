@@ -91,7 +91,7 @@
                         <button type="submit" class="like-btn">❤️ Like</button>
                     </form>
                     <p>{{ entry.likes.count }} likes</p>
-                    <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment</a>
+                    <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
                 </div>
             </div>
         {% endfor %}
