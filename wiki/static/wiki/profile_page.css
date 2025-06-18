@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
-html{
+html, body{
     font-family: 'Nunito', sans-serif;
     background-color: azure; 
 }
@@ -14,13 +14,30 @@ h1,h2{
     text-align:center;
 }
 
-.author_profile .follow_button {
+.author_profile{
      font-family: 'Nunito', sans-serif;
-     background-color: rgb(110, 226, 226);
      border-radius: 0.5em;
      font-variant: small-caps;
      font-weight: bold;
      font-size:small;
+}
+
+.nav_button{
+    color:rgb(255, 255, 255);
+    font-size:large;
+    background-color: rgb(23, 104, 104);
+    border-radius: 0.5em;
+    font-family: 'Nunito', sans-serif;
+
+
+}
+.profile_buttons button{
+    background-color: lightblue;
+    border-radius: 1em;
+}
+.logout_button{
+    background-color: rgb(233, 112, 112);
+     border-radius: 1em;
 }
 
 .entry_list {
@@ -28,5 +45,21 @@ h1,h2{
     padding: 0;
 }
 .entry_list li {
-    margin-bottom: 0.625em;
+    margin-bottom: 10px;
 }
+
+.follow_button {
+    font-family: 'Nunito', sans-serif;
+    border-radius:0.4em; 
+    font-size:2em; 
+    background-color:lightblue;
+
+}
+
+.unfollow_button{
+    font-family: 'Nunito', sans-serif;
+    color: white; 
+    background-color: red; 
+    border-radius:0.4em; 
+    font-size:2em;
+} 

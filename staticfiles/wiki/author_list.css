@@ -3,9 +3,6 @@
 html{
     font-family: 'Nunito', sans-serif;
     background-color: azure; 
-    justify-content: center;
-    align-items: center;
-    text-align:center;
 }
 h1,h2{
     color:rgb(0, 26, 128);
@@ -24,4 +21,12 @@ h1,h2{
      font-variant: small-caps;
      font-weight: bold;
      font-size:small;
+}
+
+.entry_list {
+    list-style-type: none;
+    padding: 0;
+}
+.entry_list li {
+    margin-bottom: 0.625em;
 }

@@ -250,9 +250,15 @@ def view_authors(request):
 @login_required       
 def view_external_profile(request, author_serial):
     
+   
     if  Author.objects.filter(serial=author_serial).exists():
-        profile_viewing = Author.objects.get(serial=author_serial)     
-        return render(request, "external_profile.html", {"author": profile_viewing})
+        profile_viewing = Author.objects.get(serial=author_serial)
+        current_author = get_object_or_404(Author, user=request.user) 
+        
+        follow_status = current_author.is_following(profile_viewing)
+        print(follow_status)
+              
+        return render(request, "external_profile.html", {"author": profile_viewing, "is_following": follow_status})
     else:
         return HttpResponseRedirect("wiki:view_authors")
         
@@ -296,7 +302,9 @@ def follow_profile(request, author_serial):
             
             if requesting_account.is_following(requested_account):
                 messages.error(request,f"You already follow {requested_account}, maybe view their profile?")
-                return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+                base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+                query_with_follow_status= f"{base_URL}?is_following=True"
+                return redirect(query_with_follow_status)
                 
             
             
@@ -351,7 +359,8 @@ def follow_profile(request, author_serial):
         except Exception as e:
             return HttpResponseServerError(f"Failed to create follow request: {e}")
 
-    return redirect('wiki:successful_follow', author_serial=author_serial)
+    messages.success(request,f"You have successfully requested to follow {requested_account}! :)")
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
            
 

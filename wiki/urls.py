@@ -34,6 +34,6 @@ urlpatterns = [
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
     #path('api/authors/<str:author_serial>/inbox/', check_remote_inbox, name='get_inbox' ),
     path('authors/<str:username>/inbox/', check_follow_requests, name='check_follow_requests' ),
-    path('authors/<str:author_serial>/request_sent', follow_success_page, name='successful_follow' ),
+    #path('authors/<str:author_serial>/request_sent', follow_success_page, name='successful_follow' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
 ]
