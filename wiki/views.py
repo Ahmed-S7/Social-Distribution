@@ -545,6 +545,33 @@ def edit_profile(request, username):
 
     return render(request, 'edit_profile.html', {'author': author})
 
+@api_view(['PUT', 'GET']) 
+def edit_profile_api(request, username):
+    """
+    GET /api/profile/edit/{username}/
+    View the author's profile.
+
+    PUT /api/profile/edit/{username}/
+    Edits the author's profile.
+    """
+    try:
+        author = Author.objects.get(user__username=username)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = AuthorSerializer(author)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # PUT
+    serializer = AuthorSerializer(author, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 @login_required
 def create_entry(request):
@@ -597,30 +624,27 @@ def edit_entry(request, entry_serial):
         
     return render(request, 'edit_entry.html', {'entry': entry})
 
-@api_view(['GET'])
+
+@api_view(['GET', 'PUT'])
 def entry_detail_api(request, entry_serial):
+    """
+    GET /api/entries/<entry_serial>/ — View a single entry
+    PUT /api/entries/<entry_serial>/edit/ — Update a single entry (only by the author)
+    """
     entry = get_object_or_404(Entry, serial=entry_serial)
-    serializer = EntrySerializer(entry)
-    return Response(serializer.data)
 
+    if request.method == 'GET':
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-@api_view(['PUT'])
-def edit_profile_api(request, username):
-    """
-    PUT /api/profile/edit/{username}/
-    Edits the author's profile. Only the owner can update.
-    """
-    try:
-        author = Author.objects.get(user__username=username)
-    except Author.DoesNotExist:
-        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    serializer = AuthorSerializer(author, data=request.data, partial=True)
+    serializer = EntrySerializer(entry, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 

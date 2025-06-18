@@ -27,7 +27,7 @@ urlpatterns = [
     path('create_entry/', create_entry, name='create_entry'),
     path('entry/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
 
-    path('api/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
+    path('api/entry/<uuid:entry_serial>/edit/', entry_detail_api, name='entry_detail_api'),
 
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
