@@ -1,18 +1,97 @@
 <!DOCTYPE html>
 {% load static %}
-<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
 <html lang="en">
 <head>
-    {% load static %}
     <link rel="stylesheet" href="{% static 'wiki/style.css' %}">
     <title>Welcome</title>
+    <style>
+        .post-card {
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 1em;
+            margin: 1.5em auto;
+            max-width: 600px;
+            background-color: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            margin-bottom: 0.5em;
+        }
+        .post-header img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .post-title {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .post-content {
+            margin: 0.75em 0;
+        }
+        .post-footer {
+            display: flex;
+            gap: 1.5em;
+        }
+        .like-btn, .comment-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+        }
+    </style>
 </head>
 <body>
     <h1>Welcome to SocialDistribution, {{ request.user.username }}!</h1>
-        <a href="{% url 'wiki:profile' %}">
-            <button type="button">Profile</button>
-        </a>
 
+    <a href="{% url 'wiki:profile' %}">
+        <button type="button">Profile</button>
+    </a>
+    <a href="{% url 'wiki:create_entry' %}">
+        <button type="button">Create New Entry</button>
+    </a>
 
+    <hr>
+
+    {% if entries %}
+        {% for entry in entries %}
+            <div class="post-card">
+                <div class="post-header">
+                    <img src="{{ request.user.author.profileImage }}" alt="Profile image">
+                    <div>
+                        <div class="post-title">{{ entry.title }}</div>
+                        <small>
+                            Posted by <strong>{{ entry.author.username }}</strong>
+                            on {{ entry.created_at|date:"M d, Y H:i" }}
+                        </small>
+                    </div>
+                </div>
+                <div class="post-content">{{ entry.content }}</div>
+
+                {% if entry.image %}
+                    <div style="margin: 1em 0;">
+                        <img src="{{ entry.image.url }}" alt="Post image"
+                             style="max-width: 100%; border-radius: 10px;" />
+                    </div>
+                {% endif %}
+
+                <div class="post-footer">
+                    <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
+                        {% csrf_token %}
+                        <button type="submit" class="like-btn">❤️ Like</button>
+                    </form>
+                    <p>{{ entry.likes.count }} likes</p>
+                    <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No entries yet. Click "Create New Entry" to get started!</p>
+    {% endif %}
 </body>
 </html>

@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author,AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
 from rest_framework.decorators import action, api_view
 from django.views.decorators.http import require_http_methods
@@ -61,10 +61,23 @@ class RemotePostReceiver(APIView):
 def user_wiki(request, username):
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
+    entries = Entry.objects.filter(author=request.user).order_by('-created_at')
+    author = Author.objects.get(user=request.user)
    
-    return render(request, 'wiki.html') 
+    return render(request, 'wiki.html', {'entries': entries}) 
     
-  
+
+@require_POST
+@login_required
+def like_entry(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = Author.objects.get(user=request.user)
+    like, created = Like.objects.get_or_create(entry=entry, user=author)
+
+    if not created:
+        like.delete()  # Toggle like off
+
+    return redirect('wiki:user-wiki', username=request.user.username)
   
   
 
