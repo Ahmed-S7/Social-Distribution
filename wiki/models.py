@@ -215,7 +215,8 @@ class AuthorFriend(BaseModel):
         #prevents any duplicate friend requests
         class Meta:
             constraints = [
-                models.UniqueConstraint(fields=['friending', 'friended'], name='unique_friendship_pair')
+                models.UniqueConstraint(fields=['friending', 'friended'],condition=Q(is_deleted=False), name='unique_active_friendship'),
+              
             ]
             
         #prevent self-friending
@@ -231,7 +232,10 @@ class AuthorFriend(BaseModel):
             super().save(*args, **kwargs)
             
         def __str__(self):
-            return f"{self.friending.displayName} Is Friends With {self.friended.displayName}"
+             if self.is_deleted==True:
+                return f"{self.friending.displayName} Is No Longer Friends With {self.friended.displayName}"
+             
+             return f"{self.friending.displayName} Is Friends With {self.friended.displayName}"
                
     
     
@@ -277,7 +281,9 @@ class AuthorFollowing(BaseModel):
          return super().save(*args,**kwargs)  
      
     def __str__(self):
-        
+        if self.is_deleted==True:
+                return f"{self.follower} No Longer Follows {self.following}"
+            
         return f"{self.follower} Has Followed {self.following}"
 
 class RequestState(models.TextChoices):

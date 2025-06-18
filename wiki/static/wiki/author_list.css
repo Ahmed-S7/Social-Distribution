@@ -79,7 +79,11 @@ button{
   
 }
 
-.default_buttons button:hover{
+.view_profile:hover{
+    background-color: rgba(41, 117, 189, 0.183);
+}
+
+.switch_from_author button:hover{
   
     background-color: rgba(41, 117, 189, 0.183);
    

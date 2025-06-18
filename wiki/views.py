@@ -418,7 +418,7 @@ def check_follow_requests(request, username):
         
         
         incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
-        print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
+        #print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
     
         if not incoming_follow_requests:
         
@@ -458,7 +458,6 @@ def process_follow_request(request, author_serial, request_id):
             "following":new_following.following.id,
         }, partial=True)
         
-        print(new_following_serializer)
         if new_following_serializer.is_valid():
             try:
                 new_following_serializer.save()
@@ -466,7 +465,7 @@ def process_follow_request(request, author_serial, request_id):
                 print(e)
                 return check_follow_requests(request, request.user.username)
     
-               # return HttpResponseServerError("Unable to accept follow request, make sure this author does not already follow you.")
+        
 
         else:
             
@@ -696,62 +695,3 @@ def entry_detail_api(request, entry_serial):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''IGNORE FOR NOW, FOR API IT MAY BECOME USEFUL
-                    
-                    try:
-                        response = requests.post(
-                            inbox_url,
-                            json=serial_follow_data,
-                            headers={'Content-Type': 'application/json'}
-                        )
-
-                        if response.status_code == 201:
-                            print("SUCCEEDED TO POST THE REQUEST")
-
-                            # Save to our local inbox
-                            newInboxItem = InboxItem(
-                                author=requested_account,
-                                type=InboxObjectType.FOLLOW,
-                                content=serial_follow_data
-                            )
-                            newInboxItem.save()
-                            serialized_follow_request.save()
-
-                            print("sent the follow request to recipient inbox")
-                        else:
-                            print(f"Failed with status {response.status_code}")
-                            print(f"Response: {response.text}")
-                            return HttpResponseServerError("Remote inbox rejected the follow request.")
-
-                    except Exception as e:
-                        print(f"Failed to send request: {e}")
-                        return HttpResponseServerError(f"Failed to send request: {e}")
-
-                
-    
-            except Exception as e:
-         
-                return HttpResponseServerError(f"Unexpected error occurred: {e}")
-        except Exception as e:
-            
-                return HttpResponseServerError(f"Unexpected error occurred: {e}")
-            
-    return redirect("wiki:successful_follow", author_serial=author_serial)
-    #return redirect('wiki:successful_follow', author_serial=author_serial)'''
