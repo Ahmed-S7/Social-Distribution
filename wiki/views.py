@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
-from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer
+from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -532,6 +532,12 @@ def create_entry(request):
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     return render(request, 'entry_detail.html', {'entry': entry})
+
+@api_view(['GET'])
+def entry_detail_api(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    serializer = EntrySerializer(entry)
+    return Response(serializer.data)
 
 
 
