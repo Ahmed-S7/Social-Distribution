@@ -62,4 +62,13 @@
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Back to Stream</button>
     </a>
+    {% if is_owner %}
+    <a href="{% url 'wiki:edit_entry' entry.serial %}">
+       <button type="button">Edit Entry</button>
+    </a>
+    <a href="{% url 'wiki:delete_entry' entry.serial %}">
+       <button type="button">Delete Entry</button>
+    </a>
+    {% endif %}
+
 </div>

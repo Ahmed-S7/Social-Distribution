@@ -659,6 +659,17 @@ def edit_entry(request, entry_serial):
     return render(request, 'edit_entry.html', {'entry': entry})
 
 
+@login_required
+def delete_entry(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial, author__user=request.user)
+    
+    if request.method == 'POST':
+        entry.delete()  # This should soft-delete because of BaseModel
+        messages.success(request, "Entry deleted successfully.")
+        return redirect('wiki:user-wiki', username=request.user.username)
+    
+    return render(request, 'confirm_delete.html', {'entry': entry})
+
 @api_view(['GET', 'PUT'])
 def entry_detail_api(request, entry_serial):
     """
@@ -710,7 +721,28 @@ def like_comment(request, comment_id):
     if not created:
         like.delete()  # Toggle like off
 
+
     return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 '''IGNORE FOR NOW, FOR API IT MAY BECOME USEFUL
                     
