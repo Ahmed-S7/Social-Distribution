@@ -137,6 +137,7 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
+    objects = AppManager()
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     content = models.TextField()

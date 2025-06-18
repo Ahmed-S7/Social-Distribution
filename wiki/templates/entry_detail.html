@@ -20,6 +20,9 @@
     <a href="{% url 'wiki:edit_entry' entry.serial %}">
        <button type="button">Edit Entry</button>
     </a>
+    <a href="{% url 'wiki:delete_entry' entry.serial %}">
+       <button type="button">Delete Entry</button>
+    </a>
     {% endif %}
 
 </div>
