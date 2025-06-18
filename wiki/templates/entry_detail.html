@@ -14,6 +14,46 @@
 </a>
 {% endif %}
 
+
+<!-- Add Comment Form -->
+<div class="comment-section">
+    <h3>Comments</h3>
+    
+    <!-- Add Comment Form -->
+    <form method="post" action="{% url 'wiki:add_comment' entry.serial %}" class="comment-form">
+        {% csrf_token %}
+        <textarea name="content" placeholder="Write a comment..." rows="3" cols="50" required></textarea>
+        <button type="submit">Add Comment</button>
+    </form>
+
+    <!-- Display Comments -->
+    {% if comments %}
+        <div class="comments-list">
+            {% for comment in comments %}
+                <div class="comment">
+                    <div class="comment-header">
+                        <strong>{{ comment.author.displayName }}</strong>
+                        <small>{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <div class="comment-content">
+                        {{ comment.content }}
+                    </div>
+                    <div class="comment-footer">
+                        <form method="post" action="{% url 'wiki:like-comment' comment.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="like-btn">❤️ Like</button>
+                        </form>
+                        <span>{{ comment.likes.count }} likes</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No comments yet. Be the first to comment!</p>
+    {% endif %}
+</div>
+
+
 <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
 <div class="default_buttons">
     <a href="{% url 'wiki:profile' request.user.username%}">
@@ -22,4 +62,13 @@
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Back to Stream</button>
     </a>
+    {% if is_owner %}
+    <a href="{% url 'wiki:edit_entry' entry.serial %}">
+       <button type="button">Edit Entry</button>
+    </a>
+    <a href="{% url 'wiki:delete_entry' entry.serial %}">
+       <button type="button">Delete Entry</button>
+    </a>
+    {% endif %}
+
 </div>

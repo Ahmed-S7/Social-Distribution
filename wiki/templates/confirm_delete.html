@@ -1,0 +1,6 @@
+<h2>Are you sure you want to delete "{{ entry.title }}"?</h2>
+<form method="post">
+  {% csrf_token %}
+  <button type="submit">Yes, delete</button>
+  <a href="{% url 'wiki:entry_detail' entry.serial %}"><button type="button">Cancel</button></a>
+</form>

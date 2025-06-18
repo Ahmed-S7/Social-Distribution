@@ -82,6 +82,20 @@ border-style: none;
     font-family: 'Nunito', sans-serif;
 }
 
+.default_buttons button{
+    font-family: 'Nunito', sans-serif;
+    background-color: rgb(255, 255, 255);
+    font-size: x-large;
+    border-style: none;
+}
+
+
+.default_buttons button:hover{
+  
+    background-color: rgba(41, 117, 189, 0.183);
+   
+}
+
 .profile_buttons button:hover{
     transform:scale(1.1);
     transition: transform 0.3s ease-in-out;
