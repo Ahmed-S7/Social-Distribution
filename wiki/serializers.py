@@ -56,7 +56,7 @@ class EntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Entry
-        fields = ['id', 'title', 'content', 'created_at', 'author', 'url']
+        fields = ['id', 'title', 'content', 'created_at', 'author', 'url', 'visibility']
 
     def get_url(self, obj):
         return f"http://s25-project-white/api/entries/{obj.serial}/"

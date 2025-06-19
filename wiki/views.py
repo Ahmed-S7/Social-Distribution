@@ -50,7 +50,7 @@ class RemotePostReceiver(APIView):
 
 
 
-
+@api_view(['GET'])
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
@@ -80,16 +80,25 @@ def user_wiki(request, username):
 
     entries = Entry.objects.filter(
         ~Q(visibility='DELETED') & (
-            Q(visibility='PUBLIC', author__id__in=followed_ids) |
+            Q(visibility='PUBLIC') |
             Q(author=current_author) |
             Q(visibility='FRIENDS', author__id__in=friend_ids) |
             Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
-   
+    if request.accepted_renderer.format == 'json':
+        serialized_entries = [{
+            "title": entry.title,
+            "content": entry.content,
+            "author": entry.author.displayName,
+            "visibility": entry.visibility,
+            "created_at": entry.created_at.isoformat(),
+            "serial": str(entry.serial)
+        } for entry in entries]
+        return Response(serialized_entries)
     return render(request, 'wiki.html', {'entries': entries})
 
-    
+
 
 @require_POST
 @login_required
@@ -127,7 +136,7 @@ def register(request):
             user = User.objects.create_user(username=username, password=password)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(request, user, username, github, profileImage)
+            newAuthor = saveNewAuthor(user, username, github, profileImage)
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -629,8 +638,11 @@ def edit_profile_api(request, username):
         return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        serializer = AuthorSerializer(author)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        author_data = AuthorSerializer(author).data
+        entries = Entry.objects.filter(author=author).order_by('-created_at')
+        entry_data = EntrySerializer(entries, many=True).data
+        author_data['entries'] = entry_data
+        return Response(author_data, status=status.HTTP_200_OK)
 
     # PUT
     serializer = AuthorSerializer(author, data=request.data, partial=True)
