@@ -252,7 +252,7 @@ class FollowRequestTesting(TestCase):
         print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
 
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
-    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
     def test_check_own_follow_requests(self):
         "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
