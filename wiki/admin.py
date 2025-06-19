@@ -50,7 +50,7 @@ class AuthorFriendsAdmin(admin.ModelAdmin):
 class EntryAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return Entry.all_objects.all()
-    def follow_request(self, obj):
+    def entry(self, obj):
         return str(obj)
 
     list_display= ['id','author',"title",'content','image','created_at', 'serial','visibility']
