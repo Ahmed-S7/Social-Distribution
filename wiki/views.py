@@ -240,24 +240,26 @@ def get_author(request, author_serial):
                     "web": "http://nodeaaaa/authors/{SERIAL}"
                 }        
     """
-    
+    # CHANGED FOR TESTING
+    author = get_object_or_404(Author, serial=author_serial)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data)
 
-    id = get_author_id(request)
+    # id = get_author_id(request)
     
-    if is_valid_serial(id):
+    # if is_valid_serial(id):
            
-        if Author.objects.filter(serial=id).exists():
+    #     if Author.objects.filter(serial=id).exists():
                 
-            author = Author.objects.get(serial=id)
+    #         author = Author.objects.get(serial=id)
             
-            #####FOR DEBUG#######
-            #print(author)
-            #####################      
+    #         #####FOR DEBUG#######
+    #         #print(author)
+    #         #####################      
             
-            serializer = AuthorSerializer()
-        
-            serializer =AuthorSerializer(author)
-        return Response(serializer.data)
+    #         serializer = AuthorSerializer()
+    #         serializer =AuthorSerializer(author)
+    #         return Response(serializer.data)
 
 
 
@@ -525,7 +527,7 @@ def process_follow_request(request, author_serial, request_id):
 def check_remote_inbox(request):
     pass
 
-@login_required
+
 def profile_view(request, username):
     """
     View the profile of the currently logged in user.

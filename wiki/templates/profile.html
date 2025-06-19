@@ -18,7 +18,7 @@
     <button class="logout_button" type="submit" >Logout</button>
     </form>
 
-
+    {% if request.user.is_authenticated %}
     <div class="profile_buttons">
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Go Back to Stream</button>
@@ -36,7 +36,7 @@
         <button type="button">Edit Profile</button>
     </a>
     </div>
-
+    {% endif %}
 
     <h3>Your Entries</h3>
     {% if entries %}
