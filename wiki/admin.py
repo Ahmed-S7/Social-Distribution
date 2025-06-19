@@ -53,7 +53,7 @@ class EntryAdmin(admin.ModelAdmin):
     def entry(self, obj):
         return str(obj)
 
-    list_display= ['id','author',"title",'content','image','created_at', 'serial','visibility']
+    list_display= ['entry','id','author','is_deleted',"title",'content','image','created_at', 'serial','visibility']
     list_editable = ['author',"title",'content','image', 'serial','visibility']
     list_filter =  ["is_deleted"]
     
