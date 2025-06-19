@@ -41,12 +41,17 @@ urlpatterns = [
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
     path('api/author/<str:author_serial>/', get_author, name='get_author'),
+    
+    #Author Follow Requests API
     path('api/authors/<str:author_serial>/inbox/', get_local_follow_requests, name='get_follow_requests' ),
     
     # User Author URLS
     path('authors/', view_authors, name='view_authors'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
+    
+    
+    #Author Follow Requests
     path('authors/<str:username>/inbox/', check_follow_requests, name='check_follow_requests' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
 ]

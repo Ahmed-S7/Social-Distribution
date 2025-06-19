@@ -16,7 +16,8 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    
+    def get_queryset(self, request):
+        return FollowRequest.all_objects.all()
     def follow_request(self, obj):
         return str(obj)
 

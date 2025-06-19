@@ -369,7 +369,8 @@ class FollowRequest(BaseModel):
     - requested_account: the author recieving the follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     """
-    
+    objects = AppManager()
+    all_objects = models.Manager()
     type = models.CharField(default="follow")
     summary = models.CharField(default="You have recieved a follow request!")
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
@@ -408,7 +409,7 @@ class FollowRequest(BaseModel):
             
         '''
         if isinstance(new_state, RequestState):
-            self.state = new_state.value
+            self.state = new_state
             self.save() 
             
         else:
