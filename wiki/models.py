@@ -58,10 +58,6 @@ class Author(BaseModel):
     web: the URL to the user's page on their node\n
     **Associated with an accompanying User object to keep username and password consistency**:
     """
-    objects = AppManager()
-    
-    all_objects = models.Manager()
-       
     type = models.CharField(default="author")
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
@@ -82,13 +78,13 @@ class Author(BaseModel):
     
     web = models.URLField(blank=True, null=False, default=None)
     
-    def get_follow_requests_sent(self):
+    def get_follow_requests_sent(self) ->list:
         '''Returns a list of all of the follow requests sent by an author'''
-        return self.requesting.all()
+        return list(self.requesting.all())
         
-    def get_follow_requests_recieved(self):
+    def get_follow_requests_recieved(self)->list:
         '''Returns a list of all of the follow requests recieved by an author'''
-        return self.follow_requests.filter()
+        return list(self.follow_requests.all())
     
     def get_web_url(self):
         '''Get the fully qualified URL to an author's page'''
@@ -151,7 +147,7 @@ class Entry(BaseModel):
     ]
 
     objects = AppManager()
-    all_objects = models.Manager()
+
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -172,8 +168,6 @@ class Entry(BaseModel):
         return self.title
 
 class Page(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
     title = models.CharField(max_length=100, unique=True)
     content = models.TextField()
     updated = models.DateTimeField(auto_now=True)
@@ -183,8 +177,6 @@ class Page(BaseModel):
         return self.title
 
 class Like(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
 
@@ -192,16 +184,12 @@ class Like(BaseModel):
         unique_together = ('entry', 'user')
 
 class Comment(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 class CommentLike(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
 
@@ -209,8 +197,6 @@ class CommentLike(BaseModel):
         unique_together = ('comment', 'user')
 
 class RemotePost(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
     origin = models.URLField()
     author = models.CharField(max_length=100)
     content = models.TextField()
@@ -227,8 +213,6 @@ class AuthorFriend(BaseModel):
         
         IMPORTANT: to collect all of a user's friendships, you must get all of the friend items where the user is Friend A OR Friend B
         '''
-        objects = AppManager()
-        all_objects = models.Manager()
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
         friended = models.ForeignKey(Author, related_name="friend_b", null=False, on_delete=models.CASCADE)
         friended_at =  models.DateTimeField(auto_now_add=True)
@@ -277,8 +261,6 @@ class AuthorFollowing(BaseModel):
     
     following: the one getting followed
     '''
-    objects = AppManager()
-    all_objects = models.Manager()
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
     date_followed = models.DateTimeField(auto_now_add=True)
@@ -337,10 +319,9 @@ class FollowRequest(BaseModel):
     - requested_account: the author recieving the follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     """
-    objects = AppManager()
-    all_objects = models.Manager()
-    type = models.CharField(default="follow", null=False)
-    summary = models.CharField(default="You have recieved a follow request!", null=False)
+    
+    type = models.CharField(default="follow")
+    summary = models.CharField(default="You have recieved a follow request!")
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
@@ -422,8 +403,7 @@ class InboxItem(BaseModel):
     created_at: the time that the inbox item was posted
 
     '''
-    objects = AppManager()
-    all_objects = models.Manager()
+    
     author = models.ForeignKey(Author, related_name="inbox", on_delete=models.CASCADE)
     type = models.CharField(
         max_length = 20,
