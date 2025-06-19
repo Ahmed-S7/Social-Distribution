@@ -176,13 +176,9 @@ def get_authors(request):
     """
     Gets the list of all authors on the application
     
-        Example Usages:
-    
-        To get a list of all authors (no pagination):
-    
-        Use: "GET /api/authors/"
+    Use: "GET /api/authors/"
         
-         - this returns Json in the following format: 
+    This returns Json in the following format: 
          
              {
                 "type": "authors",      
@@ -209,13 +205,7 @@ def get_authors(request):
     authors = Author.objects.all()
     serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
     return Response({"type": "authors",
-                        "authors":serializer.data})    
-
-
-
-
-
-
+                        "authors":serializer.data})  
 
 
 
@@ -249,9 +239,6 @@ def get_author(request, author_serial):
     return Response(serializer.data)
 
 
-
-
-
 @login_required   
 @require_GET 
 def view_authors(request):
@@ -274,8 +261,6 @@ def view_external_profile(request, author_serial):
         
         follow_status = current_author.is_following(profile_viewing)
         
-        
-        
         if current_author.is_friends_with(profile_viewing):
             return render(request, "external_profile.html", {"author": profile_viewing, "is_a_friend": True})     
 
@@ -287,7 +272,6 @@ def view_external_profile(request, author_serial):
     
 @login_required    
 def view_following(request):
-    
     pass
  
 
@@ -318,12 +302,6 @@ def follow_profile(request, author_serial):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?is_following=True"
         return redirect(query_with_follow_status)
-            
-            ########CHECKING OUTPUT###############
-            #print(f"{str(follow_request)}\n")
-            #print(f"REQUESTING AUTHOR: {requesting_account}\n")
-            #print(f"AUTHOR REQUESTED: {requested_account}\n")
-            ###################################################   
             
     try:
         serialized_follow_request = FollowRequestSerializer(
@@ -398,11 +376,15 @@ def check_follow_requests(request, username):
 @csrf_exempt
 @login_required
 def process_follow_request(request, author_serial, request_id):
-    '''This view is responsible for processing follow requests.
-
-        Returns
-    
-    
+    '''
+        Args: 
+        
+            request: the HTTP request information,
+            serial: the author's serial id, 
+            request_id: the follow request's IDS
+            
+        Returns: HTTPResponseError for any issues, a redirection otherwise
+        
     '''
    
     if request.user.is_staff or request.user.is_superuser:
@@ -460,8 +442,7 @@ def process_follow_request(request, author_serial, request_id):
                 
             else:
                 
-                return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")
-                
+                return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")      
                       
     else:
         #if follow request is denied,
