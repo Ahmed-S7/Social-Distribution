@@ -287,7 +287,7 @@ class FollowRequestTesting(TestCase):
         
         #check that the requester now follows the account it requested
         self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
-        print("PASS: ACCEPTED FOLLOW REQUESTS IS WORKING PROPERLY")
+        print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
         
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
