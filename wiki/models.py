@@ -94,11 +94,11 @@ class Author(BaseModel):
     
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
-        return self.requesting.all()
+        return self.requesting.filter(is_deleted=False)
         
     def get_follow_requests_recieved(self):
         '''Returns a list of all of the follow requests recieved by an author'''
-        return self.follow_requests.all()
+        return self.follow_requests.filter(is_deleted=False)
     
     def get_web_url(self):
         '''Get the fully qualified URL to an author's page'''
@@ -319,6 +319,7 @@ class AuthorFollowing(BaseModel):
         constraints = [
                 models.UniqueConstraint(
                 fields=['follower', 'following'],
+                condition=Q(is_deleted=False),
                 name='unique_active_following'
             )
                 
@@ -368,8 +369,7 @@ class FollowRequest(BaseModel):
     - requested_account: the author recieving the follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     """
-    objects = AppManager()
-    all_objects = models.Manager()
+    
     type = models.CharField(default="follow")
     summary = models.CharField(default="You have recieved a follow request!")
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
@@ -380,6 +380,7 @@ class FollowRequest(BaseModel):
         constraints = [
             models.UniqueConstraint(
             fields=['requester', 'requested_account', 'state'],
+            condition=Q(is_deleted=False),
             name='unique_active_follow_request'
         )
             
@@ -422,6 +423,7 @@ class FollowRequest(BaseModel):
              requester=self.requester, # the same requesting user
              requested_account=self.requested_account, # the same requested user
              state__in=[RequestState.ACCEPTED, RequestState.REQUESTING], #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
+             is_deleted = False
              ).exclude(pk=self.pk).exists():
             
             raise ValidationError("User already has an active follow request or relationship with this user")

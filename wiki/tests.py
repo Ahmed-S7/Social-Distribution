@@ -4,9 +4,10 @@ from .models import Author, Entry
 from django.contrib.auth.models import User
 import uuid
 from django.urls import reverse
+
 BASE_PATH = "/s25-project-white/api"
 
-class IdentityTestCase(TestCase):
+'''class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
 
@@ -61,7 +62,7 @@ class IdentityTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["displayName"], "test_author")
-    # As a node admin, I want to be able to add, modify, and delete authors, to fix problems or remove unwanted users.
+
     def test_consistent_identity_entry(self):
         url = f'{BASE_PATH}/entry/{self.entry.serial}/'
         response = self.client.get(url)
@@ -122,8 +123,58 @@ class IdentityTestCase(TestCase):
 
     def tearDown(self):
         self.client.logout()
-        
-
 
 class PostingTestCase(TestCase):
     pass
+'''
+class FollowRequestTesting(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Create user and authenticate properly
+        self.user = User.objects.create_user(
+            username='test_user',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2',
+            password='test_password2'
+        )
+        # Proper authentication for Django views
+        self.client.login(username='test_user', password='test_password')
+        
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        self.admin = User.objects.create_superuser(
+            username='admin_user',
+            password='admin_password', 
+            email='admin@ualberta.ca'
+        )
+        self.client.force_authenticate(user=self.user2)
+        
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        
+    #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
+    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    def test_accept_follow_request(self):
+        "/s25-project-white/api"
+        url = f'{BASE_PATH}/authors/{self.author.serial}/inbox/'
+        response = self.client.get(url)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

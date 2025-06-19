@@ -16,11 +16,11 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    def get_queryset(self, request):
-        return FollowRequest.all_objects.all()
     
     def follow_request(self, obj):
         return str(obj)
+
+    
     list_display = ["follow_request","requester", "requested_account", "state", "is_deleted","created_at"]
     list_editable = ["state", "is_deleted"]
     list_filter =  ["is_deleted"]
