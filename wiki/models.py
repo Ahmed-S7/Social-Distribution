@@ -3,7 +3,7 @@ import uuid
 from django.db.models.signals import post_save, post_delete
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db.models import Manager, QuerySet, Q
+from django.db.models import Manager, QuerySet, Q, UniqueConstraint
 from django.dispatch import receiver
 # Create your models here.
 
@@ -58,6 +58,8 @@ class Author(BaseModel):
     web: the URL to the user's page on their node\n
     **Associated with an accompanying User object to keep username and password consistency**:
     """
+    objects = AppManager()
+    all_objects = models.Manager()
     type = models.CharField(default="author")
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
@@ -147,6 +149,7 @@ class Entry(BaseModel):
     ]
 
     objects = AppManager()
+    all_objects = models.Manager()
 
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
@@ -168,6 +171,8 @@ class Entry(BaseModel):
         return self.title
 
 class Page(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
     title = models.CharField(max_length=100, unique=True)
     content = models.TextField()
     updated = models.DateTimeField(auto_now=True)
@@ -177,26 +182,42 @@ class Page(BaseModel):
         return self.title
 
 class Like(BaseModel):
+    
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = ('entry', 'user')
+        constraints = [
+            UniqueConstraint(
+                fields=['entry', 'user'],
+                condition=Q(is_deleted=False),
+                name='unique_active_like'
+            )
+        ]
 
 class Comment(BaseModel):
+    
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 class CommentLike(BaseModel):
+   
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
-
     class Meta:
-        unique_together = ('comment', 'user')
+        constraints = [
+            UniqueConstraint(
+                fields=['comment', 'user'],
+                condition=Q(is_deleted=False),
+                name='unique_comment_like'
+            )
+        ]
 
 class RemotePost(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
     origin = models.URLField()
     author = models.CharField(max_length=100)
     content = models.TextField()
@@ -216,7 +237,8 @@ class AuthorFriend(BaseModel):
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
         friended = models.ForeignKey(Author, related_name="friend_b", null=False, on_delete=models.CASCADE)
         friended_at =  models.DateTimeField(auto_now_add=True)
-        
+        objects = AppManager()
+        all_objects = models.Manager()
         #prevents any duplicate friend requests
         class Meta:
             constraints = [
@@ -261,6 +283,8 @@ class AuthorFollowing(BaseModel):
     
     following: the one getting followed
     '''
+    objects = AppManager()
+    all_objects = models.Manager()
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
     date_followed = models.DateTimeField(auto_now_add=True)
@@ -319,7 +343,8 @@ class FollowRequest(BaseModel):
     - requested_account: the author recieving the follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     """
-    
+    objects = AppManager()
+    all_objects = models.Manager()
     type = models.CharField(default="follow")
     summary = models.CharField(default="You have recieved a follow request!")
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
@@ -412,7 +437,8 @@ class InboxItem(BaseModel):
     )
     content = models.JSONField()
     created_at =models.DateTimeField(auto_now_add=True)
-    
+    objects = AppManager()
+    all_objects = models.Manager()
     def get_follow_requester_name(self):
         try:
             return self.get_content().get("actor")["displayName"]
