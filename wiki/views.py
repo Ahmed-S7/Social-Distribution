@@ -40,11 +40,6 @@ class PageViewSet(viewsets.ModelViewSet):
         Like.objects.get_or_create(page=page, user=request.user)
         return Response({'status': 'liked'})
 
-
-
-
-
-
 class RemotePostReceiver(APIView):
     def post(self, request):
         serializer = RemotePostSerializer(data=request.data)
@@ -264,14 +259,20 @@ def view_authors(request):
 @require_GET
 @login_required       
 def view_external_profile(request, author_serial):
-    
+    '''Presents a view of a profile other than the one that is currently logged
+    - shows the current user whether they are following, are friends with or can follow the current user
+    '''
    
     if  Author.objects.filter(serial=author_serial).exists():
         profile_viewing = Author.objects.get(serial=author_serial)
         current_author = get_object_or_404(Author, user=request.user) 
         
         follow_status = current_author.is_following(profile_viewing)
-              
+        
+        
+        if current_author.is_friends_with(profile_viewing):
+            return render(request, "external_profile.html", {"author": profile_viewing, "is_a_friend": True})     
+
         return render(request, "external_profile.html", {"author": profile_viewing, "is_following": follow_status})
     else:
         return HttpResponseRedirect("wiki:view_authors")
@@ -304,17 +305,20 @@ def follow_profile(request, author_serial):
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
 
+    if requesting_account.is_friends_with(requested_account):
+        messages.error(request,f"You are friends with {requested_account}, this button will eventually allow you to unfriend a user in a future patch.")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
     if requesting_account.is_already_requesting(requested_account):
-            messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
-            return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
             
     if requesting_account.is_following(requested_account):
-            messages.error(request,f"You already follow {requested_account}, maybe view their profile?")
-            base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-            query_with_follow_status= f"{base_URL}?is_following=True"
-            return redirect(query_with_follow_status)
-                
+        messages.error(request,f"You already follow {requested_account}, this button will allow you to unfollow a profile in a future patch.")
+        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+        query_with_follow_status= f"{base_URL}?is_following=True"
+        return redirect(query_with_follow_status)
+            
     ########CHECKING OUTPUT###############
     #print(f"{str(follow_request)}\n")
     #print(f"REQUESTING AUTHOR: {requesting_account}\n")
@@ -386,7 +390,6 @@ def check_follow_requests(request, username):
         
         
     incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
-    #print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
     
     if not incoming_follow_requests:
         

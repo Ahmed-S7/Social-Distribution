@@ -1,23 +1,27 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
-{% if messages %}
-    <script>
-    {% for message in messages %}
-        alert("{{message|escapejs}}")
-    {%endfor%}
-    </script>
-    
-{% endif %}
 
-<div class="default_buttons">
-    <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="button">Back to Profile</button>
-    </a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="button">Back to Stream</button>
-    </a>
-</div>
-<section class="author_profile">
+
+        <!--Messages to inform the user about their following state pertaining to a specific user-->
+        {% if messages %}
+            <script>
+            {% for message in messages %}
+                alert("{{message|escapejs}}")
+            {%endfor%}
+            </script>
+            
+        {% endif %}
+        
+         <!--Default buttons, as per necessary tags-->
+        <div class="default_buttons">
+            <a href="{% url 'wiki:profile' request.user.username%}">
+                <button type="button">Back to Profile</button>
+            </a>
+            <a href="{% url 'wiki:user-wiki' request.user.username %}">
+                <button type="button">Back to Stream</button>
+            </a>
+        </div>
+        <section class="author_profile">
 
 
             <img class="profile_image" src="{{ author.profileImage }}" alt="{{ author.displayName }}"/>
@@ -30,12 +34,19 @@
 
              {% if is_following %}
 
-           <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
                 {% csrf_token %}
                <button class="unfollow_button" type="submit" >UnFollow Profile</button>
- 
+       
             </form>
+            {% elif is_a_friend%}
+            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
             
+            
+            {% csrf_token %}
+            <button class="unfollow_button" style="background-color:lightgreen;" type="submit" >Friends 🤝</button> 
+
+
             {% else %}
 
             <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">

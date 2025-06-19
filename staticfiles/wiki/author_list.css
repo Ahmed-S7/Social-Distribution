@@ -1,32 +1,106 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
-html{
+html, head {
     font-family: 'Nunito', sans-serif;
-    background-color: azure; 
-}
-h1,h2{
-    color:rgb(0, 26, 128);
-}
+    background-color: rgb(255, 255, 255); 
 
-.author_profile{
+}
+html, h1, h2, h3, p {
+    font-family: 'Nunito', sans-serif;
+}
+h2{
+    color:rgb(0, 26, 128);
     justify-content: center;
     align-items: center;
     text-align:center;
 }
 
-.author_profile .follow_button {
-     font-family: 'Nunito', sans-serif;
-     background-color: rgb(110, 226, 226);
-     border-radius: 0.5em;
-     font-variant: small-caps;
-     font-weight: bold;
-     font-size:small;
+.author_profile{
+    justify-content: center;
+    align-items: center;
+    text-align:center; 
 }
 
-.entry_list {
-    list-style-type: none;
-    padding: 0;
+section .author {
+
+    flex-direction:column;
+    border-style:groove;
+    border-radius: 1em;
+    border-color: rgb(178, 235, 235);
+    background-color: rgb(225, 244, 253);
+    display:inline-block;
+    text-align: center;
+    margin: 2em;
+
 }
-.entry_list li {
-    margin-bottom: 0.625em;
+
+section .author:hover {
+   transform:scale(1.05);
+   transition: transform 0.3s ease-in-out;
+
 }
+
+.default_buttons{
+
+    border-radius: 1em;
+    border-style:none;
+    display: inline-flex;
+    border-color: rgb(183, 224, 241);
+    padding-left: 0.1em;
+    padding-bottom: 0.2em;
+    display: inline;
+    flex-wrap:wrap;
+   
+}
+.list_display_name{
+    font-weight: bold;
+
+
+}
+
+.switch_from_author {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1em;
+    position: relative;
+    
+}
+
+
+button{
+    font-size:1.2em;
+    border-style:none;
+    border-width: 0.1em;
+    border-radius:0.3em;
+    background-color: rgb(255, 255, 255);
+    font-weight:lighter;
+    font-family: 'Nunito', sans-serif;
+  
+}
+
+.view_profile:hover{
+    background-color: rgba(41, 117, 189, 0.183);
+}
+
+.switch_from_author button:hover{
+  
+    background-color: rgba(41, 117, 189, 0.183);
+   
+}
+
+
+.profile_image{
+
+    border-style:solid;
+    width: 8em;
+    height: 8em;
+    border-radius:1em;
+
+    
+}
+
+li{
+    list-style: none;
+}
+

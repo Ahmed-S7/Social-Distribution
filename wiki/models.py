@@ -124,9 +124,13 @@ class Author(BaseModel):
         
     def is_friends_with(self, other_author):
         '''checks if an author is friends with another author'''
+
+        if AuthorFriend.objects.filter(friending=self.id) or AuthorFriend.objects.filter(friended=self.id):
+            return True
         
+        return False
         
-        pass
+   
         
       
     def __str__(self):
@@ -244,16 +248,27 @@ class AuthorFriend(BaseModel):
         friended: is the arbitrary friend B
         
         IMPORTANT: to collect all of a user's friendships, you must get all of the friend items where the user is Friend A OR Friend B
-        '''
+        
+        FIELDS:
+        
+        friending: the arbitrary friend A
+        
+        friended: the arbitrary friend B
+        
+        friended_at: time the friendship was instantiated
+      
+        ''' 
+        objects = AppManager()
+        all_objects = models.Manager()
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
         friended = models.ForeignKey(Author, related_name="friend_b", null=False, on_delete=models.CASCADE)
         friended_at =  models.DateTimeField(auto_now_add=True)
-        objects = AppManager()
-        all_objects = models.Manager()
+       
         #prevents any duplicate friend requests
         class Meta:
             constraints = [
-                models.UniqueConstraint(fields=['friending', 'friended'],condition=Q(is_deleted=False), name='unique_active_friendship'),
+                models.UniqueConstraint(fields=['friending', 'friended']
+                                        , name='unique_active_friendship'),
               
             ]
             
@@ -304,7 +319,6 @@ class AuthorFollowing(BaseModel):
         constraints = [
                 models.UniqueConstraint(
                 fields=['follower', 'following'],
-                condition=Q(is_deleted=False),
                 name='unique_active_following'
             )
                 
@@ -366,7 +380,6 @@ class FollowRequest(BaseModel):
         constraints = [
             models.UniqueConstraint(
             fields=['requester', 'requested_account', 'state'],
-            condition=Q(is_deleted=False),
             name='unique_active_follow_request'
         )
             
@@ -409,7 +422,6 @@ class FollowRequest(BaseModel):
              requester=self.requester, # the same requesting user
              requested_account=self.requested_account, # the same requested user
              state__in=[RequestState.ACCEPTED, RequestState.REQUESTING], #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
-             is_deleted = False
              ).exclude(pk=self.pk).exists():
             
             raise ValidationError("User already has an active follow request or relationship with this user")

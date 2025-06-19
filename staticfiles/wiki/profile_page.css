@@ -1,26 +1,121 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
-html{
+html, body{
     font-family: 'Nunito', sans-serif;
-    background-color: azure; 
+  
 }
 h1,h2{
     color:rgb(0, 26, 128);
 }
 
+.profile_image{
+    border-radius: 1em;
+    border-style:solid;
+    width:8em;
+    height: 8em;
+}
+h3{
+    font-size: 1.7em;
+}
+
+p{
+    font-size: 2.5em;
+}
+.display_name{
+    font-size: 3em;
+    padding: none;
+}
 .author_profile{
     justify-content: center;
     align-items: center;
     text-align:center;
 }
 
-.author_profile .follow_button{
+.author_profile{
      font-family: 'Nunito', sans-serif;
-     background-color: rgb(110, 226, 226);
      border-radius: 0.5em;
      font-variant: small-caps;
      font-weight: bold;
      font-size:small;
+}
+
+
+
+.profile_buttons{
+    
+    border-radius: 0.2em;
+    font-size: 1em;
+    display:flex;
+    justify-content: center;
+    gap:2em;
+ 
+   
+}
+.profile_buttons button{
+    background-color: rgba(61, 136, 221, 0.483);
+    border-radius: 0.4em;
+    font-size: 2em;
+    font-variant: small-caps;
+    border-style: inset;
+    border-style: none;
+   
+}
+
+
+.nav_button{
+font-family: 'Nunito', sans-serif;
+background-color: rgb(255, 255, 255);
+font-size: x-large;
+border-style: none;
+}
+
+
+
+
+.default_buttons{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1em;
+    position: relative;
+    font-family: 'Nunito', sans-serif;
+    font-family: 'Nunito', sans-serif;
+}
+
+.default_buttons button{
+    font-family: 'Nunito', sans-serif;
+    background-color: rgb(255, 255, 255);
+    font-size: x-large;
+    border-style: none;
+}
+
+
+.default_buttons button:hover{
+  
+    background-color: rgba(41, 117, 189, 0.183);
+   
+}
+
+.profile_buttons button:hover{
+    transform:scale(1.1);
+    transition: transform 0.3s ease-in-out;
+
+}
+.logout_button{
+    background-color: rgb(233, 112, 112);
+    border-radius: 0.5em;
+    font-size: 1.6em;
+    
+}
+.logout_button:hover{
+    background-color: rgb(233, 112, 112);
+    border-radius: 0.5em;
+    font-size: 1.6em;
+    transform:scale(1.1);
+    transition: transform 0.3s ease-in-out;
+    
+
+    
 }
 
 .entry_list {
@@ -31,11 +126,18 @@ h1,h2{
     margin-bottom: 10px;
 }
 
-div .profile_buttons{
-    justify-content: center;
-    align-items: center;
-    text-align:center;
-    padding-inline: space-evenly;
-    border-radius: 2em;
+.follow_button {
     font-family: 'Nunito', sans-serif;
+    border-radius:0.4em; 
+    font-size:2em; 
+    background-color:lightblue;
+
 }
+
+.unfollow_button{
+    font-family: 'Nunito', sans-serif;
+    color: white; 
+    background-color: red; 
+    border-radius:0.4em; 
+    font-size:2em;
+} 

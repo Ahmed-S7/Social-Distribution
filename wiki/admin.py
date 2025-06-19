@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Page, Like, RemotePost,InboxItem, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike
+from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike
 
 # Register your models here.
 
@@ -18,14 +18,32 @@ class AuthorAdmin(admin.ModelAdmin):
 class FollowRequestAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return FollowRequest.all_objects.all()
-    list_display = ["requester", "requested_account", "state", "is_deleted","created_at"]
+    
+    def follow_request(self, obj):
+        return str(obj)
+    list_display = ["follow_request","requester", "requested_account", "state", "is_deleted","created_at"]
     list_editable = ["state", "is_deleted"]
+    list_filter =  ["is_deleted"]
     
 class AuthorFollowingAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return AuthorFollowing.all_objects.all()
-    list_display= ["id",'follower','following']
+    def follow_standing(self, obj):
+        return str(obj)
+    list_display= ["follow_standing","id",'follower','following']
     search_fields= ['follower__displayName']
+    
+    
+class AuthorFriendsAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        return AuthorFriend.all_objects.all()
+
+    def friendship_update(self, obj):
+        return str(obj)
+    
+    list_display= ['friendship_update',"id",'friended','friending']
+    search_fields= ['friending__displayName','friended__displayName']
+    list_filter =  ["is_deleted"]
     
     
 admin.site.register(Page)
@@ -35,7 +53,7 @@ admin.site.register(AuthorFollowing, AuthorFollowingAdmin)
 admin.site.register(Author, AuthorAdmin)
 admin.site.register(Entry)
 admin.site.register(FollowRequest, FollowRequestAdmin)
-admin.site.register(AuthorFriend)
+admin.site.register(AuthorFriend, AuthorFriendsAdmin)
 admin.site.register(InboxItem)
 admin.site.register(Comment)
 admin.site.register(CommentLike)
