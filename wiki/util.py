@@ -29,7 +29,7 @@ def saveNewAuthor(request, user, username, github=None, profileImage=None, web=N
     
     serial_id = uuid.uuid4()
     string_serial = str(serial_id)
-    
+    print("[saveNewAuthor] ENTERED FUNCTION")
     try:
         if request.is_secure():
             port = 'https'
