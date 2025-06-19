@@ -103,7 +103,15 @@ def user_wiki(request, username):
 @require_POST
 @login_required
 def like_entry(request, entry_serial):
-    '''Handles the logic surrounding likeing an entry'''
+    '''Handles the logic surrounding liking an entry
+
+       Args:
+            - Request: HTTP request information
+            - Entry_serial: The serial id of the entry 
+    
+        Returns: HTTP404 if any objects are not found, or simply redirect to the user's wiki stream
+
+    '''
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = Author.objects.get(user=request.user)
     like, created = Like.objects.get_or_create(entry=entry, user=author)
