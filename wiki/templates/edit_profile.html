@@ -6,8 +6,10 @@
     {% csrf_token %}
 
     <section class="author_profile">
-        {% if author.profileImage %}
-            <img class="profile_image" src="{{ author.profileImage.url }}"" alt="{{ author.displayName }}" />
+        {% if author.image %}
+            <img class="profile_image" src="{{ author.imageProfile.url }}" alt="Post image">
+        {% else %}
+            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
         {% endif %}
 
         <label for="profileImage">Change Profile Image (URL or File):</label>

@@ -81,15 +81,12 @@ def user_wiki(request, username):
         if friended_id != current_author.id:
             friend_ids.add(friended_id)
 
-    # Combine all visible author IDs (yourself + followed + friends)
-    visible_author_ids = set(followed_ids) | friend_ids | {current_author.id}
-
     entries = Entry.objects.filter(
         ~Q(visibility='DELETED') & (
             Q(visibility='PUBLIC') |
             Q(author=current_author) |
             Q(visibility='FRIENDS', author__id__in=friend_ids) |
-            Q(author__id__in=followed_ids)
+            Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
    
