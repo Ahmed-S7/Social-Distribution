@@ -221,17 +221,17 @@ class FollowRequestTesting(TestCase):
         
         
         
-        
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
-    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
-    #6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     def test_check_other_inbox(self):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
         url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
-    
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -240,7 +240,7 @@ class FollowRequestTesting(TestCase):
         #the right sending author
         self.assertContains(response,"sending_author")
         print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
-        
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -259,6 +259,8 @@ class FollowRequestTesting(TestCase):
         self.assertEqual(response.status_code, 200)
         print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
     
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_follow_after_accept(self):
     
         #post to the follow request processing page with action being accept
@@ -285,7 +287,9 @@ class FollowRequestTesting(TestCase):
         #check that the requester now follows the account it requested
         self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
         print("PASS: ACCEPTED FOLLOW REQUESTS IS WORKING PROPERLY")
-    
+        
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_reject_follow_request(self):
         #post to the follow request processing page with
         process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.receiving_author.serial, "request_id":self.new_follow_request2.id}) 
@@ -310,7 +314,8 @@ class FollowRequestTesting(TestCase):
     
         print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
    
-    #6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    #Following/Friends 6.6 As an author, if I am following another author, and they are following me (only after both follow requests are approved), I want us to be considered friends, so that they can see my friends-only entries.
     def test_friends_created_after_mutual_follow(self):
     
         
