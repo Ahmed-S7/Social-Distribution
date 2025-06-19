@@ -80,7 +80,7 @@ def user_wiki(request, username):
 
     entries = Entry.objects.filter(
         ~Q(visibility='DELETED') & (
-            Q(visibility='PUBLIC') |
+            Q(visibility='PUBLIC', author__id__in=followed_ids) |
             Q(author=current_author) |
             Q(visibility='FRIENDS', author__id__in=friend_ids) |
             Q(visibility='UNLISTED', author__id__in=followed_ids)
