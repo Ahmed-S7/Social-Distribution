@@ -157,6 +157,7 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
+    '''Used to represent entries inside of the application '''
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends Only'),
