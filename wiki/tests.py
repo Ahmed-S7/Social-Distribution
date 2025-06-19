@@ -342,12 +342,7 @@ class FollowRequestTesting(TestCase):
             (Q(friending=self.following_author) & Q(friended=self.receiving_author))
             ).exists())
         
-        
-        
-        
-       
-        
-        
+    
   
     def tearDown(self):
         self.client.logout()    
