@@ -16,7 +16,8 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    
+    def get_queryset(self, request):
+        return FollowRequest.all_objects.all()
     def follow_request(self, obj):
         return str(obj)
 
@@ -46,12 +47,22 @@ class AuthorFriendsAdmin(admin.ModelAdmin):
     list_filter =  ["is_deleted"]
     
     
+class EntryAdmin(admin.ModelAdmin):
+    def get_queryset(self, request):
+        return Entry.all_objects.all()
+    def entry(self, obj):
+        return str(obj)
+
+    list_display= ['entry','id','author','is_deleted',"title",'content','image','created_at', 'serial','visibility']
+    list_editable = ['author',"title",'content','image', 'serial','visibility']
+    list_filter =  ["is_deleted"]
+    
 admin.site.register(Page)
 admin.site.register(Like)
 admin.site.register(RemotePost)
 admin.site.register(AuthorFollowing, AuthorFollowingAdmin)
 admin.site.register(Author, AuthorAdmin)
-admin.site.register(Entry)
+admin.site.register(Entry, EntryAdmin)
 admin.site.register(FollowRequest, FollowRequestAdmin)
 admin.site.register(AuthorFriend, AuthorFriendsAdmin)
 admin.site.register(InboxItem)

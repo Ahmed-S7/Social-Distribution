@@ -279,6 +279,7 @@ def view_external_profile(request, author_serial):
         follow_status = current_author.is_following(profile_viewing)
         
         
+        
         if current_author.is_friends_with(profile_viewing):
             return render(request, "external_profile.html", {"author": profile_viewing, "is_a_friend": True})     
 

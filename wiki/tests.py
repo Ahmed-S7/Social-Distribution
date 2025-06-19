@@ -1,12 +1,15 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Author, AuthorFollowing, AuthorFriend, Entry,FollowRequest, RequestState
+from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend
 from django.contrib.auth.models import User
 import uuid
+from django.db.models import Q
+from django.urls import reverse
+
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
 
-'''class IdentityTestCase(TestCase):
+class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
 
@@ -125,7 +128,7 @@ BASE_PATH = "/s25-project-white/api"
 
 class PostingTestCase(TestCase):
     pass
-# '''
+
 class FollowRequestTesting(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -135,18 +138,48 @@ class FollowRequestTesting(TestCase):
             username='test_user',
             password='test_password',
         )
-        self.receiving_user = User.objects.create_user(
+        self.requesting_user2 = User.objects.create_user(
             username='test_user2',
             password='test_password2'
+        )
+        self.receiving_user = User.objects.create_user(
+            username='test_user3',
+            password='test_password3'
+        )
+        self.following_user = User.objects.create_user(
+            username='test_user4',
+            password='test_password4'
         )
         # Proper authentication for Django views
         self.client.login(username='test_user', password='test_password')
         
-        self.requesting_author = Author.objects.create(
+        self.requesting_author1 = Author.objects.create(
             id=1,
             user=self.requesting_user,
             displayName='sending_author',
             description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        
+        self.following_author = Author.objects.create(
+            id=4,
+            user=self.following_user,
+            displayName='receiving_author2',
+            description='test_description2',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        
+        self.requesting_author2 = Author.objects.create(
+            id=2,
+            user=self.requesting_user2,
+            displayName='sending_author2',
+            description='test_description2',
             github='https://github.com/test_author',
             serial=uuid.uuid4(),
             web='https://example.com/',
@@ -160,27 +193,46 @@ class FollowRequestTesting(TestCase):
         self.client.force_authenticate(user=self.receiving_user)
         
         self.receiving_author = Author.objects.create(
-            id=2,
+            id=3,
             user=self.receiving_user,
-            displayName='receiving_author2',
+            displayName='receiving_author',
             description='test_description2',
             github='https://github.com/test_author2',
             serial=uuid.uuid4(),
             web='https://example.com/2'
         )
         
-        self.new_follow_request= FollowRequest.objects.create(
-            requester=self.requesting_author,
+        self.existing_following= AuthorFollowing.objects.create(
+            follower=self.following_author,
+            following=self.receiving_author
+        )
+        self.new_follow_back= FollowRequest.objects.create(
+            requester=self.receiving_author,
+            requested_account=self.following_author
+        )
+        self.new_follow_request1= FollowRequest.objects.create(
+            requester=self.requesting_author1,
             requested_account=self.receiving_author
         )
+        
+        self.new_follow_request2= FollowRequest.objects.create(
+            requester=self.requesting_author2,
+            requested_account=self.receiving_author
+        )
+        
+        
+        
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
-    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
-    def test_check_unavailable_inbox(self):
-        "should return 400 because only authenticated users should be able to check their own inbox (not the requesting author)"
-        url = f'{BASE_PATH}/authors/{self.requesting_author.serial}/inbox/'
+    #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    def test_check_other_inbox(self):
+        "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
+        url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
-    
+        print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -188,24 +240,116 @@ class FollowRequestTesting(TestCase):
         
         #the right sending author
         self.assertContains(response,"sending_author")
-        
-    def check_correct_initial_state(self):
+        print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
+    def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
         response = self.client.get(url)
         
         self.assertContains(response, "state")
         self.assertEqual(response.data[0]["state"], RequestState.REQUESTING)   
-    
-    
-    #6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+        print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
+
+    #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
+    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
     def test_check_own_follow_requests(self):
         "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
         response = self.client.get(url)
-        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
+    
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    def test_follow_after_accept(self):
+    
+        #post to the follow request processing page with action being accept
+        process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.receiving_author.serial, "request_id":self.new_follow_request1.id}) 
+        response = self.client.post(process_follow_requests_url, {'action':"accept"})
+        
+        
+        #check for a successful redirect after the POST
+        self.assertEqual(response.status_code, 302)
+
+       
+        check_follow_requests_url= reverse('wiki:check_follow_requests', kwargs={"username":self.receiving_author.displayName})
+        response = self.client.get(check_follow_requests_url)
+
+        #check for a successful Page View
         self.assertEqual(response.status_code, 200)
         
+
+        self.new_follow_request1.refresh_from_db()
+
+        #correct status should be accepted now
+        self.assertEqual(self.new_follow_request1.state, RequestState.ACCEPTED)
+        
+        #check that the requester now follows the account it requested
+        self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
+        print("PASS: ACCEPTED FOLLOW REQUESTS IS WORKING PROPERLY")
+        
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    def test_reject_follow_request(self):
+        #post to the follow request processing page with
+        process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.receiving_author.serial, "request_id":self.new_follow_request2.id}) 
+        response = self.client.post(process_follow_requests_url, {'action':"reject"})
+        
+        
+        #check for a successful redirect after the POST
+        self.assertEqual(response.status_code, 302)
+
+       
+        check_follow_requests_url= reverse('wiki:check_follow_requests', kwargs={"username":self.receiving_author.displayName})
+        response = self.client.get(check_follow_requests_url)
+
+        #check for a successful Page View
+        self.assertEqual(response.status_code, 200)
+        
+
+        self.new_follow_request2.refresh_from_db()
+
+        #correct status should be accepted now
+        self.assertEqual(self.new_follow_request2.state, RequestState.REJECTED)
+    
+        print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+   
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    #Following/Friends 6.6 As an author, if I am following another author, and they are following me (only after both follow requests are approved), I want us to be considered friends, so that they can see my friends-only entries.
+    def test_friends_created_after_mutual_follow(self):
+    
+        
+        #post to the follow request processing page with action being accept
+        process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.following_author.serial, "request_id":self.new_follow_back.id}) 
+        response = self.client.post(process_follow_requests_url, {'action':"accept"})
+        
+        
+        #check for a successful redirect after the POST
+        self.assertEqual(response.status_code, 302)
+
+       
+        check_follow_requests_url= reverse('wiki:check_follow_requests', kwargs={"username":self.following_author.displayName})
+        response = self.client.get(check_follow_requests_url)
+
+        #check for a successful Page View
+        self.assertEqual(response.status_code, 200)
+        
+
+        self.new_follow_back.refresh_from_db()
+
+        #correct status should be accepted now
+        self.assertEqual(self.new_follow_back.state, RequestState.ACCEPTED)
+    
+        
+        #Check that users are now friends
+        self.assertTrue(AuthorFriend.objects.filter(
+            (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
+            (Q(friending=self.following_author) & Q(friended=self.receiving_author))
+            ).exists())
+        
+    
+  
     def tearDown(self):
         self.client.logout()    
     
