@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
-from .views import MyLoginView, user_wiki, register,follow_success_page,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, create_entry, like_entry
+from .views import MyLoginView, user_wiki, register,get_local_follow_requests,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, create_entry, like_entry
 from .views import edit_entry, add_comment, like_comment, delete_entry
 
 from django.contrib.auth.views import LogoutView
@@ -42,13 +42,12 @@ urlpatterns = [
     path('api/authors/', get_authors, name='get_authors'),
     path('api/author/<str:author_serial>', get_author, name='get_author'),
     path('api/author/<str:author_serial>/', get_author, name='get_author'),
+    path('api/authors/<str:author_serial>/inbox/', get_local_follow_requests, name='get_follow_requests' ),
     
     # User Author URLS
     path('authors/', view_authors, name='view_authors'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
-    #path('api/authors/<str:author_serial>/inbox/', check_remote_inbox, name='get_inbox' ),
     path('authors/<str:username>/inbox/', check_follow_requests, name='check_follow_requests' ),
-    #path('authors/<str:author_serial>/request_sent', follow_success_page, name='successful_follow' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
 ]

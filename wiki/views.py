@@ -23,7 +23,6 @@ from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
 from .util import validUserName, saveNewAuthor, get_author_id, is_valid_serial, get_logged_author
 from urllib.parse import urlparse
-import uuid
 import requests
 import json
 from django.middleware.csrf import get_token
@@ -59,6 +58,9 @@ class RemotePostReceiver(APIView):
 
 @login_required
 def user_wiki(request, username):
+    '''Process all of the logic pertaining to a given user's wiki page'''
+    
+    
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
@@ -97,6 +99,7 @@ def user_wiki(request, username):
 @require_POST
 @login_required
 def like_entry(request, entry_serial):
+    '''Handles the logic surrounding likeing an entry'''
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = Author.objects.get(user=request.user)
     like, created = Like.objects.get_or_create(entry=entry, user=author)
@@ -199,7 +202,6 @@ def get_authors(request):
             }
     """
   
-
     authors = Author.objects.all()
     serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
     return Response({"type": "authors",
@@ -242,21 +244,6 @@ def get_author(request, author_serial):
     serializer =AuthorSerializer(author)
     return Response(serializer.data)
 
-    # id = get_author_id(request)
-    
-    # if is_valid_serial(id):
-           
-    #     if Author.objects.filter(serial=id).exists():
-                
-    #         author = Author.objects.get(serial=id)
-            
-    #         #####FOR DEBUG#######
-    #         #print(author)
-    #         #####################      
-            
-    #         serializer = AuthorSerializer()
-    #         serializer =AuthorSerializer(author)
-    #         return Response(serializer.data)
 
 
 
@@ -307,86 +294,77 @@ def view_following(request):
 @login_required  
 @require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
+    
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
 
     current_user = request.user
-    print(f"Current user is: {current_user}\n")
     
-    if get_logged_author(current_user):
-        requesting_account = get_logged_author(current_user)
+    requesting_account = get_object_or_404(Author, user=current_user)
+    requested_account = get_object_or_404(Author, serial=author_serial)
+    follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
+    follow_request.summary = str(follow_request)
+
+
+    if requesting_account.is_already_requesting(requested_account):
+            messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
+            return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+            
+    if requesting_account.is_following(requested_account):
+            messages.error(request,f"You already follow {requested_account}, maybe view their profile?")
+            base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+            query_with_follow_status= f"{base_URL}?is_following=True"
+            return redirect(query_with_follow_status)
+                
+    ########CHECKING OUTPUT###############
+    print(f"{str(follow_request)}\n")
+    print(f"REQUESTING AUTHOR: {requesting_account}\n")
+    print(f"AUTHOR REQUESTED: {requested_account}\n")
+    ###################################################   
+            
         
 
-        parsed_serial = uuid.UUID(author_serial)
-
-        try:
-            requested_account = Author.objects.get(serial=parsed_serial)
-
-            follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
-            follow_request.summary = str(follow_request)
-
-            if requesting_account.is_already_requesting(requested_account):
-                messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
-                return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
             
-            if requesting_account.is_following(requested_account):
-                messages.error(request,f"You already follow {requested_account}, maybe view their profile?")
-                base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-                query_with_follow_status= f"{base_URL}?is_following=True"
-                return redirect(query_with_follow_status)
-                
-            
-            
-            ########CHECKING OUTPUT###############
-            print(f"{str(follow_request)}\n")
-            print(f"REQUESTING AUTHOR: {requesting_account}\n")
-            print(f"AUTHOR REQUESTED: {requested_account}\n")
-            ###################################################
+    try:
+        serialized_follow_request = FollowRequestSerializer(
+        follow_request, data={
+        "type":"follow",
+        },partial=True
 
-            inbox_url = f"{requested_account.get_web_url()}/inbox/"
-            print(inbox_url)
+        )
 
+        # Valid follow requests will lead to an attempted saving of the correspondin respective inbox item
+        if serialized_follow_request.is_valid():
+            print("Follow Request serializer is valid")
+
+            # Save follow request to DB
+            saved_follow_request = serialized_follow_request.save()
+
+            #make the inbox JSON content
+            inbox_content = serialized_follow_request.data     
+            newInboxItem = InboxItem(
+                    author=requested_account,
+                    type=InboxObjectType.FOLLOW,
+                    content=inbox_content
+            )
+
+            #Try to save the new follow request as an inbox item
             try:
-                serialized_follow_request = FollowRequestSerializer(
-                    follow_request, data={
-                        "type":"follow",
-                    },partial=True
-
-                )
-
-                if serialized_follow_request.is_valid():
-                    print("Follow Request serializer is valid")
-
-                    # Save follow request to DB
-                    saved_follow_request = serialized_follow_request.save()
-
-                    #make the inbox JSON content
-                    inbox_content = serialized_follow_request.data
-                    
-                    
-                    newInboxItem = InboxItem(
-                        author=requested_account,
-                        type=InboxObjectType.FOLLOW,
-                        content=inbox_content
-                    )
-
-                    try:
-                        newInboxItem.save()
-                        print("Inbox item successfully saved")
+                newInboxItem.save()
                     
                     #Exceptions and structure adjusted using copilot: https://www.bing.com/search?pglt=427&q=copilot&cvid=882b9688f1804581bd4975fbe80acc49&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQDIGCAQQABhAMgYIBRAAGEAyBggGEAAYQDIGCAcQABhAMgYICBAAGEDSAQc5MDJqMGoxqAIAsAIA&FORM=ANNTA1&PC=EDGEDB, "[Adjust the structure of these error messages]", June, 2025
-                    except Exception as e:
+            except Exception as e:
                         saved_follow_request.delete()  # Rollback follow request
                         return HttpResponseServerError(f"Failed to save Inbox Item: {e}")
 
-                else:
-                    return HttpResponseServerError(f"FollowRequest serializer errors: {serialized_follow_request.errors}")
+        else:
+            return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
 
-            except Exception as e:
-                return HttpResponseServerError(f"Failed to validate follow request and inbox item: {e}")
+    except Exception as e:
+                return HttpResponseServerError(f"Failed to save follow request: {e}")
 
-        except Exception as e:
-            return HttpResponseServerError(f"Failed to create follow request: {e}")
+
+
     if requested_account:
         messages.success(request,f"You have successfully requested to follow {requested_account}! :)")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
@@ -396,39 +374,33 @@ def follow_profile(request, author_serial):
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
         
 
-           
-
-@login_required
-def follow_success_page(request, author_serial):
-    
-    if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
-    requestedAuthor = Author.objects.get(serial=author_serial)
-    
-    return render(request,"follow_success.html", {'author':requestedAuthor})
+        
 
 @login_required
 def check_follow_requests(request, username):
+    '''Check for all of the follow  requests of a specific author'''
     
-        if request.user.is_staff or request.user.is_superuser:
-            return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
+    if request.user.is_staff or request.user.is_superuser:
+        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
 
-        requestedAuthor = Author.objects.get(user=request.user)
+    requestedAuthor = Author.objects.get(user=request.user)
         
         
-        incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
-        #print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
+    incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
+    #print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
     
-        if not incoming_follow_requests:
+    if not incoming_follow_requests:
         
-            incoming_follow_requests = []
+        incoming_follow_requests = []
            
 
-        return render(request, 'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
+    return render(request, 'follow_requests.html', {'author':requestedAuthor, "follow_requests": incoming_follow_requests})
 
 @csrf_exempt
 @login_required
 def process_follow_request(request, author_serial, request_id):
+
+    
     
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
@@ -503,20 +475,88 @@ def process_follow_request(request, author_serial, request_id):
          #Set the request state to rejected 
          follow_request.set_request_state(RequestState.REJECTED)
          
-         #SOFT DELETE the follow request so the requester may request again
-         follow_request.is_deleted=True
+         #soft deletes the follow request so the requester may request again
+         follow_request.delete()
    
     
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
 
+@login_required
+@api_view(['GET'])
+def get_local_follow_requests(request, author_serial):   
+    """
+    Get a specific author's follow requests in the application
     
+        Example Usages:
     
-   
+        To retrieve the follow requests:
     
+        Use: "GET /api/authors/{author_serial}/inbox/"
+        
+         - this returns Json in the following format: 
+         
+                {
+                    "type": "follow",      
+                    "summary":"actor wants to follow object",
+                    "actor":{
+                        "type":"follow",
+                        // The rest of the author object for the author who wants to follow
+                    },
+                    "object":{
+                        "type":"follow",
+                        // The rest of the author object for the author they want to follow
+                    }
+                }      
+     """
+    current_user = request.user  
     
+    try: 
+        current_author = get_object_or_404(Author, user=current_user)
+        requested_author = get_object_or_404(Author,serial=author_serial)   
+    except Exception as e:
+        return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
     
+     
+    #If the user is local, make sure they're logged in 
+    if request.user: 
+        
+        if requested_author == current_author:
+            
+     
+            #get and serialize all of the follow requests
+            all_follow_requests = current_author.get_follow_requests_recieved()
+            
+ 
+            try:
+  
+                serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
+                response = serialized_follow_requests.data
+                return Response(response, status=status.HTTP_200_OK)
+        
+            except Exception as e:
+            
+                    return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
+                 
+        else:
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_400_BAD_REQUEST )
+  
+    else:   
+        #for now, all external hosts can make get requests
+        all_follow_requests = current_author.get_follow_requests_recieved()
+        
+        if all_follow_requests:
+                 
+            try:
+                serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
+                response = serialized_follow_requests.data
+                return Response(response, status=status.HTTP_200_OK)
+            
+            except Exception as e:
+                return Response({"Error" : f" We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
+
+        return Response({"type:follow, follows:{}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )
     
     
 
