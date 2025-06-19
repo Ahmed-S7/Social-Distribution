@@ -7,7 +7,8 @@ import traceback
 from rest_framework.response import Response
 from urllib.parse import urlparse
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError
-
+import traceback
+import sys
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
       
@@ -23,18 +24,28 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
+def saveNewAuthor(request, user, username, github=None, profileImage=None, web=None):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
     string_serial = str(serial_id)
     
     try:
+        if request.is_secure():
+            port = 'https'
+        else: 
+            port = 'http'
+
+        host = request.get_host()
+
+        base_id = f"{port}://{host}/s25-project-white/api/authors/{string_serial}"
+        base_web = f"{port}://{host}/s25-project-white/authors/{string_serial}"
+
         newAuthor = Author(
                     
         user = user,
         #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
-        id = f"http://127.0.0.1:8000/s25-project-white/api/authors/{string_serial}",
+        id = base_id,
                     
         displayName = username,
         
@@ -44,14 +55,15 @@ def saveNewAuthor(user, username, github=None, profileImage=None, web=None):
 
         github=github,
         #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
-        web = f"http://127.0.0.1:8000/s25-project-white/authors/{string_serial}" 
+        web =base_web,
         
         )
         newAuthor.save()
         return newAuthor
     
     except Exception as e:
-        print(f"Exception: {e}")
+        print(f"[saveNewAuthor] Exception: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return None
     
     

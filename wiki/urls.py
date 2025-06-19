@@ -40,7 +40,6 @@ urlpatterns = [
 
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
-    path('api/author/<str:author_serial>', get_author, name='get_author'),
     path('api/author/<str:author_serial>/', get_author, name='get_author'),
     path('api/authors/<str:author_serial>/inbox/', get_local_follow_requests, name='get_follow_requests' ),
     

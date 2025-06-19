@@ -130,7 +130,7 @@ def register(request):
             newAuthor = saveNewAuthor(user, username, github, profileImage)
             if newAuthor:
                 return redirect('wiki:login') 
-            raise HttpResponseServerError("Unable to save profile")
+            return HttpResponseServerError("Unable to save profile")
         
         else:
             errorList= []
