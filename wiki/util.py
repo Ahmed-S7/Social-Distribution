@@ -7,7 +7,8 @@ import traceback
 from rest_framework.response import Response
 from urllib.parse import urlparse
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError
-
+import traceback
+import sys
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
       
@@ -61,7 +62,8 @@ def saveNewAuthor(request, user, username, github=None, profileImage=None, web=N
         return newAuthor
     
     except Exception as e:
-        print(f"[saveNewAuthor] Failed to save author: {e}")
+        print(f"[saveNewAuthor] Exception: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return None
     
     
