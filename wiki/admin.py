@@ -7,6 +7,7 @@ from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, Follo
 
 
 class AuthorAdmin(admin.ModelAdmin):
+    '''Follow Request Author following objects'''
     def get_queryset(self, request):
         return Author.all_objects.all()
     list_display = ["id","web","host","serial","displayName", "is_deleted","github","profileImage"]
@@ -16,6 +17,7 @@ class AuthorAdmin(admin.ModelAdmin):
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
+    '''Admin Display For Follow Request following objects'''
     def get_queryset(self, request):
         return FollowRequest.all_objects.all()
     def follow_request(self, obj):
@@ -27,6 +29,7 @@ class FollowRequestAdmin(admin.ModelAdmin):
     list_filter =  ["is_deleted"]
     
 class AuthorFollowingAdmin(admin.ModelAdmin):
+    '''admin display for all author following objects'''
     def get_queryset(self, request):
         return AuthorFollowing.all_objects.all()
     def follow_standing(self, obj):
@@ -36,6 +39,7 @@ class AuthorFollowingAdmin(admin.ModelAdmin):
     
     
 class AuthorFriendsAdmin(admin.ModelAdmin):
+    '''admin display for all author friend objects'''
     def get_queryset(self, request):
         return AuthorFriend.all_objects.all()
 
@@ -47,12 +51,23 @@ class AuthorFriendsAdmin(admin.ModelAdmin):
     list_filter =  ["is_deleted"]
     
     
+class EntryAdmin(admin.ModelAdmin):
+    '''dashboard display for all entries'''
+    def get_queryset(self, request):
+        return Entry.all_objects.all()
+    def entry(self, obj):
+        return str(obj)
+
+    list_display= ['entry','id','author','is_deleted',"title",'content','image','created_at', 'serial','visibility']
+    list_editable = ['author',"title",'content','image', 'serial','visibility']
+    list_filter =  ["is_deleted"]
+    
 admin.site.register(Page)
 admin.site.register(Like)
 admin.site.register(RemotePost)
 admin.site.register(AuthorFollowing, AuthorFollowingAdmin)
 admin.site.register(Author, AuthorAdmin)
-admin.site.register(Entry)
+admin.site.register(Entry, EntryAdmin)
 admin.site.register(FollowRequest, FollowRequestAdmin)
 admin.site.register(AuthorFriend, AuthorFriendsAdmin)
 admin.site.register(InboxItem)

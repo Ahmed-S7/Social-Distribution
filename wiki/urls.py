@@ -20,7 +20,7 @@ urlpatterns = [
     path('<str:username>/wiki/', user_wiki, name='user-wiki'),
     path('<str:username>/profile/', profile_view, name='profile'),
     path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
-
+    path('api/<str:username>/wiki/', user_wiki, name='user-wiki'),
     # Profile related API
     path('api/<str:username>/profile/edit/', edit_profile_api, name='edit_profile_api'),
     path('api/<str:username>/profile/', edit_profile_api, name='edit_profile_api'),

@@ -24,7 +24,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(request, user, username, github=None, profileImage=None, web=None):
+def saveNewAuthor(request, user, username, github, profileImage, web):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
@@ -66,30 +66,7 @@ def saveNewAuthor(request, user, username, github=None, profileImage=None, web=N
         traceback.print_exc(file=sys.stderr)
         return None
     
-    
-def get_author_id(request):
-    
-    absolute_url = request.build_absolute_uri()
-        
-    parsed = urlparse(absolute_url)
-        
-    stringified_url =str(parsed.path)
-        
-    id = stringified_url.strip().split('/')[-1]
-        
-    return id
-    
-def get_logged_author(user):
-    '''get the author that is currently logged in'''
-    try:
-        current_user = user.username
-        current_author = Author.objects.get(displayName=current_user, is_deleted=False)
-        return current_author
-    
-    except Exception as e:
-        print(f"Failed to get current author: {e} ")
-        return False
-          
+
 def is_valid_serial(id):
     
     try:

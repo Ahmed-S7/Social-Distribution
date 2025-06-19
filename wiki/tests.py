@@ -6,6 +6,7 @@ import uuid
 from django.db.models import Q
 from django.urls import reverse
 
+from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
 
 class IdentityTestCase(TestCase):
@@ -221,17 +222,17 @@ class FollowRequestTesting(TestCase):
         
         
         
-        
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
-    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
-    #6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     def test_check_other_inbox(self):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
         url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 400)
         print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
-    
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -240,7 +241,7 @@ class FollowRequestTesting(TestCase):
         #the right sending author
         self.assertContains(response,"sending_author")
         print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
-        
+     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -251,7 +252,7 @@ class FollowRequestTesting(TestCase):
         print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
 
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
-    #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
+    #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
     def test_check_own_follow_requests(self):
         "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -259,6 +260,8 @@ class FollowRequestTesting(TestCase):
         self.assertEqual(response.status_code, 200)
         print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
     
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_follow_after_accept(self):
     
         #post to the follow request processing page with action being accept
@@ -284,8 +287,10 @@ class FollowRequestTesting(TestCase):
         
         #check that the requester now follows the account it requested
         self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
-        print("PASS: ACCEPTED FOLLOW REQUESTS IS WORKING PROPERLY")
-    
+        print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+        
+    #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_reject_follow_request(self):
         #post to the follow request processing page with
         process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.receiving_author.serial, "request_id":self.new_follow_request2.id}) 
@@ -310,7 +315,8 @@ class FollowRequestTesting(TestCase):
     
         print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
    
-    #6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
+    #Following/Friends 6.6 As an author, if I am following another author, and they are following me (only after both follow requests are approved), I want us to be considered friends, so that they can see my friends-only entries.
     def test_friends_created_after_mutual_follow(self):
     
         
@@ -791,3 +797,263 @@ class FriendsOnlyCommentsTesting(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.data['error'], 'Only friends can view comments on friends-only entries')
 
+
+class ReadingTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Create user and authenticate properly
+        self.user = User.objects.create_user(
+            username='test_user',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2',
+            password='test_password2'
+        )
+
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        self.publicEntry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a Public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        self.unlistedEntry = Entry.objects.create(
+            title='Unlisted Entry',
+            content='This is a Unlisted entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="UNLISTED"
+        )
+        self.friendEntry = Entry.objects.create(
+            title='Friend Entry',
+            content='This is a Friend entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="FRIENDS"
+        )
+        self.admin = User.objects.create_superuser(
+            username='admin_user',
+            password='admin_password', 
+            email='admin@ualberta.ca'
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+
+        self.client.login(username='test_user2', password='test_password2')
+        self.client.force_authenticate(user=self.user2)
+
+    # Reading 3.1 As an author, I want a "stream" which shows all the entries I should know about, so I don't have to switch between different pages.
+        # As an author, I want my stream page to show me all the public entries my node knows about, so I can find new people to follow.
+        # As an author, I want my stream page to show me all the unlisted and friends-only entries of all the authors I follow.
+        # As an author, I want my stream page to show me the most recent version of an entry if it has been edited.
+        # As an author, I want my stream page to not show me entries that have been deleted
+    def test_public_entries_in_stream(self):
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+        # author2 follows author for unlisted entries
+        AuthorFollowing.objects.create(follower=self.author2, following=self.author)
+        response = self.client.get(url)
+        titles = [entry["title"] for entry in response.json()]
+        self.assertIn("Unlisted Entry", titles)
+        # author2 and author are friends for friend only entries
+        AuthorFriend.objects.create(friending=self.author, friended=self.author2)
+        response = self.client.get(url)
+        titles = [entry["title"] for entry in response.json()]
+        self.assertIn("Friend Entry", titles)
+
+    # Reading 3.2 As an author, I want my "stream" page to be sorted with the most recent entries first.
+    def test_most_recent_entry(self):
+        new_entry = Entry.objects.create(
+        title='New Entry',
+        content='This should appear first.',
+        author=self.author,
+        serial=uuid.uuid4(),
+        visibility="PUBLIC"
+        )
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, 200)
+        titles = [entry["title"] for entry in response.json()]
+        self.assertEqual(titles[0], "New Entry")
+
+    def tearDown(self):
+        self.client.logout()
+
+class VisibilityTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Create user and authenticate properly
+        self.user = User.objects.create_user(
+            username='test_user',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2',
+            password='test_password2'
+        )
+
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        self.publicEntry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a Public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        self.unlistedEntry = Entry.objects.create(
+            title='Unlisted Entry',
+            content='This is a Unlisted entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="UNLISTED"
+        )
+        self.friendEntry = Entry.objects.create(
+            title='Friend Entry',
+            content='This is a Friend entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="FRIENDS"
+        )
+        self.admin = User.objects.create_superuser(
+            username='admin_user',
+            password='admin_password', 
+            email='admin@ualberta.ca'
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+
+        self.client.login(username='test_author', password='test_password')
+        self.client.force_authenticate(user=self.user2)
+
+    # Visibility 4.1 As an author, I want to be able to make my entries "public", so that everyone can see them.
+    def test_public_entry_visibility(self):
+        url = f'{BASE_PATH}/entry/{self.publicEntry.serial}/'
+        response = self.client.get(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json().get("visibility"), "PUBLIC")
+    
+    # Visibility 4.2 As an author, I want to be able to make my entries "unlisted," so that my followers see them, and anyone with the link can also see them.
+    def test_unlisted_entry_visibility(self):
+        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        response = self.client.get(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json().get("visibility"), "UNLISTED")
+
+    # Visibility 4.3 As an author, I want my friends to see my friends-only, unlisted, and public entries in their stream.
+    def test_friends_only_visibility(self):
+        url = f'{BASE_PATH}/entry/{self.friendEntry.serial}/'
+        response = self.client.get(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json().get("visibility"), "FRIENDS")
+    
+    # Visibility 4.4 As an author, I want anyone following me to see my unlisted and public entries in their stream.
+    def test_following_visibility(self):
+        self.client.logout()
+        self.client.login(username='test_author2', password='test_password2')
+        AuthorFollowing.objects.create(follower=self.author2, following=self.author)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+        self.assertIn("Unlisted Entry", titles)
+
+    # Visibility 4.5 As an author, I want everyone to see my public entries in their stream.
+    def test_public_entry_on_stream(self):
+        self.client.logout()
+        self.client.login(username='test_author2', password='test_password2')
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+
+    # Visibility 4.6 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
+    def test_public_unlisted_entry_link(self):
+        pass
+
+    # Visibility 4.7 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
+    def test_friend_only_entry(self):
+        pass
+
+    # Visibility 4.8 As an author, I don't want anyone except the node admin to see my deleted entries.
+    def test_deleted_entries_visibility(self):
+        self.client.force_authenticate(user=self.user2)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+        self.publicEntry.visibility = "DELETED"
+        self.publicEntry.save()
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertNotIn("Public Entry", titles)
+
+    # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
+    def test_entry_always_visible_to_author(self):
+        url = f'{BASE_PATH}/{self.author.displayName}/profile/'
+        response = self.client.get(url)
+        entries = response.json().get("entries", [])
+        titles = [entry["title"] for entry in entries]
+        self.assertIn("Public Entry", titles)
+        self.assertIn("Unlisted Entry", titles)
+        self.assertIn("Friend Entry", titles)
+
+'''
+class SharingTestCase(TestCase):
+    # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
+    def test_public_unlisted_link(self):
+        pass
+
+    # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
+    def test_push_images_to_other_nodes(self):
+        pass
+
+    #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
+        # Note: this should include all local public entries and all public entries received in any inbox.
+    def test_browse_public_entries(self):
+        pass
+'''

@@ -76,7 +76,7 @@ class Author(BaseModel):
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
      
-    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://white/api/authors/[authorID]"
+    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
      
     host = models.URLField(default=f"http://s25-project-white/api/")
     
@@ -157,6 +157,7 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
+    '''Used to represent entries inside of the application '''
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends Only'),
