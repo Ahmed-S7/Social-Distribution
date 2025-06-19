@@ -1,6 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like
+from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like, Comment, CommentLike
 from django.contrib.auth.models import User
 import uuid
 from django.db.models import Q
@@ -349,7 +349,7 @@ class FollowRequestTesting(TestCase):
     
 
 class LikeEntryTesting(TestCase):
-    # Comments Like User Story 1.1 Testing
+    # Comments/Like User Story 1.2 Testing
     def setUp(self):
         self.client = APIClient()
         
@@ -430,3 +430,160 @@ class LikeEntryTesting(TestCase):
         # Verify only one like exists
         likes = Like.objects.filter(entry=self.entry, user=self.author2)
         self.assertEqual(likes.count(), 1)
+
+class CommentEntryTesting(TestCase):
+    # Comments User Story 1.1 Testing
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create test users
+        self.user1 = User.objects.create_user(
+            username='test_user1',
+            password='test_password1',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2', 
+            password='test_password2'
+        )
+        
+        # Create test authors
+        self.author1 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test1",
+            user=self.user1,
+            displayName='test_author1',
+            description='test_description1',
+            github='https://github.com/test_author1',
+            serial=uuid.uuid4(),
+            web='https://example.com/1',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        self.author2 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test2",
+            user=self.user2,
+            displayName='test_author2', 
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2',
+            profileImage='https://example.com/image2.jpg'
+        )
+        
+        # Create test entry
+        self.entry = Entry.objects.create(
+            title='Test Entry',
+            content='This is a test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+
+    def test_add_comment_success(self):
+        """Test successful comment addition to an entry"""
+        self.client.force_authenticate(user=self.user2)
+        
+        url = f'{BASE_PATH}/entry/{self.entry.serial}/comments/'
+        data = {'content': 'This is a witty reply!'}
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['status'], 'comment_added')
+        self.assertEqual(response.data['message'], 'Comment added successfully')
+        self.assertEqual(response.data['content'], 'This is a witty reply!')
+        self.assertEqual(response.data['author'], 'test_author2')
+        self.assertEqual(response.data['comments_count'], 1)
+        
+        # Verify comment was created in database
+        comment = Comment.objects.filter(entry=self.entry, author=self.author2).first()
+        self.assertIsNotNone(comment)
+        self.assertEqual(comment.content, 'This is a witty reply!')
+        self.assertFalse(comment.is_deleted)
+
+    def test_add_comment_nonexistent_entry(self):
+        """Test commenting on a non-existent entry"""
+        self.client.force_authenticate(user=self.user2)
+        
+        fake_serial = uuid.uuid4()
+        url = f'{BASE_PATH}/entry/{fake_serial}/comments/'
+        data = {'content': 'This should fail'}
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, 404)
+        
+        # Verify no comment was created
+        comments = Comment.objects.filter(author=self.author2)
+        self.assertEqual(comments.count(), 0)
+
+
+class LikeCommentTesting(TestCase):
+    # Comments/Like User Story 1.3 Testing
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create test users
+        self.user1 = User.objects.create_user(
+            username='test_user1',
+            password='test_password1',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2', 
+            password='test_password2'
+        )
+        
+        # Create test authors
+        self.author1 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test1",
+            user=self.user1,
+            displayName='test_author1',
+            description='test_description1',
+            github='https://github.com/test_author1',
+            serial=uuid.uuid4(),
+            web='https://example.com/1',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        self.author2 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test2",
+            user=self.user2,
+            displayName='test_author2', 
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2',
+            profileImage='https://example.com/image2.jpg'
+        )
+        
+        # Create test entry
+        self.entry = Entry.objects.create(
+            title='Test Entry',
+            content='This is a test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        # Create test comment
+        self.comment = Comment.objects.create(
+            entry=self.entry,
+            author=self.author1,
+            content='This is a test comment.'
+        )
+
+    def test_like_comment_success(self):
+        """Test successful like of a comment"""
+        self.client.force_authenticate(user=self.user2)
+        
+        url = f'{BASE_PATH}/comment/{self.comment.id}/like/'
+        response = self.client.post(url)
+        
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['status'], 'liked')
+        self.assertEqual(response.data['message'], 'Comment liked successfully')
+        self.assertEqual(response.data['likes_count'], 1)
+        
+        # Verify like was created in database
+        like = CommentLike.objects.filter(comment=self.comment, user=self.author2).first()
+        self.assertIsNotNone(like)
+        self.assertFalse(like.is_deleted)
+
+

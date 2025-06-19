@@ -795,3 +795,59 @@ def like_entry_api(request, entry_serial):
 
 
 
+@api_view(['POST'])
+def add_comment_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/comments/
+    Add a comment to an entry via API.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    content = request.data.get('content', '').strip()
+    
+    if not content:
+        return Response({
+            "error": "Comment content is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    comment = Comment.objects.create(
+        entry=entry,
+        author=author,
+        content=content
+    )
+    
+    return Response({
+        "status": "comment_added",
+        "message": "Comment added successfully",
+        "comment_id": comment.id,
+        "content": comment.content,
+        "author": author.displayName,
+        "created_at": comment.created_at,
+        "comments_count": entry.comments.count()
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def like_comment_api(request, comment_id):
+    """
+    POST /api/comment/{comment_id}/like/
+    Like a comment via API.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Comment liked successfully",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this comment",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
