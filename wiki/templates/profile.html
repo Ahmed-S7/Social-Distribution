@@ -1,7 +1,11 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
 <section class="author_profile">
-    <img class="profile_image" src="{{ author.profileImage.url }}" alt="{{ author.displayName }}"/>
+    {% if author.image %}
+        <img class="profile_image" src="{{ author.imageProfile.url }}" alt="Post image">
+    {% else %}
+        <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+    {% endif %}
     <h3 class="display_name">{{ author.displayName }}</h3>
     {% if author.description  %}
     <p>{{ author.description }} </p>
@@ -18,7 +22,7 @@
     <button class="logout_button" type="submit" >Logout</button>
     </form>
 
-
+    {% if request.user.is_authenticated %}
     <div class="profile_buttons">
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Go Back to Stream</button>
@@ -36,7 +40,7 @@
         <button type="button">Edit Profile</button>
     </a>
     </div>
-
+    {% endif %}
 
     <h3>Your Entries</h3>
     {% if entries %}
