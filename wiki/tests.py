@@ -61,7 +61,7 @@ class IdentityTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["displayName"], "test_author")
-
+    # As a node admin, I want to be able to add, modify, and delete authors, to fix problems or remove unwanted users.
     def test_consistent_identity_entry(self):
         url = f'{BASE_PATH}/entry/{self.entry.serial}/'
         response = self.client.get(url)
@@ -122,6 +122,8 @@ class IdentityTestCase(TestCase):
 
     def tearDown(self):
         self.client.logout()
+        
+
 
 class PostingTestCase(TestCase):
     pass

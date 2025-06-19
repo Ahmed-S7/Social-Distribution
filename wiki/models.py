@@ -80,13 +80,13 @@ class Author(BaseModel):
     
     web = models.URLField(blank=True, null=False, default=None)
     
-    def get_follow_requests_sent(self) ->list:
+    def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
-        return list(self.requesting.all())
+        return self.requesting.all()
         
-    def get_follow_requests_recieved(self)->list:
+    def get_follow_requests_recieved(self):
         '''Returns a list of all of the follow requests recieved by an author'''
-        return list(self.follow_requests.all())
+        return self.follow_requests.all()
     
     def get_web_url(self):
         '''Get the fully qualified URL to an author's page'''
@@ -196,7 +196,8 @@ class Like(BaseModel):
         ]
 
 class Comment(BaseModel):
-    
+    objects = AppManager()
+    all_objects = models.Manager()
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
