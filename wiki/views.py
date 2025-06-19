@@ -81,15 +81,12 @@ def user_wiki(request, username):
         if friended_id != current_author.id:
             friend_ids.add(friended_id)
 
-    # Combine all visible author IDs (yourself + followed + friends)
-    visible_author_ids = set(followed_ids) | friend_ids | {current_author.id}
-
     entries = Entry.objects.filter(
         ~Q(visibility='DELETED') & (
             Q(visibility='PUBLIC') |
             Q(author=current_author) |
             Q(visibility='FRIENDS', author__id__in=friend_ids) |
-            Q(author__id__in=followed_ids)
+            Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
    
@@ -176,7 +173,7 @@ def get_authors(request):
     
         To get a list of all authors (no pagination):
     
-        Use: "GET http://s25-project-white/api/authors/"
+        Use: "GET /api/authors/"
         
          - this returns Json in the following format: 
          
@@ -226,7 +223,7 @@ def get_author(request, author_serial):
     
         To retrieve the author:
     
-        Use: "GET http://s25-project-white/api/author/{serial}"
+        Use: "GET /api/author/{author_serial}"
         
          - this returns Json in the following format: 
          
@@ -238,27 +235,28 @@ def get_author(request, author_serial):
                     "github": "http://github.com/gjohnson",
                     "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
                     "web": "http://nodeaaaa/authors/{SERIAL}"
-                }
-                  
+                }        
     """
-    
+    # CHANGED FOR TESTING
+    author = get_object_or_404(Author, serial=author_serial)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data)
 
-    id = get_author_id(request)
+    # id = get_author_id(request)
     
-    if is_valid_serial(id):
+    # if is_valid_serial(id):
            
-        if Author.objects.filter(serial=id).exists():
+    #     if Author.objects.filter(serial=id).exists():
                 
-            author = Author.objects.get(serial=id)
+    #         author = Author.objects.get(serial=id)
             
-            #####FOR DEBUG#######
-            #print(author)
-            #####################      
+    #         #####FOR DEBUG#######
+    #         #print(author)
+    #         #####################      
             
-            serializer = AuthorSerializer()
-        
-            serializer =AuthorSerializer(author)
-        return Response(serializer.data)
+    #         serializer = AuthorSerializer()
+    #         serializer =AuthorSerializer(author)
+    #         return Response(serializer.data)
 
 
 
@@ -526,7 +524,7 @@ def process_follow_request(request, author_serial, request_id):
 def check_remote_inbox(request):
     pass
 
-@login_required
+
 def profile_view(request, username):
     """
     View the profile of the currently logged in user.
