@@ -745,3 +745,200 @@ def like_comment(request, comment_id):
 
 
 
+@api_view(['POST'])
+def like_entry_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/like/
+    Like an entry via API.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = Like.objects.get_or_create(entry=entry, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Entry liked successfully",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this entry",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+@api_view(['POST'])
+def add_comment_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/comments/
+    Add a comment to an entry via API.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    content = request.data.get('content', '').strip()
+    
+    if not content:
+        return Response({
+            "error": "Comment content is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    comment = Comment.objects.create(
+        entry=entry,
+        author=author,
+        content=content
+    )
+    
+    return Response({
+        "status": "comment_added",
+        "message": "Comment added successfully",
+        "comment_id": comment.id,
+        "content": comment.content,
+        "author": author.displayName,
+        "created_at": comment.created_at,
+        "comments_count": entry.comments.count()
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def like_comment_api(request, comment_id):
+    """
+    POST /api/comment/{comment_id}/like/
+    Like a comment via API.
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Comment liked successfully",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this comment",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def get_entry_likes_api(request, entry_serial):
+    """
+    GET /api/entry/{entry_serial}/likes/
+    Get likes for a public entry via API.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    
+    # Check if entry is public
+    if entry.visibility != "PUBLIC":
+        return Response({
+            "error": "Entry is not public"
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get all likes for the entry
+    likes = entry.likes.filter(is_deleted=False)
+    
+    # Serialize the likes
+    like_data = []
+    for like in likes:
+        like_data.append({
+            "id": like.id,
+            "author": {
+                "id": like.user.id,
+                "displayName": like.user.displayName
+            }
+        })
+    
+    return Response({
+        "entry_id": entry.serial,
+        "entry_title": entry.title,
+        "total_likes": likes.count(),
+        "likes": like_data
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
+@api_view(['GET'])
+def get_entry_comments_api(request, entry_serial):
+    """
+    GET /api/entry/{entry_serial}/comments/
+    Get comments for an entry via API with visibility control.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    
+    # Get the requesting user's author object if authenticated
+    requesting_author = None
+    if request.user.is_authenticated:
+        try:
+            requesting_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            pass
+    
+    # Check visibility permissions
+    if entry.visibility == "PUBLIC":
+        # Public entries - anyone can view comments
+        pass
+    elif entry.visibility == "FRIENDS":
+        # Friends-only entries - only friends and comment authors can view
+        if not requesting_author:
+            return Response({
+                "error": "Authentication required to view friends-only entry comments"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check if they are friends
+        is_friend = AuthorFriend.objects.filter(
+            Q(friending=entry.author, friended=requesting_author) |
+            Q(friending=requesting_author, friended=entry.author),
+            is_deleted=False
+        ).exists()
+        
+        if not is_friend:
+            return Response({
+                "error": "Only friends can view comments on friends-only entries"
+            }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get all comments for the entry
+    comments = entry.comments.filter(is_deleted=False).order_by('created_at')
+    
+    # Filter comments based on visibility and friendship
+    visible_comments = []
+    for comment in comments:
+        visible_comments.append(comment)
+    
+    # Serialize the comments
+    comment_data = []
+    for comment in visible_comments:
+        comment_data.append({
+            "id": comment.id,
+            "content": comment.content,
+            "author": {
+                "id": comment.author.id,
+                "displayName": comment.author.displayName
+            },
+            "created_at": comment.created_at
+        })
+    
+    return Response({
+        "entry_id": entry.serial,
+        "entry_title": entry.title,
+        "entry_visibility": entry.visibility,
+        "total_comments": len(visible_comments),
+        "comments": comment_data
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
