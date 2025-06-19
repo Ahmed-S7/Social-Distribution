@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Page, Like, RemotePost, Author,AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry
+from .models import Page, Like, RemotePost,RequestState, Author,AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry
 from django.contrib.auth.models import User
 
 class PageSerializer(serializers.ModelSerializer):
@@ -27,11 +27,18 @@ class AuthorSerializer(serializers.ModelSerializer):
         
         
 class FollowRequestSerializer(serializers.ModelSerializer):
-    actor = AuthorSerializer(source="requester")
-    object = AuthorSerializer(source="requested_account")
+    actor = AuthorSerializer(source="requester",required=True)
+    object = AuthorSerializer(source="requested_account", required=True)
+    type = serializers.CharField(required=True)
+    summary = serializers.CharField(required=True, max_length=150)
+    state = serializers.ChoiceField(
+            choices=RequestState.choices,
+            default=RequestState.REQUESTING,
+    )
+
     class Meta:
         model= FollowRequest
-        fields = ["type","summary", "actor", "object"]
+        fields = ["type","state","summary", "actor", "object"]
         
 class AuthorFriendSerializer(serializers.ModelSerializer):
     class Meta:
