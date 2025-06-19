@@ -11,16 +11,27 @@ from django.dispatch import receiver
         
 #The following soft-deletion logic (AppQuerySet, AppManager and BaseModel) was derived from Medium's article: https://medium.com/@tomisinabiodun/implementing-soft-delete-in-django-an-intuitive-guide-5c0f95da7f0d, June 15, 2025
 class AppQuerySet(QuerySet):
+    '''App Query Set that inherits from Django's defalt app query set
+    - enables queries to update to is_deleted instead of hard deletion in the database'''
     def delete(self):
         self.update(is_deleted=True)
   
   
 class AppManager(Manager):
+    '''A manager that exterds from the default django app manager
+        - this manager enables queries to ignore soft-deleted data
+        
+        '''
     def get_queryset(self):
         return AppQuerySet(self.model, using=self._db).exclude(is_deleted=True)
   
   
 class BaseModel(models.Model):
+    '''A model that extends from the Django base model
+     - this model is capable of soft deletion so that deleted entities are still visible in the database  to administors
+     - this way, all deleted data is visible in admin dashboards until permenantly deleted by an administrator
+    
+    '''
     class Meta:
         abstract = True
   
@@ -31,6 +42,7 @@ class BaseModel(models.Model):
         self.save()
         
 class VisibilityOptions(models.TextChoices):
+    '''Visibility Options For Entries Made In The Application'''
     PUBLIC = "public", "Public"
     UNLISTED = "unlisted", "Unlisted"
     FRIENDS_ONLY = "friends_only", "Friends_only"
@@ -190,7 +202,6 @@ class Like(BaseModel):
         constraints = [
             UniqueConstraint(
                 fields=['entry', 'user'],
-                condition=Q(is_deleted=False),
                 name='unique_active_like'
             )
         ]
@@ -211,7 +222,6 @@ class CommentLike(BaseModel):
         constraints = [
             UniqueConstraint(
                 fields=['comment', 'user'],
-                condition=Q(is_deleted=False),
                 name='unique_comment_like'
             )
         ]
@@ -363,6 +373,7 @@ class FollowRequest(BaseModel):
         ]
         
     def get_request_state(self)->str:
+        """returns the state of active follow requests"""
         return self.state
         
     def set_request_state(self, new_state:RequestState):

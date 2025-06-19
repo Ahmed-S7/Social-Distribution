@@ -271,7 +271,6 @@ def view_external_profile(request, author_serial):
         current_author = get_object_or_404(Author, user=request.user) 
         
         follow_status = current_author.is_following(profile_viewing)
-        print(follow_status)
               
         return render(request, "external_profile.html", {"author": profile_viewing, "is_following": follow_status})
     else:
@@ -317,9 +316,9 @@ def follow_profile(request, author_serial):
             return redirect(query_with_follow_status)
                 
     ########CHECKING OUTPUT###############
-    print(f"{str(follow_request)}\n")
-    print(f"REQUESTING AUTHOR: {requesting_account}\n")
-    print(f"AUTHOR REQUESTED: {requested_account}\n")
+    #print(f"{str(follow_request)}\n")
+    #print(f"REQUESTING AUTHOR: {requesting_account}\n")
+    #print(f"AUTHOR REQUESTED: {requested_account}\n")
     ###################################################   
             
         
