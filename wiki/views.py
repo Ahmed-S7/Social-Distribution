@@ -750,6 +750,59 @@ def like_entry_api(request, entry_serial):
     """
     POST /api/entry/{entry_serial}/like/
     Like an entry via API.
+
+    WHEN
+    - Show appreciation for an entry
+    - User Story 1.1 in Comments/Likes
+  
+    HOW
+    1. send a POST request to /api/entry/{entry_serial}/like/
+
+    WHY
+    - Provide a way for authors to show appreciation for content
+    - social interaction between users
+
+    WHY NOT
+    - Dont use if the entry doesn't exist
+    - If you dont appreciate the entry
+
+    Request Fields:
+        None
+
+    Response Fields:
+        status (string): Status of the like attempt. "liked" or "already_liked"
+            - Example: "liked"
+            - Purpose: Indicates the result of the like attempt.
+        message (string): A user-friendly description of the result.
+            - Example: "Entry liked successfully"
+            - Purpose: Displays status in the UI.
+        likes_count (integer): Total number of likes the entry has.
+            - Example: 8
+            - Purpose: To understand how many likes the entry has.
+
+    Example Usage:
+
+        # Example 1: Liking an entry
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "liked",
+            "message": "Entry liked successfully",
+            "likes_count": 8
+        }
+
+        # Example 2: Trying to like an already liked entry
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "already_liked",
+            "message": "You have already liked this entry",
+            "likes_count": 8
+        }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = get_object_or_404(Author, user=request.user)
@@ -778,6 +831,86 @@ def add_comment_api(request, entry_serial):
     """
     POST /api/entry/{entry_serial}/comments/
     Add a comment to an entry via API.
+
+    WHEN
+    - Add thoughts or feedback to an entry
+    - User Story 1.1 in Comments/Likes
+   
+    HOW
+    1. Send a POST request to /api/entry/{entry_serial}/comments/
+    2. Include comment content in the request body
+
+    WHY
+    - Authors can interact with entries and other Authors
+
+    WHY NOT
+    - Don't use if the entry doesn't exist
+    - Don't use with empty or whitespace-only content
+
+    Request Fields:
+        content (string): The comment text content
+            - Example: "Great post! Thanks for sharing."
+            - Purpose: The actual comment text to be displayed
+
+
+    Response Fields:
+        status (string): Status of the comment addition
+            - Example: "comment_added"
+            - Purpose: Indicates the result of the comment attempt.
+        message (string): A description of the result.
+            - Example: "Comment added successfully"
+            - Purpose: Displays status in the UI.
+        comment_id (integer): ID for the comment.
+            - Example: 123
+            - Purpose: Reference the comment for future operations.
+        content (string): The comment text that was added.
+            - Example: "Great post! Thanks for sharing."
+            - Purpose: Confirm the comment content was saved correctly.
+        author (string): Display name of the comment author.
+            - Example: "test_author2"
+            - Purpose: Show who wrote the comment.
+        created_at (string): Timestamp when the comment was created.
+            - Example: "2024-01-15T10:30:00Z"
+            - Purpose: Track when the comment was posted.
+        comments_count (integer): Total number of comments on the entry.
+            - Example: 5
+            - Purpose: Update comment count in the UI.
+
+    Example Usage:
+
+        # Example 1: Adding a comment
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
+        Authorization: Token abc123
+        Content-Type: application/json
+
+        {
+            "content": "Great post! Thanks for sharing."
+        }
+
+        Response:
+        {
+            "status": "comment_added",
+            "message": "Comment added successfully",
+            "comment_id": 123,
+            "content": "Great post! Thanks for sharing.",
+            "author": "test_author2",
+            "created_at": "2024-01-15T10:30:00Z",
+            "comments_count": 5
+        }
+
+        # Example 2: Trying to add empty comment
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
+        Authorization: Token abc123
+        Content-Type: application/json
+
+        {
+            "content": ""
+        }
+
+        Response:
+        {
+            "error": "Comment content is required"
+        }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = get_object_or_404(Author, user=request.user)
@@ -810,7 +943,61 @@ def add_comment_api(request, entry_serial):
 def like_comment_api(request, comment_id):
     """
     POST /api/comment/{comment_id}/like/
-    Like a comment via API.
+    User Story 1.3 in Comments/Likes
+
+    WHEN
+    - Show appreciation for a comment
+    - User Story 1.3 in Comments/Likes
+   
+    HOW
+    1. Ensure the user is authenticated
+    2. Send a POST request to /api/comment/{comment_id}/like/
+
+    WHY
+    - Provide a way for authors to show appreciation for comments
+    - Social interaction between users
+
+    WHY NOT
+    - Don't use if the comment doesn't exist
+    - If you don't appreciate the comment
+
+    Request Fields:
+        None
+
+    Response Fields:
+        status (string): Status of the like attempt. "liked" or "already_liked"
+            - Example: "liked"
+            - Purpose: Indicates the result of the like attempt.
+        message (string): A user-friendly description of the result.
+            - Example: "Comment liked successfully"
+            - Purpose: Displays status in the UI.
+        likes_count (integer): Total number of likes in the comment
+            - Example: 3
+            - Purpose: To understand how many likes the comment has.
+
+    Example Usage:
+
+        # Example 1: Liking a comment
+        POST /api/comment/123/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "liked",
+            "message": "Comment liked successfully",
+            "likes_count": 3
+        }
+
+        # Example 2: Trying to like an already liked comment
+        POST /api/comment/123/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "already_liked",
+            "message": "You have already liked this comment",
+            "likes_count": 3
+        }
     """
     comment = get_object_or_404(Comment, id=comment_id)
     author = get_object_or_404(Author, user=request.user)
@@ -835,7 +1022,73 @@ def like_comment_api(request, comment_id):
 def get_entry_likes_api(request, entry_serial):
     """
     GET /api/entry/{entry_serial}/likes/
-    Get likes for a public entry via API.
+    User Story 1.4 in Comments/Likes
+
+    WHEN
+    - View how many people have liked a public entry
+    - User Story 1.4 in Comments/Likes
+   
+    HOW
+    1. Send a GET request to /api/entry/{entry_serial}/likes/
+
+    WHY
+    - See who appreciates an entry 
+
+    WHY NOT
+    - Dont use if the entry doesn't exist
+
+    Request Fields:
+        None
+
+    Response Fields:
+        entry_id (string): UUID of the entry
+            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
+            - Purpose: Identify the entry being queried
+        entry_title (string): Title of the entry
+            - Example: "My Amazing Post"
+            - Purpose: Display context for the likes
+        total_likes (integer): Total number of likes on the entry
+            - Example: 5
+            - Purpose: Quick summary of engagement
+        likes[] (array): Array of like objects
+            - Example: [{"id": 1, "author": {...}}]
+            - Purpose: list with detaild of who liked the entry
+
+    Example Usage:
+
+        # Example 1: Getting likes for a public entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
+
+        Response:
+        {
+            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
+            "entry_title": "title",
+            "total_likes": 2,
+            "likes": [
+                {
+                    "id": 1,
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test1",
+                        "displayName": "test_author1"
+                    }
+                },
+                {
+                    "id": 2,
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test2",
+                        "displayName": "test_author2"
+                    }
+                }
+            ]
+        }
+
+        # Example 2: Getting likes for a friends-only entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
+
+        Response:
+        {
+            "error": "Entry is not public"
+        }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     
@@ -873,8 +1126,80 @@ def get_entry_likes_api(request, entry_serial):
 @api_view(['GET'])
 def get_entry_comments_api(request, entry_serial):
     """
-    GET /api/entry/{entry_serial}/comments/
+    GET /api/entry/{entry_serial}/comments/view/
     Get comments for an entry via API with visibility control.
+
+    WHEN
+    - View comments on an entry
+    - User Story 1.5 in Comments/Likes
+   
+    HOW
+    1. Send a GET request to /api/entry/{entry_serial}/comments/view/
+
+    WHY
+    - Obtain comments from entries
+
+    WHY NOT
+    - Don't use for entries you don't have permission to view
+
+    Response Fields:
+        entry_id (string): ID of the entry
+            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
+            - Purpose: Identify the entry being queried
+        entry_title (string): title of the entry
+            - Example: "My Amazing Post"
+            - Purpose: Display context for the comments
+        entry_visibility (string): Visibility setting of the entry
+            - Example: "PUBLIC", "FRIENDS", "UNLISTED"
+            - Purpose: Understand entry access level
+        total_comments (integer): Total number of visible comments
+            - Example: 3
+            - Purpose: Quick summary of engagement
+        comments (array): Array of comment objects
+            - Example: [{"id": 1, "content": "...", "author": {...}}]
+            - Purpose: Detailed list of comments
+
+    Example Usage:
+
+        # Example 1: Getting comments on a public entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
+
+        Response:
+        {
+            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
+            "entry_title": "Title",
+            "entry_visibility": "PUBLIC",
+            "total_comments": 2,
+            "comments": [
+                {
+                    "id": 1,
+                    "content": "idk",
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test1",
+                        "displayName": "test_author1"
+                    },
+                    "created_at": "2024-01-15T10:30:00Z"
+                },
+                {
+                    "id": 2,
+                    "content": "comment 2",
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test2",
+                        "displayName": "test_author2"
+                    },
+                    "created_at": "2024-01-15T11:15:00Z"
+                }
+            ]
+        }
+
+        Example 2: Getting comments on a friends-only entry (non-friend)
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "error": "Only frieds can view comments on friends-only entries"
+        }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     
@@ -915,7 +1240,28 @@ def get_entry_comments_api(request, entry_serial):
     # Filter comments based on visibility and friendship
     visible_comments = []
     for comment in comments:
-        visible_comments.append(comment)
+        # Always show comment to its author
+        if requesting_author and comment.author == requesting_author:
+            visible_comments.append(comment)
+            continue
+        
+        # For friends-only entries, only show comments to friends
+        if entry.visibility == "FRIENDS":
+            if requesting_author and requesting_author == entry.author:
+                # Entry author can see all comments
+                visible_comments.append(comment)
+            elif requesting_author:
+                # Check if comment author is a friend
+                is_friend = AuthorFriend.objects.filter(
+                    Q(friending=entry.author, friended=comment.author) |
+                    Q(friending=comment.author, friended=entry.author),
+                    is_deleted=False
+                ).exists()
+                if is_friend:
+                    visible_comments.append(comment)
+        else:
+            # For public entries, show all comments
+            visible_comments.append(comment)
     
     # Serialize the comments
     comment_data = []

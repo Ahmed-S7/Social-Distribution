@@ -355,6 +355,7 @@ class FollowRequestTesting(TestCase):
     
 
 class LikeEntryTesting(TestCase):
+    # Liking An Entry Testing
     # Comments/Like User Story 1.2 Testing
     def setUp(self):
         self.client = APIClient()
@@ -438,6 +439,7 @@ class LikeEntryTesting(TestCase):
         self.assertEqual(likes.count(), 1)
 
 class CommentEntryTesting(TestCase):
+    # Commenting On An Entry Testing
     # Comments User Story 1.1 Testing
     def setUp(self):
         self.client = APIClient()
@@ -522,6 +524,7 @@ class CommentEntryTesting(TestCase):
 
 
 class LikeCommentTesting(TestCase):
+    # Liking An Entry Testing
     # Comments/Like User Story 1.3 Testing
     def setUp(self):
         self.client = APIClient()
@@ -595,6 +598,7 @@ class LikeCommentTesting(TestCase):
 
 class GetEntryLikesTesting(TestCase):
     # View Likes on Public Entry User Story Testing
+    # User Story 1.4 testing
     def setUp(self):
         self.client = APIClient()
         
@@ -697,6 +701,7 @@ class GetEntryLikesTesting(TestCase):
 
 class FriendsOnlyCommentsTesting(TestCase):
     # Friends-Only Entry Comments Visibility User Story Testing
+    # User Story 1.5 testing
     def setUp(self):
         self.client = APIClient()
         
