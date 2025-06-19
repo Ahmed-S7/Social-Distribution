@@ -223,14 +223,17 @@ def get_author(request, author_serial):
     """
     Get a specific author in the application
     
-        Example Usages:
+
+    Use: "GET /api/author/{author_serial}"
     
-        To retrieve the author:
-    
-        Use: "GET /api/author/{author_serial}"
+    Args: 
+        - request: HTTP request information
+        - author_serial: the serial id of the author in the get request
         
-         - this returns Json in the following format: 
-         
+    This returns:
+    
+        - Json in the following format (given the author was found): 
+   
                 {
                     "type":"author",
                     "id":"http://nodeaaaa/api/authors/{serial}",
@@ -239,7 +242,10 @@ def get_author(request, author_serial):
                     "github": "http://github.com/gjohnson",
                     "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
                     "web": "http://nodeaaaa/authors/{SERIAL}"
-                }        
+                }  
+                
+        - returns error details if they arise     
+    
     """
     # CHANGED FOR TESTING
     author = get_object_or_404(Author, serial=author_serial)
