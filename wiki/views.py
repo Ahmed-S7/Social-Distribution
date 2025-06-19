@@ -175,7 +175,7 @@ def get_authors(request):
     
         To get a list of all authors (no pagination):
     
-        Use: "GET http://s25-project-white/api/authors/"
+        Use: "GET /api/authors/"
         
          - this returns Json in the following format: 
          
@@ -225,7 +225,7 @@ def get_author(request, author_serial):
     
         To retrieve the author:
     
-        Use: "GET http://s25-project-white/api/author/{serial}"
+        Use: "GET /api/author/{author_serial}"
         
          - this returns Json in the following format: 
          
@@ -237,8 +237,7 @@ def get_author(request, author_serial):
                     "github": "http://github.com/gjohnson",
                     "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
                     "web": "http://nodeaaaa/authors/{SERIAL}"
-                }
-                  
+                }        
     """
     
 
