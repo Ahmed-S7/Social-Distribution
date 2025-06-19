@@ -8,7 +8,7 @@ from django.urls import reverse
 
 BASE_PATH = "/s25-project-white/api"
 
-'''class IdentityTestCase(TestCase):
+class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
 
@@ -127,7 +127,7 @@ BASE_PATH = "/s25-project-white/api"
 
 class PostingTestCase(TestCase):
     pass
-'''
+
 class FollowRequestTesting(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -224,7 +224,6 @@ class FollowRequestTesting(TestCase):
         
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
-    '''
     #6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     def test_check_other_inbox(self):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
@@ -310,7 +309,7 @@ class FollowRequestTesting(TestCase):
         self.assertEqual(self.new_follow_request2.state, RequestState.REJECTED)
     
         print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
-   '''
+   
     #6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_friends_created_after_mutual_follow(self):
     
