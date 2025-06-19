@@ -767,3 +767,31 @@ def like_comment(request, comment_id):
 
 
 
+@api_view(['POST'])
+def like_entry_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/like/
+    Like an entry via API.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = Like.objects.get_or_create(entry=entry, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Entry liked successfully",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this entry",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend
+from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like
 from django.contrib.auth.models import User
 import uuid
 from django.db.models import Q
@@ -347,3 +347,86 @@ class FollowRequestTesting(TestCase):
     def tearDown(self):
         self.client.logout()    
     
+
+class LikeEntryTesting(TestCase):
+    # Comments Like User Story 1.1 Testing
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create test users
+        self.user1 = User.objects.create_user(
+            username='test_user1',
+            password='test_password1',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2', 
+            password='test_password2'
+        )
+        
+        # Create test authors
+        self.author1 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test1",
+            user=self.user1,
+            displayName='test_author1',
+            description='test_description1',
+            github='https://github.com/test_author1',
+            serial=uuid.uuid4(),
+            web='https://example.com/1',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        self.author2 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test2",
+            user=self.user2,
+            displayName='test_author2', 
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2',
+            profileImage='https://example.com/image2.jpg'
+        )
+        
+        # Create test entry
+        self.entry = Entry.objects.create(
+            title='Test Entry',
+            content='This is a test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+
+    def test_like_entry_success(self):
+        """Test successful like of an entry"""
+        self.client.force_authenticate(user=self.user2)
+        
+        url = f'{BASE_PATH}/entry/{self.entry.serial}/like/'
+        response = self.client.post(url)
+        
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['status'], 'liked')
+        self.assertEqual(response.data['message'], 'Entry liked successfully')
+        self.assertEqual(response.data['likes_count'], 1)
+        
+        # Verify like was created in database
+        like = Like.objects.filter(entry=self.entry, user=self.author2).first()
+        self.assertIsNotNone(like)
+        self.assertFalse(like.is_deleted)
+
+    def test_like_entry_already_liked(self):
+        """Test that user cannot like the same entry twice"""
+        self.client.force_authenticate(user=self.user2)
+        
+        # First like
+        url = f'{BASE_PATH}/entry/{self.entry.serial}/like/'
+        response1 = self.client.post(url)
+        self.assertEqual(response1.status_code, 201)
+        
+        # Second like attempt
+        response2 = self.client.post(url)
+        self.assertEqual(response2.status_code, 400)
+        self.assertEqual(response2.data['status'], 'already_liked')
+        self.assertEqual(response2.data['message'], 'You have already liked this entry')
+        
+        # Verify only one like exists
+        likes = Like.objects.filter(entry=self.entry, user=self.author2)
+        self.assertEqual(likes.count(), 1)
