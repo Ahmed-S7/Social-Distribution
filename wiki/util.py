@@ -24,7 +24,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(request, user, username, github=None, profileImage=None, web=None):
+def saveNewAuthor(request, user, username, github, profileImage, web):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
