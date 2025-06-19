@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem
+from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -109,6 +109,7 @@ def like_entry(request, entry_serial):
 
     return redirect('wiki:user-wiki', username=request.user.username)
   
+
   
 
 def register(request):
@@ -417,7 +418,7 @@ def check_follow_requests(request, username):
         
         
         incoming_follow_requests =FollowRequest.objects.filter(requested_account=requestedAuthor, state=RequestState.REQUESTING,is_deleted=False).order_by('-created_at') 
-        print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
+        #print(f"I HAVE {len(incoming_follow_requests)} FOLLOW REQUESTS")
     
         if not incoming_follow_requests:
         
@@ -457,7 +458,6 @@ def process_follow_request(request, author_serial, request_id):
             "following":new_following.following.id,
         }, partial=True)
         
-        print(new_following_serializer)
         if new_following_serializer.is_valid():
             try:
                 new_following_serializer.save()
@@ -465,7 +465,7 @@ def process_follow_request(request, author_serial, request_id):
                 print(e)
                 return check_follow_requests(request, request.user.username)
     
-               # return HttpResponseServerError("Unable to accept follow request, make sure this author does not already follow you.")
+        
 
         else:
             
@@ -627,7 +627,8 @@ def create_entry(request):
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     is_owner = (entry.author.user == request.user)
-    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner})
+    comments = entry.comments.filter(is_deleted=False).order_by('created_at')
+    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
 
 @login_required
 def edit_entry(request, entry_serial):
@@ -656,6 +657,17 @@ def edit_entry(request, entry_serial):
     return render(request, 'edit_entry.html', {'entry': entry})
 
 
+@login_required
+def delete_entry(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial, author__user=request.user)
+    
+    if request.method == 'POST':
+        entry.delete()  # This should soft-delete because of BaseModel
+        messages.success(request, "Entry deleted successfully.")
+        return redirect('wiki:user-wiki', username=request.user.username)
+    
+    return render(request, 'confirm_delete.html', {'entry': entry})
+
 @api_view(['GET', 'PUT'])
 def entry_detail_api(request, entry_serial):
     """
@@ -677,79 +689,39 @@ def entry_detail_api(request, entry_serial):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''IGNORE FOR NOW, FOR API IT MAY BECOME USEFUL
-                    
-                    try:
-                        response = requests.post(
-                            inbox_url,
-                            json=serial_follow_data,
-                            headers={'Content-Type': 'application/json'}
-                        )
-
-                        if response.status_code == 201:
-                            print("SUCCEEDED TO POST THE REQUEST")
-
-                            # Save to our local inbox
-                            newInboxItem = InboxItem(
-                                author=requested_account,
-                                type=InboxObjectType.FOLLOW,
-                                content=serial_follow_data
-                            )
-                            newInboxItem.save()
-                            serialized_follow_request.save()
-
-                            print("sent the follow request to recipient inbox")
-                        else:
-                            print(f"Failed with status {response.status_code}")
-                            print(f"Response: {response.text}")
-                            return HttpResponseServerError("Remote inbox rejected the follow request.")
-
-                    except Exception as e:
-                        print(f"Failed to send request: {e}")
-                        return HttpResponseServerError(f"Failed to send request: {e}")
-
-                
+@require_POST
+@login_required
+def add_comment(request, entry_serial):
+    """
+    Add a comment to an entry.
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    content = request.POST.get('content', '').strip()
     
-            except Exception as e:
-         
-                return HttpResponseServerError(f"Unexpected error occurred: {e}")
-        except Exception as e:
-            
-                return HttpResponseServerError(f"Unexpected error occurred: {e}")
-            
-    return redirect("wiki:successful_follow", author_serial=author_serial)
-    #return redirect('wiki:successful_follow', author_serial=author_serial)'''
+    if content:
+        comment = Comment.objects.create(
+            entry=entry,
+            author=author,
+            content=content
+        )
+    return redirect('wiki:entry_detail', entry_serial=entry_serial)
+
+
+
+@require_POST
+@login_required
+def like_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = Author.objects.get(user=request.user)
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+
+    if not created:
+        like.delete()  # Toggle like off
+
+
+    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+
+
+
+
