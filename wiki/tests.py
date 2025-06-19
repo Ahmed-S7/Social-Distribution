@@ -587,3 +587,207 @@ class LikeCommentTesting(TestCase):
         self.assertFalse(like.is_deleted)
 
 
+class GetEntryLikesTesting(TestCase):
+    # View Likes on Public Entry User Story Testing
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create test users
+        self.user1 = User.objects.create_user(
+            username='test_user1',
+            password='test_password1',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2', 
+            password='test_password2'
+        )
+        self.user3 = User.objects.create_user(
+            username='test_user3',
+            password='test_password3'
+        )
+        
+        # Create test authors
+        self.author1 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test1",
+            user=self.user1,
+            displayName='test_author1',
+            description='test_description1',
+            github='https://github.com/test_author1',
+            serial=uuid.uuid4(),
+            web='https://example.com/1',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        self.author2 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test2",
+            user=self.user2,
+            displayName='test_author2', 
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        self.author3 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test3",
+            user=self.user3,
+            displayName='test_author3',
+            description='test_description3',
+            github='https://github.com/test_author3',
+            serial=uuid.uuid4(),
+            web='https://example.com/3',
+            profileImage='https://example.com/image1.jpg'
+        )
+        
+        # Create test entries
+        self.public_entry = Entry.objects.create(
+            title='Public Test Entry',
+            content='This is a public test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        self.private_entry = Entry.objects.create(
+            title='Private Test Entry',
+            content='This is a private test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="FRIENDS"
+        )
+
+    def test_get_entry_likes_success(self):
+        """Test successful retrieval of likes for a public entry"""
+        # Create some likes first
+        Like.objects.create(entry=self.public_entry, user=self.author2)
+        Like.objects.create(entry=self.public_entry, user=self.author3)
+        
+        url = f'{BASE_PATH}/entry/{self.public_entry.serial}/likes/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(str(response.data['entry_id']), str(self.public_entry.serial))
+        self.assertEqual(response.data['entry_title'], 'Public Test Entry')
+        self.assertEqual(response.data['total_likes'], 2)
+        self.assertEqual(len(response.data['likes']), 2)
+        
+        # Verify like data structure
+        like = response.data['likes'][0]
+        self.assertIn('id', like)
+        self.assertIn('author', like)
+        self.assertIn('id', like['author'])
+        self.assertIn('displayName', like['author'])
+
+    def test_get_entry_likes_private_entry(self):
+        """Test that non-public entries return 403 error"""
+        url = f'{BASE_PATH}/entry/{self.private_entry.serial}/likes/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['error'], 'Entry is not public')
+
+
+
+class FriendsOnlyCommentsTesting(TestCase):
+    # Friends-Only Entry Comments Visibility User Story Testing
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create test users
+        self.user1 = User.objects.create_user(
+            username='test_user1',
+            password='test_password1',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2', 
+            password='test_password2'
+        )
+        self.user3 = User.objects.create_user(
+            username='test_user3',
+            password='test_password3'
+        )
+        
+        # Create test authors
+        self.author1 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test1",
+            user=self.user1,
+            displayName='test_author1',
+            description='test_description1',
+            github='https://github.com/test_author1',
+            serial=uuid.uuid4(),
+            web='https://example.com/1',
+            profileImage=None
+        )
+        
+        self.author2 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test2",
+            user=self.user2,
+            displayName='test_author2', 
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2',
+            profileImage=None
+        )
+        
+        self.author3 = Author.objects.create(
+            id="http://s25-project-white/api/authors/test3",
+            user=self.user3,
+            displayName='test_author3',
+            description='test_description3',
+            github='https://github.com/test_author3',
+            serial=uuid.uuid4(),
+            web='https://example.com/3',
+            profileImage=None
+        )
+        
+        
+        # Create friends only entries
+        self.friends_entry = Entry.objects.create(
+            title='Friends-Only Test Entry',
+            content='This is a friends-only test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="FRIENDS"
+        )
+        
+        # Create friendship between author1 and author2
+        self.friendship = AuthorFriend.objects.create(
+            friending=self.author1,
+            friended=self.author2
+        )
+        
+        # Create comments on friends-only entry
+        self.comment1 = Comment.objects.create(
+            entry=self.friends_entry,
+            author=self.author2,  # Friend
+            content='This is a comment from a friend.'
+        )
+
+    def test_friends_can_view(self):
+        """Test that friends can view comments on friends-only entries"""
+        self.client.force_authenticate(user=self.user2)  # Friend
+        
+        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['entry_visibility'], 'FRIENDS')
+        self.assertEqual(response.data['total_comments'], 1)  # Only friend's comment visible
+        
+        # Verify only friend's comment is visible
+        comment = response.data['comments'][0]
+        self.assertEqual(comment['content'], 'This is a comment from a friend.')
+        self.assertEqual(comment['author']['displayName'], 'test_author2')
+
+    def test_non_friend_cannot_view(self):
+        """Test that non-friends cannot view comments on friends-only entries"""
+        self.client.force_authenticate(user=self.user3)  # Non-friend
+        
+        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['error'], 'Only friends can view comments on friends-only entries')
+
