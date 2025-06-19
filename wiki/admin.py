@@ -7,27 +7,18 @@ from .models import Page, Like, RemotePost,InboxItem, Author, FollowRequest, Aut
 
 
 class AuthorAdmin(admin.ModelAdmin):
-    
-    def get_queryset(self, request):
-        return Author.all_objects.all()
-    
     list_display = ["id","web","host","displayName", "is_deleted","github","profileImage"]
     list_filter =  ["is_deleted", "host"]
     list_editable = ['displayName', 'github', "is_deleted", "profileImage"]
+    
     search_fields = ["displayName", "github"]
  
     
 class FollowRequestAdmin(admin.ModelAdmin):
-    def get_queryset(self, request):
-        return FollowRequest.all_objects.all()
-    
     list_display = ["requester", "requested_account", "state", "is_deleted","created_at"]
     list_editable = ["state", "is_deleted"]
     
 class AuthorFollowingAdmin(admin.ModelAdmin):
-    def get_queryset(self, request):
-        return AuthorFollowing.all_objects.all()
-    
     list_display= ["id",'follower','following']
     search_fields= ['follower__displayName']
     
