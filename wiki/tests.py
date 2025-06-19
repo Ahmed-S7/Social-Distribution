@@ -1,6 +1,6 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Author, Entry
+from .models import Author, Entry,FollowRequest, RequestState
 from django.contrib.auth.models import User
 import uuid
 from django.urls import reverse
@@ -132,21 +132,21 @@ class FollowRequestTesting(TestCase):
         self.client = APIClient()
 
         # Create user and authenticate properly
-        self.user = User.objects.create_user(
+        self.requesting_user = User.objects.create_user(
             username='test_user',
             password='test_password',
         )
-        self.user2 = User.objects.create_user(
+        self.receiving_user = User.objects.create_user(
             username='test_user2',
             password='test_password2'
         )
         # Proper authentication for Django views
         self.client.login(username='test_user', password='test_password')
         
-        self.author = Author.objects.create(
+        self.requesting_author = Author.objects.create(
             id=1,
-            user=self.user,
-            displayName='test_author',
+            user=self.requesting_user,
+            displayName='sending_author',
             description='test_description',
             github='https://github.com/test_author',
             serial=uuid.uuid4(),
@@ -158,23 +158,55 @@ class FollowRequestTesting(TestCase):
             password='admin_password', 
             email='admin@ualberta.ca'
         )
-        self.client.force_authenticate(user=self.user2)
+        self.client.force_authenticate(user=self.receiving_user)
         
-        self.author2 = Author.objects.create(
+        self.receiving_author = Author.objects.create(
             id=2,
-            user=self.user2,
-            displayName='test_author2',
+            user=self.receiving_user,
+            displayName='receiving_author2',
             description='test_description2',
             github='https://github.com/test_author2',
             serial=uuid.uuid4(),
             web='https://example.com/2'
         )
         
+        self.new_follow_request= FollowRequest.objects.create(
+            requester=self.requesting_author,
+            requested_account=self.receiving_author
+        )
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
-    def test_accept_follow_request(self):
-        "/s25-project-white/api"
-        url = f'{BASE_PATH}/authors/{self.author.serial}/inbox/'
+    def test_check_unavailable_inbox(self):
+        "should return 400 because only authenticated users should be able to check their own inbox (not the requesting author)"
+        url = f'{BASE_PATH}/authors/{self.requesting_author.serial}/inbox/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 400)
+    
+    def test_check_correct_sending_author(self):
+        "the author should be the correct sending author"
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        response = self.client.get(url)
+        
+        #the right sending author
+        self.assertContains(response,"sending_author")
+        
+    def check_correct_initial_state(self):
+        "state should be requesting when initially sent"
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        response = self.client.get(url)
+        
+        self.assertContains(response, "state")
+        self.assertEqual(response.data[0]["state"], RequestState.REQUESTING)   
+    
+    
+    #6.4 As an author, I want to know if I have "follow requests," so I can approve them.
+    def test_check_own_follow_requests(self):
+        "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
         response = self.client.get(url)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        
+    def tearDown(self):
+        self.client.logout()    
+    

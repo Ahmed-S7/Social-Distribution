@@ -31,7 +31,7 @@ class FollowRequestSerializer(serializers.ModelSerializer):
     object = AuthorSerializer(source="requested_account")
     class Meta:
         model= FollowRequest
-        fields = ["type","summary", "actor", "object"]
+        fields = ["type","state","summary", "actor", "object"]
         
 class AuthorFriendSerializer(serializers.ModelSerializer):
     class Meta:
