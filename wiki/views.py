@@ -120,9 +120,7 @@ def like_entry(request, entry_serial):
         like.delete()  # Toggle like off
 
     return redirect('wiki:user-wiki', username=request.user.username)
-  
-
-  
+   
 
 def register(request):
     """ creates a new user account """
@@ -144,7 +142,7 @@ def register(request):
             user = User.objects.create_user(username=username, password=password)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(user, username, github, profileImage)
+            newAuthor = saveNewAuthor(request, user, username, github, profileImage, web=None)
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
