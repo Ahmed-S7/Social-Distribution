@@ -269,14 +269,24 @@ def view_external_profile(request, author_serial):
    
     if  Author.objects.filter(serial=author_serial).exists():
         profile_viewing = Author.objects.get(serial=author_serial)
-        current_author = get_object_or_404(Author, user=request.user) 
+        author = get_object_or_404(Author, user=request.user) 
         
-        follow_status = current_author.is_following(profile_viewing)
-        
-        if current_author.is_friends_with(profile_viewing):
-            return render(request, "external_profile.html", {"author": profile_viewing, "is_a_friend": True})     
+        is_following = author.is_following(profile_viewing)
+        followers = profile_viewing.followers.all()#stores all of the followers a given author has
+        following = profile_viewing.following.all()#stores all of the followers a given author has
+        all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
+        is_currently_requesting = author.is_already_requesting(profile_viewing)
+        print(is_currently_requesting)
+        is_a_friend = author.is_friends_with(profile_viewing)
+        # VISUAL REPRESENTATION TEST
+        #print("Entries:", all_entries)
+        #print("followers:", followers)
+        #print("following:", following)
+        #print(is_a_friend)
+      
+    
 
-        return render(request, "external_profile.html", {"author": profile_viewing, "is_following": follow_status})
+        return render(request, "external_profile.html", {'author': profile_viewing, 'entries': all_entries, "followers": followers, "follower_count": len(followers), "is_following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries), "is_a_friend": is_a_friend, "is_currently_requesting":is_currently_requesting})
     else:
         return HttpResponseRedirect("wiki:view_authors")
         
@@ -300,20 +310,24 @@ def follow_profile(request, author_serial):
     requested_account = get_object_or_404(Author, serial=author_serial)
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
-
+    print(requesting_account)
+    print(requested_account)
     if requesting_account.is_friends_with(requested_account):
+        print("they are friends")
         messages.error(request,f"You are friends with {requested_account}, this button will eventually allow you to unfriend a user in a future patch.")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-
-    if requesting_account.is_already_requesting(requested_account):
-        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-            
+   
     if requesting_account.is_following(requested_account):
         messages.error(request,f"You already follow {requested_account}, this button will allow you to unfollow a profile in a future patch.")
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?is_following=True"
         return redirect(query_with_follow_status)
+    
+    if requesting_account.is_already_requesting(requested_account):
+        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request. In a future patch, this button will allow you to remove a follow request.")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+            
+   
             
     try:
         serialized_follow_request = FollowRequestSerializer(
@@ -436,7 +450,7 @@ def process_follow_request(request, author_serial, request_id):
         else:
             
             return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
-            
+           
         # check if there is now a mutual following
         if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
 
@@ -551,7 +565,23 @@ def profile_view(request, username):
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
     entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
-    return render(request, 'profile.html', {'author': author, 'entries': entries})
+    
+    followers = author.followers.all()#stores all of the followers a given author has
+    following = author.following.all()#stores all of the followers a given author has
+    friends_a = author.friend_a.all()
+    friends_b = author.friend_b.all()
+    total_friends = (friends_a | friends_b)
+    friend_count=len(total_friends)
+    all_entries = author.get_all_entries()#stores all of the user's entries
+    
+    # VISUAL REPRESENTATION TEST
+    #print("Entries:", all_entries)
+    #print("followers:", followers)
+    #print("following:", following)
+    
+    
+    
+    return render(request, 'profile.html', {'author': author, 'entries': entries, "followers": followers, "follower_count": len(followers), "following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries),"friend_count":friend_count,"friends":total_friends} )
 
 @login_required
 def edit_profile(request, username):

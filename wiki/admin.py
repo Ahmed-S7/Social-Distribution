@@ -32,9 +32,12 @@ class AuthorFollowingAdmin(admin.ModelAdmin):
     '''admin display for all author following objects'''
     def get_queryset(self, request):
         return AuthorFollowing.all_objects.all()
+    
     def follow_standing(self, obj):
         return str(obj)
-    list_display= ["follow_standing","id",'follower','following']
+    
+    list_display= ["follow_standing","is_deleted","id",'follower','following']
+    list_editable=["is_deleted"]
     search_fields= ['follower__displayName']
     
     
@@ -43,10 +46,10 @@ class AuthorFriendsAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return AuthorFriend.all_objects.all()
 
-    def friendship_update(self, obj):
+    def friendship_description(self, obj):
         return str(obj)
     
-    list_display= ['friendship_update',"id",'friended','friending']
+    list_display= ['friendship_description',"id",'friended','friending']
     search_fields= ['friending__displayName','friended__displayName']
     list_filter =  ["is_deleted"]
     
