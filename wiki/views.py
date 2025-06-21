@@ -21,7 +21,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import validUserName, saveNewAuthor, get_author_id, is_valid_serial, get_logged_author
+from .util import validUserName, saveNewAuthor
 from urllib.parse import urlparse
 import requests
 import json
@@ -103,7 +103,15 @@ def user_wiki(request, username):
 @require_POST
 @login_required
 def like_entry(request, entry_serial):
-    '''Handles the logic surrounding likeing an entry'''
+    '''Handles the logic surrounding liking an entry
+
+       Args:
+            - Request: HTTP request information
+            - Entry_serial: The serial id of the entry 
+    
+        Returns: HTTP404 if any objects are not found, or simply redirect to the user's wiki stream
+
+    '''
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = Author.objects.get(user=request.user)
     like, created = Like.objects.get_or_create(entry=entry, user=author)
@@ -112,9 +120,7 @@ def like_entry(request, entry_serial):
         like.delete()  # Toggle like off
 
     return redirect('wiki:user-wiki', username=request.user.username)
-  
-
-  
+   
 
 def register(request):
     """ creates a new user account """
@@ -136,7 +142,7 @@ def register(request):
             user = User.objects.create_user(username=username, password=password)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(user, username, github, profileImage)
+            newAuthor = saveNewAuthor(request, user, username, github, profileImage, web=None)
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -176,13 +182,9 @@ def get_authors(request):
     """
     Gets the list of all authors on the application
     
-        Example Usages:
-    
-        To get a list of all authors (no pagination):
-    
-        Use: "GET /api/authors/"
+    Use: "GET /api/authors/"
         
-         - this returns Json in the following format: 
+    This returns Json in the following format: 
          
              {
                 "type": "authors",      
@@ -209,13 +211,7 @@ def get_authors(request):
     authors = Author.objects.all()
     serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
     return Response({"type": "authors",
-                        "authors":serializer.data})    
-
-
-
-
-
-
+                        "authors":serializer.data})  
 
 
 
@@ -225,14 +221,17 @@ def get_author(request, author_serial):
     """
     Get a specific author in the application
     
-        Example Usages:
+
+    Use: "GET /api/author/{author_serial}"
     
-        To retrieve the author:
-    
-        Use: "GET /api/author/{author_serial}"
+    Args: 
+        - request: HTTP request information
+        - author_serial: the serial id of the author in the get request
         
-         - this returns Json in the following format: 
-         
+    This returns:
+    
+        - Json in the following format (given the author was found): 
+   
                 {
                     "type":"author",
                     "id":"http://nodeaaaa/api/authors/{serial}",
@@ -241,7 +240,10 @@ def get_author(request, author_serial):
                     "github": "http://github.com/gjohnson",
                     "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
                     "web": "http://nodeaaaa/authors/{SERIAL}"
-                }        
+                }  
+                
+        - returns error details if they arise     
+    
     """
     # CHANGED FOR TESTING
     author = get_object_or_404(Author, serial=author_serial)
@@ -249,17 +251,10 @@ def get_author(request, author_serial):
     return Response(serializer.data)
 
 
-
-
-
 @login_required   
 @require_GET 
 def view_authors(request):
     current_user = request.user
-   
-    #######DEBUGGING PURPOSES##########
-    #print(current_user)
-    ###################################
     
     #retrieve all authors except for the current author
     authors = Author.objects.exclude(user=current_user)
@@ -274,30 +269,31 @@ def view_external_profile(request, author_serial):
    
     if  Author.objects.filter(serial=author_serial).exists():
         profile_viewing = Author.objects.get(serial=author_serial)
-        current_author = get_object_or_404(Author, user=request.user) 
+        author = get_object_or_404(Author, user=request.user) 
         
-        follow_status = current_author.is_following(profile_viewing)
-        
-        
-        
-        if current_author.is_friends_with(profile_viewing):
-            return render(request, "external_profile.html", {"author": profile_viewing, "is_a_friend": True})     
+        is_following = author.is_following(profile_viewing)
+        followers = profile_viewing.followers.all()#stores all of the followers a given author has
+        following = profile_viewing.following.all()#stores all of the followers a given author has
+        all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
+        is_currently_requesting = author.is_already_requesting(profile_viewing)
+        print(is_currently_requesting)
+        is_a_friend = author.is_friends_with(profile_viewing)
+        # VISUAL REPRESENTATION TEST
+        #print("Entries:", all_entries)
+        #print("followers:", followers)
+        #print("following:", following)
+        #print(is_a_friend)
+      
+    
 
-        return render(request, "external_profile.html", {"author": profile_viewing, "is_following": follow_status})
+        return render(request, "external_profile.html", {'author': profile_viewing, 'entries': all_entries, "followers": followers, "follower_count": len(followers), "is_following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries), "is_a_friend": is_a_friend, "is_currently_requesting":is_currently_requesting})
     else:
         return HttpResponseRedirect("wiki:view_authors")
         
-        
-        
-        
-  
-    
- 
-    
+           
     
 @login_required    
 def view_following(request):
-    
     pass
  
 
@@ -314,29 +310,24 @@ def follow_profile(request, author_serial):
     requested_account = get_object_or_404(Author, serial=author_serial)
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
-
+    print(requesting_account)
+    print(requested_account)
     if requesting_account.is_friends_with(requested_account):
+        print("they are friends")
         messages.error(request,f"You are friends with {requested_account}, this button will eventually allow you to unfriend a user in a future patch.")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-
-    if requesting_account.is_already_requesting(requested_account):
-        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request.")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-            
+   
     if requesting_account.is_following(requested_account):
         messages.error(request,f"You already follow {requested_account}, this button will allow you to unfollow a profile in a future patch.")
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?is_following=True"
         return redirect(query_with_follow_status)
+    
+    if requesting_account.is_already_requesting(requested_account):
+        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request. In a future patch, this button will allow you to remove a follow request.")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
             
-    ########CHECKING OUTPUT###############
-    #print(f"{str(follow_request)}\n")
-    #print(f"REQUESTING AUTHOR: {requesting_account}\n")
-    #print(f"AUTHOR REQUESTED: {requested_account}\n")
-    ###################################################   
-            
-        
-
+   
             
     try:
         serialized_follow_request = FollowRequestSerializer(
@@ -411,9 +402,17 @@ def check_follow_requests(request, username):
 @csrf_exempt
 @login_required
 def process_follow_request(request, author_serial, request_id):
-
-    
-    
+    '''
+        Args: 
+        
+            request: the HTTP request information,
+            serial: the author's serial id, 
+            request_id: the follow request's IDS
+            
+        Returns: HTTPResponseError for any issues, a redirection otherwise
+        
+    '''
+   
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
     requestedAuthor = Author.objects.get(serial=author_serial)
@@ -447,13 +446,11 @@ def process_follow_request(request, author_serial, request_id):
             except Exception as e:
                 print(e)
                 return check_follow_requests(request, request.user.username)
-    
-        
 
         else:
             
             return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
-            
+           
         # check if there is now a mutual following
         if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
 
@@ -471,8 +468,7 @@ def process_follow_request(request, author_serial, request_id):
                 
             else:
                 
-                return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")
-                
+                return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")      
                       
     else:
         #if follow request is denied,
@@ -484,13 +480,10 @@ def process_follow_request(request, author_serial, request_id):
          except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-         #Set the request state to rejected 
+         #Reject the follow request and delete (soft) it 
          follow_request.set_request_state(RequestState.REJECTED)
          
-         #soft deletes the follow request so the requester may request again
          follow_request.delete()
-   
-    
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
@@ -501,16 +494,13 @@ def get_local_follow_requests(request, author_serial):
     """
     Get a specific author's follow requests in the application
     
-        Example Usages:
-    
-        To retrieve the follow requests:
-    
-        Use: "GET /api/authors/{author_serial}/inbox/"
-        
-         - this returns Json in the following format: 
+    Use: "GET /api/authors/{author_serial}/inbox/"
+
+    returns Json in the following format: 
          
                 {
-                    "type": "follow",      
+                    "type": "follow",
+                    "state": "requesting" //default is requesting, is one of the options in [requesting, accepted or rejected]      
                     "summary":"actor wants to follow object",
                     "actor":{
                         "type":"follow",
@@ -530,44 +520,33 @@ def get_local_follow_requests(request, author_serial):
     except Exception as e:
         return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
     
-     
     #If the user is local, make sure they're logged in 
     if request.user: 
         
         if requested_author == current_author:
-            
-     
-            #get and serialize all of the follow requests
-            all_follow_requests = current_author.get_follow_requests_recieved()
-            
- 
-            try:
   
+            #get and serialize all of the follow requests
+            all_follow_requests = current_author.get_follow_requests_recieved() 
+            try:
                 serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
                 response = serialized_follow_requests.data
                 return Response(response, status=status.HTTP_200_OK)
         
             except Exception as e:
-            
-                    return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
-                 
+                    return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_400_BAD_REQUEST )
-  
     else:   
         #for now, all external hosts can make get requests
         all_follow_requests = current_author.get_follow_requests_recieved()
         
-        if all_follow_requests:
-                 
+        if all_follow_requests:  
             try:
                 serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
                 response = serialized_follow_requests.data
                 return Response(response, status=status.HTTP_200_OK)
-            
             except Exception as e:
                 return Response({"Error" : f" We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
-
         return Response({"type:follow, follows:{}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )
     
     
@@ -586,10 +565,27 @@ def profile_view(request, username):
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
     entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
-    return render(request, 'profile.html', {'author': author, 'entries': entries})
+    
+    followers = author.followers.all()#stores all of the followers a given author has
+    following = author.following.all()#stores all of the followers a given author has
+    friends_a = author.friend_a.all()
+    friends_b = author.friend_b.all()
+    total_friends = (friends_a | friends_b)
+    friend_count=len(total_friends)
+    all_entries = author.get_all_entries()#stores all of the user's entries
+    
+    # VISUAL REPRESENTATION TEST
+    #print("Entries:", all_entries)
+    #print("followers:", followers)
+    #print("following:", following)
+    
+    
+    
+    return render(request, 'profile.html', {'author': author, 'entries': entries, "followers": followers, "follower_count": len(followers), "following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries),"friend_count":friend_count,"friends":total_friends} )
 
 @login_required
 def edit_profile(request, username):
+
     try:
         author = Author.objects.get(user__username=username)
     except Author.DoesNotExist:
@@ -775,6 +771,549 @@ def like_comment(request, comment_id):
 
 
     return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+
+
+
+
+@api_view(['POST'])
+def like_entry_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/like/
+    Like an entry via API.
+
+    WHEN
+    - Show appreciation for an entry
+    - User Story 1.1 in Comments/Likes
+  
+    HOW
+    1. send a POST request to /api/entry/{entry_serial}/like/
+
+    WHY
+    - Provide a way for authors to show appreciation for content
+    - social interaction between users
+
+    WHY NOT
+    - Dont use if the entry doesn't exist
+    - If you dont appreciate the entry
+
+    Request Fields:
+        None
+
+    Response Fields:
+        status (string): Status of the like attempt. "liked" or "already_liked"
+            - Example: "liked"
+            - Purpose: Indicates the result of the like attempt.
+        message (string): A user-friendly description of the result.
+            - Example: "Entry liked successfully"
+            - Purpose: Displays status in the UI.
+        likes_count (integer): Total number of likes the entry has.
+            - Example: 8
+            - Purpose: To understand how many likes the entry has.
+
+    Example Usage:
+
+        # Example 1: Liking an entry
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "liked",
+            "message": "Entry liked successfully",
+            "likes_count": 8
+        }
+
+        # Example 2: Trying to like an already liked entry
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "already_liked",
+            "message": "You have already liked this entry",
+            "likes_count": 8
+        }
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = Like.objects.get_or_create(entry=entry, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Entry liked successfully",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this entry",
+            "likes_count": entry.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+@api_view(['POST'])
+def add_comment_api(request, entry_serial):
+    """
+    POST /api/entry/{entry_serial}/comments/
+    Add a comment to an entry via API.
+
+    WHEN
+    - Add thoughts or feedback to an entry
+    - User Story 1.1 in Comments/Likes
+   
+    HOW
+    1. Send a POST request to /api/entry/{entry_serial}/comments/
+    2. Include comment content in the request body
+
+    WHY
+    - Authors can interact with entries and other Authors
+
+    WHY NOT
+    - Don't use if the entry doesn't exist
+    - Don't use with empty or whitespace-only content
+
+    Request Fields:
+        content (string): The comment text content
+            - Example: "Great post! Thanks for sharing."
+            - Purpose: The actual comment text to be displayed
+
+
+    Response Fields:
+        status (string): Status of the comment addition
+            - Example: "comment_added"
+            - Purpose: Indicates the result of the comment attempt.
+        message (string): A description of the result.
+            - Example: "Comment added successfully"
+            - Purpose: Displays status in the UI.
+        comment_id (integer): ID for the comment.
+            - Example: 123
+            - Purpose: Reference the comment for future operations.
+        content (string): The comment text that was added.
+            - Example: "Great post! Thanks for sharing."
+            - Purpose: Confirm the comment content was saved correctly.
+        author (string): Display name of the comment author.
+            - Example: "test_author2"
+            - Purpose: Show who wrote the comment.
+        created_at (string): Timestamp when the comment was created.
+            - Example: "2024-01-15T10:30:00Z"
+            - Purpose: Track when the comment was posted.
+        comments_count (integer): Total number of comments on the entry.
+            - Example: 5
+            - Purpose: Update comment count in the UI.
+
+    Example Usage:
+
+        # Example 1: Adding a comment
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
+        Authorization: Token abc123
+        Content-Type: application/json
+
+        {
+            "content": "Great post! Thanks for sharing."
+        }
+
+        Response:
+        {
+            "status": "comment_added",
+            "message": "Comment added successfully",
+            "comment_id": 123,
+            "content": "Great post! Thanks for sharing.",
+            "author": "test_author2",
+            "created_at": "2024-01-15T10:30:00Z",
+            "comments_count": 5
+        }
+
+        # Example 2: Trying to add empty comment
+        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
+        Authorization: Token abc123
+        Content-Type: application/json
+
+        {
+            "content": ""
+        }
+
+        Response:
+        {
+            "error": "Comment content is required"
+        }
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, user=request.user)
+    
+    content = request.data.get('content', '').strip()
+    
+    if not content:
+        return Response({
+            "error": "Comment content is required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    comment = Comment.objects.create(
+        entry=entry,
+        author=author,
+        content=content
+    )
+    
+    return Response({
+        "status": "comment_added",
+        "message": "Comment added successfully",
+        "comment_id": comment.id,
+        "content": comment.content,
+        "author": author.displayName,
+        "created_at": comment.created_at,
+        "comments_count": entry.comments.count()
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def like_comment_api(request, comment_id):
+    """
+    POST /api/comment/{comment_id}/like/
+    User Story 1.3 in Comments/Likes
+
+    WHEN
+    - Show appreciation for a comment
+    - User Story 1.3 in Comments/Likes
+   
+    HOW
+    1. Ensure the user is authenticated
+    2. Send a POST request to /api/comment/{comment_id}/like/
+
+    WHY
+    - Provide a way for authors to show appreciation for comments
+    - Social interaction between users
+
+    WHY NOT
+    - Don't use if the comment doesn't exist
+    - If you don't appreciate the comment
+
+    Request Fields:
+        None
+
+    Response Fields:
+        status (string): Status of the like attempt. "liked" or "already_liked"
+            - Example: "liked"
+            - Purpose: Indicates the result of the like attempt.
+        message (string): A user-friendly description of the result.
+            - Example: "Comment liked successfully"
+            - Purpose: Displays status in the UI.
+        likes_count (integer): Total number of likes in the comment
+            - Example: 3
+            - Purpose: To understand how many likes the comment has.
+
+    Example Usage:
+
+        # Example 1: Liking a comment
+        POST /api/comment/123/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "liked",
+            "message": "Comment liked successfully",
+            "likes_count": 3
+        }
+
+        # Example 2: Trying to like an already liked comment
+        POST /api/comment/123/like/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "status": "already_liked",
+            "message": "You have already liked this comment",
+            "likes_count": 3
+        }
+    """
+    comment = get_object_or_404(Comment, id=comment_id)
+    author = get_object_or_404(Author, user=request.user)
+    
+    like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+    
+    if created:
+        return Response({
+            "status": "liked",
+            "message": "Comment liked successfully",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            "status": "already_liked", 
+            "message": "You have already liked this comment",
+            "likes_count": comment.likes.count()
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def get_entry_likes_api(request, entry_serial):
+    """
+    GET /api/entry/{entry_serial}/likes/
+    User Story 1.4 in Comments/Likes
+
+    WHEN
+    - View how many people have liked a public entry
+    - User Story 1.4 in Comments/Likes
+   
+    HOW
+    1. Send a GET request to /api/entry/{entry_serial}/likes/
+
+    WHY
+    - See who appreciates an entry 
+
+    WHY NOT
+    - Dont use if the entry doesn't exist
+
+    Request Fields:
+        None
+
+    Response Fields:
+        entry_id (string): UUID of the entry
+            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
+            - Purpose: Identify the entry being queried
+        entry_title (string): Title of the entry
+            - Example: "My Amazing Post"
+            - Purpose: Display context for the likes
+        total_likes (integer): Total number of likes on the entry
+            - Example: 5
+            - Purpose: Quick summary of engagement
+        likes[] (array): Array of like objects
+            - Example: [{"id": 1, "author": {...}}]
+            - Purpose: list with detaild of who liked the entry
+
+    Example Usage:
+
+        # Example 1: Getting likes for a public entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
+
+        Response:
+        {
+            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
+            "entry_title": "title",
+            "total_likes": 2,
+            "likes": [
+                {
+                    "id": 1,
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test1",
+                        "displayName": "test_author1"
+                    }
+                },
+                {
+                    "id": 2,
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test2",
+                        "displayName": "test_author2"
+                    }
+                }
+            ]
+        }
+
+        # Example 2: Getting likes for a friends-only entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
+
+        Response:
+        {
+            "error": "Entry is not public"
+        }
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    
+    # Check if entry is public
+    if entry.visibility != "PUBLIC":
+        return Response({
+            "error": "Entry is not public"
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get all likes for the entry
+    likes = entry.likes.filter(is_deleted=False)
+    
+    # Serialize the likes
+    like_data = []
+    for like in likes:
+        like_data.append({
+            "id": like.id,
+            "author": {
+                "id": like.user.id,
+                "displayName": like.user.displayName
+            }
+        })
+    
+    return Response({
+        "entry_id": entry.serial,
+        "entry_title": entry.title,
+        "total_likes": likes.count(),
+        "likes": like_data
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
+@api_view(['GET'])
+def get_entry_comments_api(request, entry_serial):
+    """
+    GET /api/entry/{entry_serial}/comments/view/
+    Get comments for an entry via API with visibility control.
+
+    WHEN
+    - View comments on an entry
+    - User Story 1.5 in Comments/Likes
+   
+    HOW
+    1. Send a GET request to /api/entry/{entry_serial}/comments/view/
+
+    WHY
+    - Obtain comments from entries
+
+    WHY NOT
+    - Don't use for entries you don't have permission to view
+
+    Response Fields:
+        entry_id (string): ID of the entry
+            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
+            - Purpose: Identify the entry being queried
+        entry_title (string): title of the entry
+            - Example: "My Amazing Post"
+            - Purpose: Display context for the comments
+        entry_visibility (string): Visibility setting of the entry
+            - Example: "PUBLIC", "FRIENDS", "UNLISTED"
+            - Purpose: Understand entry access level
+        total_comments (integer): Total number of visible comments
+            - Example: 3
+            - Purpose: Quick summary of engagement
+        comments (array): Array of comment objects
+            - Example: [{"id": 1, "content": "...", "author": {...}}]
+            - Purpose: Detailed list of comments
+
+    Example Usage:
+
+        # Example 1: Getting comments on a public entry
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
+
+        Response:
+        {
+            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
+            "entry_title": "Title",
+            "entry_visibility": "PUBLIC",
+            "total_comments": 2,
+            "comments": [
+                {
+                    "id": 1,
+                    "content": "idk",
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test1",
+                        "displayName": "test_author1"
+                    },
+                    "created_at": "2024-01-15T10:30:00Z"
+                },
+                {
+                    "id": 2,
+                    "content": "comment 2",
+                    "author": {
+                        "id": "http://s25-project-white/api/authors/test2",
+                        "displayName": "test_author2"
+                    },
+                    "created_at": "2024-01-15T11:15:00Z"
+                }
+            ]
+        }
+
+        Example 2: Getting comments on a friends-only entry (non-friend)
+        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
+        Authorization: Token abc123
+
+        Response:
+        {
+            "error": "Only frieds can view comments on friends-only entries"
+        }
+    """
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    
+    # Get the requesting user's author object if authenticated
+    requesting_author = None
+    if request.user.is_authenticated:
+        try:
+            requesting_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            pass
+    
+    # Check visibility permissions
+    if entry.visibility == "PUBLIC":
+        # Public entries - anyone can view comments
+        pass
+    elif entry.visibility == "FRIENDS":
+        # Friends-only entries - only friends and comment authors can view
+        if not requesting_author:
+            return Response({
+                "error": "Authentication required to view friends-only entry comments"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check if they are friends
+        is_friend = AuthorFriend.objects.filter(
+            Q(friending=entry.author, friended=requesting_author) |
+            Q(friending=requesting_author, friended=entry.author),
+            is_deleted=False
+        ).exists()
+        
+        if not is_friend:
+            return Response({
+                "error": "Only friends can view comments on friends-only entries"
+            }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get all comments for the entry
+    comments = entry.comments.filter(is_deleted=False).order_by('created_at')
+    
+    # Filter comments based on visibility and friendship
+    visible_comments = []
+    for comment in comments:
+        # Always show comment to its author
+        if requesting_author and comment.author == requesting_author:
+            visible_comments.append(comment)
+            continue
+        
+        # For friends-only entries, only show comments to friends
+        if entry.visibility == "FRIENDS":
+            if requesting_author and requesting_author == entry.author:
+                # Entry author can see all comments
+                visible_comments.append(comment)
+            elif requesting_author:
+                # Check if comment author is a friend
+                is_friend = AuthorFriend.objects.filter(
+                    Q(friending=entry.author, friended=comment.author) |
+                    Q(friending=comment.author, friended=entry.author),
+                    is_deleted=False
+                ).exists()
+                if is_friend:
+                    visible_comments.append(comment)
+        else:
+            # For public entries, show all comments
+            visible_comments.append(comment)
+    
+    # Serialize the comments
+    comment_data = []
+    for comment in visible_comments:
+        comment_data.append({
+            "id": comment.id,
+            "content": comment.content,
+            "author": {
+                "id": comment.author.id,
+                "displayName": comment.author.displayName
+            },
+            "created_at": comment.created_at
+        })
+    
+    return Response({
+        "entry_id": entry.serial,
+        "entry_title": entry.title,
+        "entry_visibility": entry.visibility,
+        "total_comments": len(visible_comments),
+        "comments": comment_data
+    }, status=status.HTTP_200_OK)
+
 
 
 

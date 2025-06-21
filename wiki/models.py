@@ -76,7 +76,7 @@ class Author(BaseModel):
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
      
-    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://white/api/authors/[authorID]"
+    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
      
     host = models.URLField(default=f"http://s25-project-white/api/")
     
@@ -94,11 +94,19 @@ class Author(BaseModel):
     
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
-        return self.requesting.filter(is_deleted=False)
+        return self.requesting.all()
         
     def get_follow_requests_recieved(self):
         '''Returns a list of all of the follow requests recieved by an author'''
-        return self.follow_requests.filter(is_deleted=False)
+        return self.follow_requests.all()
+    
+    def get_all_entries(self):
+        '''Returns a list of all of the entries recieved by an author'''
+        return self.posts.all()
+    
+    def get_unlisted_entries(self):
+        '''Returns a list of all of the entries recieved by an author'''
+        return self.entries.filter(visibility=VisibilityOptions.PUBLIC)
     
     def get_web_url(self):
         '''Get the fully qualified URL to an author's page'''
@@ -117,15 +125,14 @@ class Author(BaseModel):
         retrieves a list of a user's friends
         '''
         pass
-    
+      
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
-        return AuthorFollowing.objects.filter(follower=self, following=other_author, is_deleted=False).exists()
+        return AuthorFollowing.objects.filter(follower=self, following=other_author).exists()
         
     def is_friends_with(self, other_author):
         '''checks if an author is friends with another author'''
-
-        if AuthorFriend.objects.filter(friending=self.id) or AuthorFriend.objects.filter(friended=self.id):
+        if AuthorFriend.objects.filter(friending=self.id, friended=other_author.id).exists() or AuthorFriend.objects.filter(friending=other_author.id, friended=self.id).exists():
             return True
         
         return False
@@ -157,6 +164,7 @@ class Author(BaseModel):
 
 
 class Entry(BaseModel):
+    '''Used to represent entries inside of the application '''
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends Only'),
@@ -167,7 +175,7 @@ class Entry(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
 
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
     image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
@@ -267,8 +275,7 @@ class AuthorFriend(BaseModel):
         #prevents any duplicate friend requests
         class Meta:
             constraints = [
-                models.UniqueConstraint(fields=['friending', 'friended']
-                                        , name='unique_active_friendship'),
+                models.UniqueConstraint(fields=['friending', 'friended'], name='unique_active_friendship'),
               
             ]
             
@@ -439,8 +446,14 @@ class FollowRequest(BaseModel):
 def delete_related_user(sender, instance, **kwargs):
     if instance.user:
         instance.user.delete()       
-        
-    
+     
+'''  
+     IN PROGRESS
+@receiver(post_save, AuthorFollowing=AuthorFollowing)
+def friend_users(sender, instance, **kwargs):
+
+''' 
+            
 class InboxItem(BaseModel):
     '''A general model for all of the different objects that can be pushed to the inbox 
     
