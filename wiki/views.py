@@ -49,12 +49,10 @@ class RemotePostReceiver(APIView):
         return Response(serializer.errors, status=400)
 
 
-
 @api_view(['GET'])
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
-    
     
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
