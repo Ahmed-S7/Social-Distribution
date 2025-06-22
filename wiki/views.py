@@ -168,12 +168,6 @@ class MyLoginView(LoginView):
         username = self.request.user.username
         return redirect('wiki:user-wiki', username=username)
    
-   
-   
-   
-   
-   
-   
     
 @api_view(['GET'])
 def get_authors(request):
@@ -284,7 +278,18 @@ def view_external_profile(request, author_serial):
       
     
 
-        return render(request, "external_profile.html", {'author': profile_viewing, 'entries': all_entries, "followers": followers, "follower_count": len(followers), "is_following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries), "is_a_friend": is_a_friend, "is_currently_requesting":is_currently_requesting})
+        return render(request, "external_profile.html", 
+                      {'author': profile_viewing,
+                       'entries': all_entries, 
+                       "followers": followers,
+                       "follower_count": len(followers),
+                       "is_following": following,
+                       "following_count": len(following),
+                       "entries": all_entries,
+                       "entry_count": len(all_entries),
+                       "is_a_friend": is_a_friend,
+                       "is_currently_requesting":is_currently_requesting}
+                      )
     else:
         return HttpResponseRedirect("wiki:view_authors")
         
