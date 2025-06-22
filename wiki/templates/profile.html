@@ -9,23 +9,24 @@
 
     <section class="author_profile_with_entries">
 
-         <!--Default buttons, as per necessary tags-->
+        <!-- Default buttons, as per necessary tags -->
         <div class="default_buttons">
-            
-            <a href="{% url 'wiki:user-wiki' request.user.username %}">
-                <p class="back_to_stream_button">Back to Stream</p>
-            </a>
-     
+
+        <a href="{% url 'wiki:user-wiki' request.user.username %}">
+            <p class="back_to_stream_button">Back to Stream</p>
+        </a>
+
             {% if request.user.is_authenticated %}
                 {% if request.user.username == author.displayName %}
-                     <a href="{% url 'wiki:logout'%}">
-                <p class="logout_button">Logout</p>
-            </a>
+                    <form action="{% url 'wiki:logout' %}" method="POST">
+                        {% csrf_token %}
+                        <button class="logout_button">Logout</button>
+                    </form>
                 {% endif %}
             {% endif %}
-            </form>
 
         </div>
+
     
             <section class="pic_name_followers_entries">
 
