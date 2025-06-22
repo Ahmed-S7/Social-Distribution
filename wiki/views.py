@@ -268,22 +268,20 @@ def view_external_profile(request, author_serial):
         following = profile_viewing.following.all()#stores all of the followers a given author has
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
         is_currently_requesting = author.is_already_requesting(profile_viewing)
-        print(is_currently_requesting)
         is_a_friend = author.is_friends_with(profile_viewing)
         # VISUAL REPRESENTATION TEST
-        #print("Entries:", all_entries)
-        #print("followers:", followers)
-        #print("following:", following)
-        #print(is_a_friend)
-      
-    
+        print("Entries:", all_entries or None)
+        print("followers:", followers or None)
+        print("following:", following or None)
+        print("Is friends with this account:", is_a_friend)
+        print("Is following this account:", is_following)
 
         return render(request, "external_profile.html", 
                       {'author': profile_viewing,
                        'entries': all_entries, 
                        "followers": followers,
                        "follower_count": len(followers),
-                       "is_following": following,
+                       "is_following": is_following,
                        "following_count": len(following),
                        "entries": all_entries,
                        "entry_count": len(all_entries),
