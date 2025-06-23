@@ -122,6 +122,7 @@ p{
     flex-direction: column; 
     align-items: center;   
     text-align: center; 
+    z-index: 25;
 }
 
 /*Buttons on a logged in user page (excluding nav_button)*/
@@ -136,6 +137,7 @@ p{
     background-color:var(--header-color);
     margin:0;
     justify-content: space-evenly;
+    z-index: 100;
 }
 
 /*User options text style (check follow requests, browse authors, add entry, edit profile*/
@@ -225,19 +227,7 @@ a{
 
 
 /*entry individual items*/
-.post-card {
-    border: 0.0625 solid #ccc;
-    border-radius: 0.625em;
-    padding: 1em;
-    margin: 1.5em auto;
-    max-width:60em;
-    background-color: #fff;
-    box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.1);
-    text-decoration: none;
-    width:100%;
-    text-align: center;
 
-}
 
 .post-content{
     text-align: center;
