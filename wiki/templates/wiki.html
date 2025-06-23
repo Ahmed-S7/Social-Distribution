@@ -60,7 +60,10 @@
 
     {% if entries %}
         {% for entry in entries %}
-            <div class="post-card">
+
+        <div class="post-card">
+            <!--Now clicking an entry (entry header) should lead to entry details-->
+            <a href="{% url 'wiki:entry_detail' entry.serial %}">
                 <div class="post-header">
                     {% if entry.image %}
                         <img src="{{ entry.author.imageProfile.url }}" alt="Post image">
@@ -81,10 +84,10 @@
                 {% if entry.image %}
                     <div style="margin: 1em 0;">
                         <img src="{{ entry.image.url }}" alt="Post image"
-                             style="max-width: 100%; border-radius: 10px;" />
+                             style="max-width: 100%; border-radius: 0.625em;" />
                     </div>
                 {% endif %}
-
+                </a>
                 <div class="post-footer">
                     <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
                         {% csrf_token %}
@@ -94,6 +97,7 @@
                     <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
                 </div>
             </div>
+        
         {% endfor %}
     {% else %}
         <p>No entries yet. Click "Create New Entry" to get started!</p>

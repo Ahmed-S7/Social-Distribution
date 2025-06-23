@@ -6,14 +6,15 @@ html, body{
     color:rgb(0, 26, 128);
 }
 
-.post-card {
+a.post-card {
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 0.625px;
     padding: 1em;
     margin: 1.5em auto;
-    max-width: 600px;
+    max-width: 37.5em;
     background-color: #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.1);
+    text-decoration: none;
 }
 .post-header {
     display: flex;
@@ -22,8 +23,8 @@ html, body{
     margin-bottom: 0.5em;
 }
 .post-header img {
-    width: 40px;
-    height: 40px;
+    width: 2.5em;
+    height: 2.5em;
     border-radius: 50%;
 }
 .post-title {
@@ -44,4 +45,13 @@ html, body{
     cursor: pointer;
     font-weight: bold;
     font-size: 1em;
+    margin:0em;
+    padding: 0em 0em;
+    display: inline-block;
+    line-height: 1;
+}
+
+a{
+    text-decoration: none;
+     color: inherit; 
 }
