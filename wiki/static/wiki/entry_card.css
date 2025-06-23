@@ -6,12 +6,11 @@ html, body{
     color:rgb(0, 26, 128);
 }
 
-a.post-card {
-    border: 1px solid #ccc;
-    border-radius: 0.625px;
+.post-card {
+    border: 0.0625 solid #ccc;
+    border-radius: 0.625em;
     padding: 1em;
     margin: 1.5em auto;
-    max-width: 37.5em;
     background-color: #fff;
     box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.1);
     text-decoration: none;

@@ -118,9 +118,11 @@ p{
 
 /*entries*/
 .entry_list{
-    text-align: center;
+    display: flex;
+    flex-direction: column; 
+    align-items: center;   
+    text-align: center; 
 }
-
 
 /*Buttons on a logged in user page (excluding nav_button)*/
 .profile_buttons {
@@ -157,6 +159,7 @@ p{
     border-style:solid;
     width:8em;
     height: 8em;
+    border-color:black;
 }
 
 
@@ -221,17 +224,39 @@ a{
 }
 
 
-.entry_list {
-    list-style-type: none;
-    padding: 0;
-}
-.entry_list li {
-    margin-bottom: 0.625em;
+/*entry individual items*/
+.post-card {
+    border: 0.0625 solid #ccc;
+    border-radius: 0.625em;
+    padding: 1em;
+    margin: 1.5em auto;
+    max-width:60em;
+    background-color: #fff;
+    box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.1);
+    text-decoration: none;
+    width:100%;
+    text-align: center;
+
 }
 
-.author_profile_with_entries .entry_list{
-    
+.post-content{
+    text-align: center;
 }
+
+.post-header {
+  display: flex;
+  align-items: center;    
+  justify-content: center;
+  text-align: center;
+}
+
+.post-footer{
+  display: flex;
+  align-items: center;    
+  justify-content: space-evenly;
+  text-align: center;
+}
+
 
 
 
