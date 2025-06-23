@@ -62,6 +62,13 @@
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Back to Stream</button>
     </a>
+    <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
+    {% if not is_owner %}
+    <a href="{% url 'wiki:view_entry_author' entry.serial %}">
+        <button type="button">View Entry Author Profile</button>
+    </a>
+    {% endif %}
+
     {% if is_owner %}
     <a href="{% url 'wiki:edit_entry' entry.serial %}">
        <button type="button">Edit Entry</button>

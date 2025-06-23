@@ -18,126 +18,182 @@
                 <p class="back_to_stream_button">Back to Stream</p>
             </a>
 
-            <a href="{% url 'wiki:profile' request.user.username %}">
-                <p class="back_to_stream_button">Back To Profile</p>
+            <a href="{% url 'wiki:view_authors' %}">
+                <p class="back_to_authors_button">Back To Authors List</p>
+            </a>
+
+             <a href="{% url 'wiki:profile' request.user.username %}">
+                <p class="back_to_profile_button">Back To Profile</p>
             </a>
             
         </div>
 
-        <section class="author_profile_description_follow_button">
+    
+        <section class="author_profile_with_entries">
 
-            <section class="author_profile_description">
+            <section class="author_profile_description_follow_button">
 
-                    <section class="pic_name_followers_entries">
+                <section class="author_profile_follow_button">
 
-                            <section class="profile_pic_and_name">
+                        <section class="pic_name_followers_entries">
 
-                                <!--Authenticated user check successful, then make the profile picture clickable -->
-                                {% if request.user.is_authenticated %}
-                                
-                                        <!--Make profile picture lead to pfp editing-->
+                                <section class="profile_pic_and_name">
+
+                                    <!--Authenticated user check successful, then make the profile picture clickable -->
+                                    {% if request.user.is_authenticated %}
+                                    
+                                            <!--Make profile picture lead to pfp editing-->
+                                            {% if author.image %}
+                                            
+                                            
+                                                <img class="profile_image_logged_user" src="{{ author.imageProfile.url }}" alt="Profile Picture">
+                                        
+                                            {% else %}
+                                            
+                                                <img class="profile_image_logged_user" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                        
+                                            {% endif %}
+                                        <!--end of profile image check-->
+
+                                    <!--Authenticated user check fails, then make the profile picture non-clickable -->
+                                    {% else %}
+                                        
                                         {% if author.image %}
                                         
-                                        
-                                            <img class="profile_image_logged_user" src="{{ author.imageProfile.url }}" alt="Profile Picture">
-                                    
+                                                <img class="profile_image" src="{{ author.imageProfile.url }}" alt="Profile Picture">
                                         {% else %}
-                                        
-                                            <img class="profile_image_logged_user" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-                                    
+                                                <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                         {% endif %}
-                                    <!--end of profile image check-->
 
-                                <!--Authenticated user check fails, then make the profile picture non-clickable -->
-                                {% else %}
-                                    
-                                    {% if author.image %}
-                                    
-                                            <img class="profile_image" src="{{ author.imageProfile.url }}" alt="Profile Picture">
-                                    {% else %}
-                                            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                     {% endif %}
 
-                                {% endif %}
+                                <h3 class="display_name">{{ author.displayName }}</h3>
+                                
+                                </section>
 
-                            <h3 class="display_name">{{ author.displayName }}</h3>
+                            <!--Titles For Follow And Entry Details-->
+                            <section class="follow_and_entry_labels">
+                                <p class="folow_and_entry_count"> {{entry_count}} </p>
+                                <p class="follow_and_entry_title"> Entries</p>
+                            </section>    
+
+                             <section class="follow_and_entry_labels">
+                                <p class="folow_and_entry_count"> {{friend_count}} </p>
+                                <p class="follow_and_entry_title"> Friends</p>
+                            </section>    
+
+                            <section class="follow_and_entry_labels">
+                                <p class="folow_and_entry_count"> {{follower_count}} </p>
+                                <p class="follow_and_entry_title"> Followers</p>
+                            </section>     
                             
-                            </section>
+                            <section class="follow_and_entry_labels">
+                                <p class="folow_and_entry_count"> {{following_count}} </p>
+                                <p class="follow_and_entry_title"> Following</p>
+                            </section> 
 
-                        <!--Titles For Follow And Entry Details-->
-                        <section class="follow_and_entry_labels">
-                            <p class="folow_and_entry_count"> {{entry_count}} </p>
-                            <p class="follow_and_entry_title"> Entries</p>
-                        </section>    
-
-                        <section class="follow_and_entry_labels">
-                            <p class="folow_and_entry_count"> {{follower_count}} </p>
-                            <p class="follow_and_entry_title"> Followers</p>
-                        </section>     
-                        
-                        <section class="follow_and_entry_labels">
-                            <p class="folow_and_entry_count"> {{following_count}} </p>
-                            <p class="follow_and_entry_title"> Following</p>
                         </section> 
+
+
+                            <section class="follow_info_button">
+                            {% if is_a_friend %}
+                            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                            
+                            
+                                {% csrf_token %}
+                                <button class="unfriend_button"  type="submit" >Unfriend User </button> 
+
+                            </form>
+                            {% elif is_following %}
+
+                            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                                {% csrf_token %}
+                            <button class="unfollow_button" type="submit" >UnFollow Profile</button>
+                    
+                            </form>
+
+                            {% elif is_currently_requesting %}
+
+                            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                                {% csrf_token %}
+                            <button class="unrequest_button" type="submit" >Cancel Request</button>
+                    
+                            </form>
+
+                            {% else %}
+
+                            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                                {% csrf_token %}
+                                <button class="follow_button" type="submit">Follow Profile</button> 
+                            </form>
+
+                            {% endif%}
+                        </section>
+
+
+                    </section>
+                    
+
+                        <section class="description_content">
+                    
+                        {% if author.description  %}
+                            <p>{{ author.description }} </p>
+                        {% else  %}
+                            <p>No Description</p>
+                        {% endif %}
+
+                        {% if author.github %}
+                        <p>{{ author.github}} </p>
+                        {% else  %}
+                        <p>GitHub Profile Not Found</p>
+                        {% endif %}
 
                     </section> 
 
 
-                        <section class="follow_info_button">
-                        {% if is_a_friend %}
-                        <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-                        
-                        
-                            {% csrf_token %}
-                            <button class="unfriend_button"  type="submit" >Unfriend User </button> 
 
-                        </form>
-                        {% elif is_following %}
+            </section>
 
-                        <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-                            {% csrf_token %}
-                        <button class="unfollow_button" type="submit" >UnFollow Profile</button>
-                
-                        </form>
+            <section class="entry_list">
+                <h3>Entries</h3>
+                {% if entries %}
+                    {% for entry in entries %}
+                    <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
+                        <div class="post-card">
+                            <div class="post-header">
 
-                         {% elif is_currently_requesting %}
+                                <div>
+                                    <div class="post-title"> {{ entry.title }}</div>
+                                    <small>
+                                        Posted by <strong>{{ entry.author.displayName }}</strong>
+                                        on {{ entry.created_at|date:"M d, Y H:i" }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="post-content" style="text-align:left;padding-top:1.5em;padding-bottom:1.5em;">{{ entry.content }}</div>
 
-                        <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-                            {% csrf_token %}
-                        <button class="unrequest_button" type="submit" >Cancel Request</button>
-                
-                        </form>
+                            {% if entry.image %}
+                                <div style="margin: 1em 0;">
+                                    <img src="{{ entry.image.url }}" alt="Post image"
+                                        style="max-width: 100%; border-radius: 10px;" />
+                                </div>
+                            {% endif %}
 
-                        {% else %}
-
-                        <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-                            {% csrf_token %}
-                            <button class="follow_button" type="submit">Follow Profile</button> 
-                        </form>
-
-                        {% endif%}
-                    </section>
-
-
-                </section>
-                
-
-                    <section class="description_content">
-                
-                    {% if author.description  %}
-                        <p>{{ author.description }} </p>
-                    {% else  %}
-                        <p>No Description</p>
-                    {% endif %}
-
-                    {% if author.github %}
-                    <p>{{ author.github}} </p>
-                    {% else  %}
-                    <p>GitHub Profile Not Found</p>
-                    {% endif %}
-
-                </section> 
+                            <div class="post-footer">
+                                <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="liked_from_post" value="true">
+                                    <button type="submit" class="like-btn">❤️ Like</button>
+                                </form>
+                                <p>{{ entry.likes.count }} likes</p>
+                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </section>
+        
+        <!--end of section with entries and full profile-->
         </section>
-
 
         

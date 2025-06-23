@@ -60,8 +60,7 @@ def user_wiki(request, username):
 
     # Followed
     followed_ids = AuthorFollowing.objects.filter(
-        follower=current_author,
-        is_deleted=False
+        follower=current_author
     ).values_list('following', flat=True)
 
     # Friends
@@ -110,13 +109,22 @@ def like_entry(request, entry_serial):
         Returns: HTTP404 if any objects are not found, or simply redirect to the user's wiki stream
 
     '''
+    #print(request.path)
+    #print(request.POST.get("liked_from_post"))
+    
     entry = get_object_or_404(Entry, serial=entry_serial)
-    author = Author.objects.get(user=request.user)
+    author = get_object_or_404(Author, user=request.user)
+    liked_author = get_object_or_404(Author, id=entry.author.id) #author that liked the entry
     like, created = Like.objects.get_or_create(entry=entry, user=author)
 
     if not created:
         like.delete()  # Toggle like off
-
+    
+    #  Redirect to the entry's author's page if the entry was liked from their page  
+    if request.POST.get("liked_from_post") == "true":
+        return redirect('wiki:view_external_profile', author_serial=liked_author.serial)
+    
+    # otherwise go back to the stream
     return redirect('wiki:user-wiki', username=request.user.username)
    
 
@@ -261,26 +269,67 @@ def view_external_profile(request, author_serial):
    
     if  Author.objects.filter(serial=author_serial).exists():
         profile_viewing = Author.objects.get(serial=author_serial)
-        author = get_object_or_404(Author, user=request.user) 
+        logged_in_author = get_object_or_404(Author, user=request.user) 
         
-        is_following = author.is_following(profile_viewing)
+        #NECESSARY FIELDS FOR PROFILE DISPLAY
+        is_following = logged_in_author.is_following(profile_viewing)
         followers = profile_viewing.followers.all()#stores all of the followers a given author has
         following = profile_viewing.following.all()#stores all of the followers a given author has
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
-        is_currently_requesting = author.is_already_requesting(profile_viewing)
-        is_a_friend = author.is_friends_with(profile_viewing)
+        is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)
+        is_a_friend = logged_in_author.is_friends_with(profile_viewing)
+        friends_a = logged_in_author.friend_a.all()
+        friends_b = logged_in_author.friend_b.all()
+        total_friends = (friends_a | friends_b)
+        friend_count=len(total_friends)
+        
         # VISUAL REPRESENTATION TEST
+        '''
         print("Entries:", all_entries or None)
         print("followers:", followers or None)
         print("following:", following or None)
         print("Is friends with this account:", is_a_friend)
         print("Is following this account:", is_following)
+        '''
+        
+        # Followed
+        followed_ids = AuthorFollowing.objects.filter(
+            follower=logged_in_author
+        ).values_list('following', flat=True)
+        
+        # Friends
+        friend_pairs = AuthorFriend.objects.filter(
+            Q(friending=logged_in_author) | Q(friended=logged_in_author)
+        ).values_list('friending', 'friended')
 
+        friend_ids = set()
+        for friending_id, friended_id in friend_pairs:
+            if friending_id != logged_in_author.id:
+                friend_ids.add(friending_id)
+            if friended_id != logged_in_author.id:
+                friend_ids.add(friended_id)
+                
+        #Entries the current user is permitted to view
+        all_entries = Entry.objects.filter(
+            ~Q(visibility='DELETED'),
+        author=profile_viewing
+        ).filter(
+            Q(visibility='PUBLIC') |
+            Q(visibility='FRIENDS', author__in=friend_ids) |
+            Q(visibility='UNLISTED', author__id__in=followed_ids)
+        )
+
+    
+          
+        #print(all_entries)
+        
         return render(request, "external_profile.html", 
                       {'author': profile_viewing,
                        'entries': all_entries, 
                        "followers": followers,
                        "follower_count": len(followers),
+                       "friend_count": friend_count,
+                       "is_a_friend": is_a_friend,
                        "is_following": is_following,
                        "following_count": len(following),
                        "entries": all_entries,
@@ -296,6 +345,16 @@ def view_external_profile(request, author_serial):
 @login_required    
 def view_following(request):
     pass
+
+@login_required    
+def view_entry_author(request, entry_serial):
+    '''Redirects users to view the page of an author whose entry they are looking at'''
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author_id = entry.author.id
+    #print(entry.author)
+    entry_author=get_object_or_404(Author, id=author_id)
+    return HttpResponseRedirect(reverse("wiki:view_external_profile", kwargs={"author_serial": entry_author.serial}))
+   
  
 
 @login_required  
@@ -311,10 +370,13 @@ def follow_profile(request, author_serial):
     requested_account = get_object_or_404(Author, serial=author_serial)
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
-    print(requesting_account)
-    print(requested_account)
+    
+    ##CHECK REQUESTING AND REQUESTED ACCOUNT##
+    #print(requesting_account)
+    #print(requested_account)
+    ##########################################
+    
     if requesting_account.is_friends_with(requested_account):
-        print("they are friends")
         messages.error(request,f"You are friends with {requested_account}, this button will eventually allow you to unfriend a user in a future patch.")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
    
@@ -340,7 +402,7 @@ def follow_profile(request, author_serial):
 
         # Valid follow requests will lead to an attempted saving of the correspondin respective inbox item
         if serialized_follow_request.is_valid():
-            print("Follow Request serializer is valid")
+            #print("Follow Request serializer is valid")
 
             # Save follow request to DB
             saved_follow_request = serialized_follow_request.save()
@@ -582,7 +644,20 @@ def profile_view(request, username):
     
     
     
-    return render(request, 'profile.html', {'author': author, 'entries': entries, "followers": followers, "follower_count": len(followers), "following": following, "following_count": len(following), "entries": all_entries, "entry_count": len(all_entries),"friend_count":friend_count,"friends":total_friends} )
+    return render(
+        request, 'profile.html', 
+        {
+        'author': author,
+        'entries': all_entries,
+        "followers": followers,
+        "follower_count": len(followers),
+        "following": following,
+        "following_count": len(following),
+        "entries": all_entries,
+        "entry_count": len(all_entries),
+        "friend_count":friend_count,
+        "friends":total_friends} 
+    )
 
 @login_required
 def edit_profile(request, username):
