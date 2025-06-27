@@ -261,26 +261,28 @@ def view_authors(request):
     authors = Author.objects.exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
-@require_GET
-@login_required       
+@require_GET  
 def view_external_profile(request, author_serial):
     '''Presents a view of a profile other than the one that is currently logged
     - shows the current user whether they are following, are friends with or can follow the current user
     '''
-   
-    if  Author.objects.filter(serial=author_serial).exists():
-        profile_viewing = Author.objects.get(serial=author_serial)
-        logged_in_author = get_object_or_404(Author, user=request.user) 
-        
+    profile_viewing = Author.objects.filter(serial=author_serial).first()
+    if not profile_viewing:
+        return redirect("wiki:view_authors")
+
+    # Still using the if structure
+    if profile_viewing:
+        logged_in = request.user.is_authenticated
+        logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
         #NECESSARY FIELDS FOR PROFILE DISPLAY
-        is_following = logged_in_author.is_following(profile_viewing)
+        is_following = logged_in_author.is_following(profile_viewing)if logged_in_author else False
         followers = profile_viewing.followers.all()#stores all of the followers a given author has
         following = profile_viewing.following.all()#stores all of the followers a given author has
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
-        is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)
-        is_a_friend = logged_in_author.is_friends_with(profile_viewing)
-        friends_a = logged_in_author.friend_a.all()
-        friends_b = logged_in_author.friend_b.all()
+        is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)if logged_in_author else False
+        is_a_friend = logged_in_author.is_friends_with(profile_viewing)if logged_in_author else False
+        friends_a = logged_in_author.friend_a.all()if logged_in_author else Author.objects.none()
+        friends_b = logged_in_author.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
         friend_count=len(total_friends)
         
@@ -347,7 +349,6 @@ def view_external_profile(request, author_serial):
 def view_following(request):
     pass
 
-@login_required    
 def view_entry_author(request, entry_serial):
     '''Redirects users to view the page of an author whose entry they are looking at'''
     entry = get_object_or_404(Entry, serial=entry_serial)
