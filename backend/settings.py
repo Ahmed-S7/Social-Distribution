@@ -138,8 +138,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGOUT_REDIRECT_URL = '/login/'
-LOGIN_URL = '/login/'   # redirect user to login page if not authenticated
+LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/'   # redirect user to login page if not authenticated
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 #image for post stuff

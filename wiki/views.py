@@ -628,7 +628,7 @@ def profile_view(request, username):
         author = Author.objects.get(user__username=username)
     except Author.DoesNotExist:
         return HttpResponse("Author profile does not exist.")
-    entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
+    # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
     followers = author.followers.all()#stores all of the followers a given author has
     following = author.following.all()#stores all of the followers a given author has
@@ -750,9 +750,10 @@ def create_entry(request):
     # GET: Show form to create entry
     return render(request, 'create_entry.html')
 
-@login_required
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
+    if entry.visibility == 'FRIENDS' and not request.user.is_authenticated:
+        return HttpResponse("This entry is private. Please log in to view it.")
     is_owner = (entry.author.user == request.user)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
     return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})

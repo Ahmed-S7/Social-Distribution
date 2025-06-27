@@ -102,7 +102,7 @@ class Author(BaseModel):
     
     def get_all_entries(self):
         '''Returns a list of all of the entries recieved by an author'''
-        return self.posts.all()
+        return self.posts.order_by('-created_at')
     
     def get_unlisted_entries(self):
         '''Returns a list of all of the entries recieved by an author'''

@@ -56,12 +56,14 @@
 
 <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
 <div class="default_buttons">
+    {% if request.user.is_authenticated %}
     <a href="{% url 'wiki:profile' request.user.username%}">
         <button type="button">Back to Profile</button>
     </a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
         <button type="button">Back to Stream</button>
     </a>
+    {% endif %}
     <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
     {% if not is_owner %}
     <a href="{% url 'wiki:view_entry_author' entry.serial %}">
