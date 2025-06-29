@@ -136,7 +136,30 @@ class Author(BaseModel):
             return True
         
         return False
+    def get_friendship_id_with(self, other_author):
+        '''Returns the frienship object between two authors, None if it does not exist'''
+        ordered_friend_ids = sorted([self.id, other_author.id])
+            
+        try:
+            friendship = AuthorFriend.objects.get(friending=ordered_friend_ids[0], friended=ordered_friend_ids[1])
         
+        except AuthorFriend.DoesNotExist:
+            return None
+        
+        return friendship.id
+        
+        
+    def get_following_id_with(self, other_author):
+        
+        try:
+            
+            following_object = AuthorFollowing.objects.get(follower=self.id, following=other_author.id)
+            follow_id = following_object.id
+        
+        except AuthorFollowing.DoesNotExist:
+            follow_id = None
+            
+        return follow_id
    
         
       
@@ -274,9 +297,13 @@ class AuthorFriend(BaseModel):
        
         #prevents any duplicate friend requests
         class Meta:
+            
+    
             constraints = [
-                models.UniqueConstraint(fields=['friending', 'friended'], name='unique_active_friendship'),
-              
+                UniqueConstraint(fields=['friending', 'friended'],
+                                        condition=Q(is_deleted=False),
+                                        name='unique_active_friendship'
+            )
             ]
             
         #prevent self-friending
@@ -324,7 +351,7 @@ class AuthorFollowing(BaseModel):
     
     class Meta:
         constraints = [
-                models.UniqueConstraint(
+                UniqueConstraint(
                 fields=['follower', 'following'],
                 condition=Q(is_deleted=False),
                 name='unique_active_following'
@@ -386,7 +413,7 @@ class FollowRequest(BaseModel):
     created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         constraints = [
-            models.UniqueConstraint(
+            UniqueConstraint(
             fields=['requester', 'requested_account', 'state'],
             condition=Q(is_deleted=False),
             name='unique_active_follow_request'

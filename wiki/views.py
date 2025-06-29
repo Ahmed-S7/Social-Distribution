@@ -210,7 +210,7 @@ def get_authors(request):
     """
   
     authors = Author.objects.all()
-    serializer =AuthorSerializer(authors, many=True) #many=True specifies that the input is not just a single question
+    serializer =AuthorSerializer(authors, many=True) 
     return Response({"type": "authors",
                         "authors":serializer.data})  
 
@@ -273,6 +273,7 @@ def view_external_profile(request, author_serial):
     # Still using the if structure
     if profile_viewing:
         logged_in = request.user.is_authenticated
+        print(logged_in)
         logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
         #NECESSARY FIELDS FOR PROFILE DISPLAY
         is_following = logged_in_author.is_following(profile_viewing)if logged_in_author else False
@@ -284,7 +285,7 @@ def view_external_profile(request, author_serial):
         friends_a = logged_in_author.friend_a.all()if logged_in_author else Author.objects.none()
         friends_b = logged_in_author.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
-        friend_count=len(total_friends)
+
         
         # VISUAL REPRESENTATION TEST
         '''
@@ -321,30 +322,161 @@ def view_external_profile(request, author_serial):
             Q(visibility='FRIENDS', author__in=friend_ids) |
             Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
-
-    
-          
-        #print(all_entries)
+        
+        
+        #store existing follow request if it exists
+        try:
+            
+            current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
+            current_request_id = current_request.id
+        
+        except FollowRequest.DoesNotExist:
+            current_request_id = None
+        
+        #store existing following if it exists 
+        following_id = logged_in_author.get_following_id_with(profile_viewing)
+        
+        
+            
+        #store existing friendship if it exists 
+        friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
+        
+        '''#CHECK VALUES
+        print("Following ID is:",following_id)
+        print("Friendship ID is:",friendship_id)
+        print("The current request is:", current_request) 
+        print("List of User's Entries:", all_entries)
+        '''
+       
+        
+       
+        
         
         return render(request, "external_profile.html", 
-                      {'author': profile_viewing,
+                      {
+                       'author': profile_viewing,
                        'entries': all_entries, 
                        "followers": followers,
                        "follower_count": len(followers),
-                       "friend_count": friend_count,
+                       "friend_count": len(total_friends),
                        "is_a_friend": is_a_friend,
                        "is_following": is_following,
                        "following_count": len(following),
                        "entries": all_entries,
                        "entry_count": len(all_entries),
                        "is_a_friend": is_a_friend,
-                       "is_currently_requesting":is_currently_requesting}
+                       "is_currently_requesting":is_currently_requesting,
+                       "request_id": current_request_id,
+                       "follow_id": following_id,
+                       "friendship_id":friendship_id,
+                       }
                       )
     else:
         return HttpResponseRedirect("wiki:view_authors")
         
-           
+@login_required
+def cancel_follow_request(request, author_serial, request_id):
+    '''Cancels an active follow request that a user has sent to another author
     
+        ARGS:
+            - author_serial: the requested author's serial 
+            - request_id: the id of the sent follow request
+            - request: the request details
+            
+        RETURNS:
+            - a redirection to the requested author's page
+    
+    '''
+    
+    requested_author_serial = author_serial
+    
+    
+    #retrieve the current follow request
+    active_request = get_object_or_404(FollowRequest, id=request_id)
+    #print("The request being changed is:", active_request)
+
+    
+    #set the follow request as deleted
+    try:
+        active_request.delete()
+    except Exception as e:
+        print(e)
+        return HttpResponseServerError(f"Could Not Cancel Your Follow Request, Please Try Again.")
+    
+
+    #redirect to the requested user's page 
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_author_serial}))      
+@login_required
+
+
+def unfollow_profile(request, author_serial, following_id):
+    '''Cancels an active follow request that a user has sent to another author
+    
+        ARGS:
+            - author_serial: the requested author's serial 
+            - request_id: the id of the sent follow request
+            - request: the hhtp request details
+            
+        RETURNS:
+            - a redirection to the requested author's page
+    
+    '''
+    
+    followed_author_serial = author_serial
+    current_author = get_object_or_404(Author, user=request.user)
+    followed_author = get_object_or_404(Author, serial=followed_author_serial)
+    
+    
+    
+    
+    #retrieve the current follow request
+    active_following = get_object_or_404(AuthorFollowing, id=following_id)
+   
+  
+    
+    #retrieve the accepted follow request
+    active_request=get_object_or_404(FollowRequest, requester = current_author.id, requested_account=followed_author.id)
+    
+    active_friendship_id = current_author.get_friendship_id_with(followed_author)
+    
+    '''#VISUAL REPRESENTATION TEST
+    print("Current Author is:",current_author,followed_author)
+    print("Followed Author is:", followed_author)
+    print("The Following being deleted is:", active_following)   
+    print("The active request being deleted is:", active_request)   
+    '''
+    
+    #set the follow request as deleted
+    try:
+        active_request.delete()
+        active_following.delete()
+        #IMPORTANT: DO NOT CHANGE AS THIS CHECK IS HERE IN CASE A USER IS FOLLOWING A USER AND IS FRIENDS WITH THEM
+        # -alternatively, if the user is only following them, nothing happens to any friendship objects because the users are not friends
+        if active_friendship_id:
+            active_friendship = AuthorFriend.objects.get(id=active_friendship_id)
+            active_friendship.delete()
+    except Exception as e:
+        #Roll back any changes upon any failures
+        active_request.is_deleted=False
+        active_following.is_deleted=False
+        if active_friendship:
+            active_friendship.is_deleted=False
+        
+        print(e)
+        return HttpResponseServerError(f"Failed to Unfollow This User.")
+    
+    '''CHECK FOR SUCCESSFUL DELETIONS
+    print("Follow Request Deleted:",active_request.is_deleted)
+    print("Active Following Deleted:",active_following.is_deleted)
+    if active_friendship_id:
+        print("Active Friendship Deleted:", active_request.is_deleted)
+    '''
+
+
+    #redirect to the requested user's page 
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))          
+
+
 @login_required    
 def view_following(request):
     pass
@@ -353,7 +485,6 @@ def view_entry_author(request, entry_serial):
     '''Redirects users to view the page of an author whose entry they are looking at'''
     entry = get_object_or_404(Entry, serial=entry_serial)
     author_id = entry.author.id
-    #print(entry.author)
     entry_author=get_object_or_404(Author, id=author_id)
     return HttpResponseRedirect(reverse("wiki:view_external_profile", kwargs={"author_serial": entry_author.serial}))
    
@@ -379,20 +510,21 @@ def follow_profile(request, author_serial):
     ##########################################
     
     if requesting_account.is_friends_with(requested_account):
-        messages.error(request,f"You are friends with {requested_account}, this button will eventually allow you to unfriend a user in a future patch.")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-   
-    if requesting_account.is_following(requested_account):
-        messages.error(request,f"You already follow {requested_account}, this button will allow you to unfollow a profile in a future patch.")
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-        query_with_follow_status= f"{base_URL}?is_following=True"
+        query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
+        return redirect(query_with_friend_status)
+    
+    
+    if requesting_account.is_following(requested_account):
+        print("You are only following him")
+        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+        query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
     
     if requesting_account.is_already_requesting(requested_account):
-        messages.error(request,f"You must really like {requested_account}, but they still need to respond to your follow request. In a future patch, this button will allow you to remove a follow request.")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-            
-   
+        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+        query_with_request_status= f"{base_URL}?status=requesting&user={requested_account}"
+        return redirect(query_with_request_status)
             
     try:
         serialized_follow_request = FollowRequestSerializer(
@@ -522,17 +654,21 @@ def process_follow_request(request, author_serial, request_id):
             #if there is, add these two users as friends using the author friends object
             new_friendship = AuthorFriend(friending=requestedAuthor, friended=follower)
             
-            friendship_serializer = AuthorFriendSerializer(new_friendship, data={
-                "friending":new_friendship.friending.id,
-                "friended":new_friendship.friended.id,
-            },partial=True) 
+            try:
+                new_friendship.save()  
+                
+                
+            except Exception as e:
+                # Rollback
+                #set the follow  request state to requested
+                follow_request.set_request_state(RequestState.REQUESTING)
+        
+                #create a following from requester to requested
+                new_following.delete()
+                
+                #print the exception
+                print(e)
             
-            if friendship_serializer.is_valid():
-                
-                friendship_serializer.save()  
-                
-            else:
-                
                 return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")      
                       
     else:
@@ -551,6 +687,14 @@ def process_follow_request(request, author_serial, request_id):
          follow_request.delete()
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
+
+
+
+
+
+
+    
+    
 
 
 @login_required
@@ -615,10 +759,6 @@ def get_local_follow_requests(request, author_serial):
         return Response({"type:follow, follows:{}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )
     
     
-
-@api_view(['GET'])
-def check_remote_inbox(request):
-    pass
 
 
 def profile_view(request, username):

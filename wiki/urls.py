@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
 from .views import MyLoginView, user_wiki, register,get_local_follow_requests,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, create_entry, like_entry
-from .views import edit_entry, add_comment, like_comment,view_entry_author, delete_entry, like_entry_api, add_comment_api, like_comment_api, get_entry_likes_api
+from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, add_comment_api, like_comment_api, get_entry_likes_api
 from .views import get_entry_comments_api
 from django.contrib.auth.views import LogoutView
 
@@ -60,7 +60,9 @@ urlpatterns = [
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
     
     
-    #Author Follow Requests
+    #Author Follow Requests URLS
     path('authors/<str:username>/inbox/', check_follow_requests, name='check_follow_requests' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
+    path('authors/<str:author_serial>/<str:request_id>/cancel_request', cancel_follow_request, name='cancel_follow_request' ),
+    path('authors/<str:author_serial>/<str:following_id>/unfollow', unfollow_profile, name='unfollow_profile'),
 ]

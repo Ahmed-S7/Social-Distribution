@@ -62,12 +62,9 @@ p{
 .pic_name_followers_entries{
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
-    gap: 4em; 
+    justify-content: space-evenly;
     padding: 0;
     align-items: center;
- 
-    
 }
 
 /*Profile picture with name*/
@@ -274,12 +271,14 @@ a{
     font-family: 'Nunito', sans-serif;
     border-radius:0.6em; 
     font-size:1.2em; 
-    background-color: var(--follow-button);
+   
     text-align: center;
     align-items: center;
     background-color:lightgreen;
 
 }
+
+/*UNFOLLOW OR UNREQUESTS*/
 
 .unrequest_button{
     font-family: 'Nunito', sans-serif;
@@ -287,14 +286,18 @@ a{
     background-color: var(--red-hover);
     border-radius:0.6em; 
     font-size:1.2em;
+    text-align: center;
+    align-items: center;
 } 
 
 .unfollow_button{
     font-family: 'Nunito', sans-serif;
-    color: white; 
-    background-color: var(--red-hover);
+    color: white;  
+    background-color: var(--follow-button);
     border-radius:0.6em; 
     font-size:1.2em;
+    text-align: center;
+    align-items: center;
 } 
 
 
@@ -310,7 +313,8 @@ a{
 
   .follow_button,
   .unfollow_button,
-  .unfriend_button {
+  .unfriend_button,
+  .unrequest_button {
     font-size: 1.4em;
     padding: 0.5em 1em;
   }
