@@ -465,12 +465,12 @@ def unfollow_profile(request, author_serial, following_id):
         print(e)
         return HttpResponseServerError(f"Failed to Unfollow This User.")
     
-    '''CHECK FOR SUCCESSFUL DELETIONS
+    #CHECK FOR SUCCESSFUL DELETIONS
     print("Follow Request Deleted:",active_request.is_deleted)
     print("Active Following Deleted:",active_following.is_deleted)
     if active_friendship_id:
         print("Active Friendship Deleted:", active_request.is_deleted)
-    '''
+
 
 
     #redirect to the requested user's page 

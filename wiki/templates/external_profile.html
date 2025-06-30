@@ -99,7 +99,7 @@
                             </form>
                             {% elif is_following %}
 
-                            <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
+                            <form action="{% url 'wiki:unfollow_profile' author.serial follow_id %}" method="POST">
                                 {% csrf_token %}
                             <button class="unfollow_button" type="submit" >UnFollow Profile</button>
                     
