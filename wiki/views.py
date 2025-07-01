@@ -756,7 +756,8 @@ def get_local_follow_requests(request, author_serial):
                 return Response(response, status=status.HTTP_200_OK)
             except Exception as e:
                 return Response({"Error" : f" We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
-        return Response({"type:follow, follows:{}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )
+        
+        return Response({"type": "follow", "follows":{}}, status=status.HTTP_200_OK)
     
     
 
@@ -931,7 +932,7 @@ def delete_entry(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial, author__user=request.user)
     
     if request.method == 'POST':
-        entry.delete()  # This should soft-delete because of BaseModel
+        entry.delete() 
         messages.success(request, "Entry deleted successfully.")
         return redirect('wiki:user-wiki', username=request.user.username)
     

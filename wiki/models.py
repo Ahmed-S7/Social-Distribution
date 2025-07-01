@@ -421,7 +421,7 @@ class FollowRequest(BaseModel):
             
         ]
         
-    def get_request_state(self)->str:
+    def get_request_state(self):
         """returns the state of active follow requests"""
         return self.state
         
