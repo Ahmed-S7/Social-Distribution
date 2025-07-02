@@ -745,10 +745,10 @@ def get_local_followers(request, author_serial):
             
             if follower_relations:
                 for followers in follower_relations:
-                    print(followers.follower)
+                    #print(followers.follower)
                     follower = followers.follower
                     followers_list.append(follower)
-                print(followers_list)
+                #print(followers_list)
     
             try:
                 serialized_followers = AuthorSerializer( followers_list, many=True)
@@ -758,7 +758,7 @@ def get_local_followers(request, author_serial):
             except Exception as e:
                     return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
         else:
-            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_400_BAD_REQUEST )
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
     else:   
         #for now, all external hosts can make get requests
         followers_list=[]
@@ -830,7 +830,7 @@ def get_local_follow_requests(request, author_serial):
             except Exception as e:
                     return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
         else:
-            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_400_BAD_REQUEST )
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
     else:   
         #for now, all external hosts can make get requests
         all_follow_requests = current_author.get_follow_requests_recieved()
