@@ -5,6 +5,9 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import Manager, QuerySet, Q, UniqueConstraint
 from django.dispatch import receiver
+from django.forms import DateTimeField
+from django_filters.fields import IsoDateTimeField
+
 # Create your models here.
 
 
@@ -73,6 +76,9 @@ class Author(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
     type = models.CharField(default="author")
+    
+    #for future user story
+    #is_registered= models.BooleanField(default=False)
     
     user = models.OneToOneField(User, on_delete= models.CASCADE)
      

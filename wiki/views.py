@@ -226,7 +226,9 @@ def get_author(request, author_serial):
     Use: "GET /api/author/{author_serial}"
     
     Args: 
+    
         - request: HTTP request information
+        
         - author_serial: the serial id of the author in the get request
         
     This returns:
@@ -692,8 +694,92 @@ def process_follow_request(request, author_serial, request_id):
 
 
 
-
+@login_required
+@api_view(['GET'])
+def get_local_followers(request, author_serial):   
+    """
+    Get a specific author's followers list requests in the application
     
+    Use: "GET /api/authors/{author_serial}/followers/"
+
+    returns Json in the following format: 
+         
+                {
+                    "type": "followers",      
+                    "followers":[
+                        {
+                            "type":"author",
+                            "id":"http://nodebbbb/api/authors/222",
+                            "host":"http://nodebbbb/api/",
+                            "displayName":"Lara Croft",
+                            "web":"http://nodebbbb/authors/222",
+                            "github": "http://github.com/laracroft",
+                            "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
+                        },
+                        {
+                            // Second follower author object
+                        },
+                        {
+                            // Third follower author object
+                        }
+                    ]
+                } 
+     """
+    current_user = request.user  
+    
+    try: 
+        current_author = get_object_or_404(Author, user=current_user)
+        requested_author = get_object_or_404(Author,serial=author_serial)   
+    except Exception as e:
+        return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
+    
+    #If the user is local, make sure they're logged in 
+    if request.user: 
+        
+        if requested_author == current_author:
+  
+            #get and serialize all of the authors followers 
+            followers_list=[]
+            
+            follower_relations = current_author.followers.all()
+            
+            if follower_relations:
+                for followers in follower_relations:
+                    print(followers.follower)
+                    follower = followers.follower
+                    followers_list.append(follower)
+                print(followers_list)
+    
+            try:
+                serialized_followers = AuthorSerializer( followers_list, many=True)
+                response = serialized_followers.data
+                return Response({"type": "followers", "followers":response}, status=status.HTTP_200_OK)
+        
+            except Exception as e:
+                    return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
+        else:
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_400_BAD_REQUEST )
+    else:   
+        #for now, all external hosts can make get requests
+        followers_list=[]
+            
+        follower_relations = current_author.followers.all()
+            
+        if follower_relations:
+            for followers in follower_relations:
+                print(followers.follower)
+                follower = followers.follower
+                followers_list.append(follower)
+            print(followers_list)
+    
+        try:
+            serialized_followers = AuthorSerializer( followers_list, many=True)
+            response = serialized_followers.data
+            return Response({"type": "followers", "followers":response}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+                    return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
+
     
 
 
