@@ -272,7 +272,6 @@ def view_external_profile(request, author_serial):
     if not profile_viewing:
         return redirect("wiki:view_authors")
 
-    # Still using the if structure
     if profile_viewing:
         logged_in = request.user.is_authenticated
         print(logged_in)
@@ -980,9 +979,27 @@ def create_entry(request):
 
 def entry_detail(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
-    if entry.visibility == 'FRIENDS' and not request.user.is_authenticated:
-        return HttpResponse("This entry is private. Please log in to view it.")
     is_owner = (entry.author.user == request.user)
+
+    current_author = (
+        get_object_or_404(Author, user=request.user)
+        if request.user.is_authenticated
+        else None
+    )
+
+    is_friend = False
+    if current_author:  # if the current user is authenticated, check if they are friends with the entry author
+        is_friend = AuthorFriend.objects.filter(
+            Q(friending=current_author, friended=entry.author) |
+            Q(friending=entry.author, friended=current_author)
+        ).exists()
+
+    # if entry is FRIENDS and user is not the owner or a friend, return 403
+    if entry.visibility == 'FRIENDS' and not (is_owner or (request.user.is_authenticated and is_friend)):
+        if not request.user.is_authenticated:
+            return HttpResponse("This entry is private. You must log in to view it.", status=403)
+        else:
+            return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
     return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
 
