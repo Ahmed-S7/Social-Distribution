@@ -146,3 +146,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+#adjusting time fields
+USE_TZ = True  
+TIME_ZONE = 'America/Edmonton' 
+
