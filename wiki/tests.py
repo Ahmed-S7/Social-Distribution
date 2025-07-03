@@ -60,7 +60,7 @@ class IdentityTestCase(TestCase):
 
     # Identity 1.1 As an author, I want a consistent identity per node, so that URLs to me/my entries are predictable and don't stop working
     def test_consistent_identity_author(self):
-        url = f'{BASE_PATH}/author/{self.author.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["displayName"], "test_author")
@@ -230,7 +230,7 @@ class FollowRequestTesting(TestCase):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
         url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 401)
         print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
      #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
