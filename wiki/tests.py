@@ -146,10 +146,14 @@ class FollowRequestTesting(TestCase):
             username='test_user3',
             password='test_password3'
         )
+        
         self.following_user = User.objects.create_user(
             username='test_user4',
             password='test_password4'
         )
+        
+        
+        
         # Proper authentication for Django views
         self.client.login(username='test_user', password='test_password')
         
@@ -195,7 +199,7 @@ class FollowRequestTesting(TestCase):
         self.receiving_author = Author.objects.create(
             id=3,
             user=self.receiving_user,
-            displayName='receiving_author',
+            displayName='outlandish_name',
             description='test_description2',
             github='https://github.com/test_author2',
             serial=uuid.uuid4(),
@@ -203,9 +207,14 @@ class FollowRequestTesting(TestCase):
         )
         
         self.existing_following= AuthorFollowing.objects.create(
-            follower=self.following_author,
-            following=self.receiving_author
+            following=self.receiving_author,
+            follower=self.following_author
         )
+        self.existing_following2= AuthorFollowing.objects.create(
+            following=self.requesting_author2,
+            follower=self.receiving_author
+        ) 
+
         self.new_follow_back= FollowRequest.objects.create(
             requester=self.receiving_author,
             requested_account=self.following_author
@@ -220,8 +229,7 @@ class FollowRequestTesting(TestCase):
             requested_account=self.receiving_author
         )
         
-        
-        
+          
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
@@ -231,7 +239,8 @@ class FollowRequestTesting(TestCase):
         url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
-        print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
+        
+        #print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
      #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
@@ -240,8 +249,9 @@ class FollowRequestTesting(TestCase):
         
         #the right sending author
         self.assertContains(response,"sending_author")
-        print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
-     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
+        #print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
+     
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -249,7 +259,7 @@ class FollowRequestTesting(TestCase):
         
         self.assertContains(response, "state")
         self.assertEqual(response.data[0]["state"], RequestState.REQUESTING)   
-        print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
+        #print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
 
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
@@ -258,7 +268,7 @@ class FollowRequestTesting(TestCase):
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
+        #print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
     
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
@@ -287,7 +297,7 @@ class FollowRequestTesting(TestCase):
         
         #check that the requester now follows the account it requested
         self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
-        print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+        #print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
         
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
@@ -310,11 +320,12 @@ class FollowRequestTesting(TestCase):
 
         self.new_follow_request2.refresh_from_db()
 
-        #correct status should be accepted now
+        #correct status should be rejected now
         self.assertEqual(self.new_follow_request2.state, RequestState.REJECTED)
     
-        print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
-   
+        #print("PASS: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+    
+     
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     #Following/Friends 6.6 As an author, if I am following another author, and they are following me (only after both follow requests are approved), I want us to be considered friends, so that they can see my friends-only entries.
     def test_friends_created_after_mutual_follow(self):
@@ -347,12 +358,63 @@ class FollowRequestTesting(TestCase):
             (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
             (Q(friending=self.following_author) & Q(friended=self.receiving_author))
             ).exists())
-        
+        #print("PASS: FRIENDSHIP CREATED AFTER MUTUAL FOLLOWING") 
     
-  
+    
+    #Following/Friends 6.5 As an author, I want to unfollow authors I am following, so that I don't have to see their entries anymore.
+    def test_unfollow_user(self):
+        
+        #"receiving_author" is following "following_author" in this specific test case
+        following_author= self.receiving_author
+        receiving_author= self.requesting_author2 
+   
+        #url to followed/unfollowed account's inbox
+        url = f'{BASE_PATH}/authors/{receiving_author.serial}/followers/'
+        
+        #Check the API contents for the follower list of the followed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the following account is in the JSON response of the list of followers 
+        self.assertContains(response,"outlandish_name")
+      
+        #profile page of the followed profile's URL
+        followed_profile_url= reverse("wiki:view_external_profile", kwargs={"author_serial":receiving_author.serial})
+        
+        #unfollow profile endpoint
+        unfollow_profile_url= reverse("wiki:unfollow_profile", kwargs={"author_serial":following_author.serial,"following_id": self.existing_following2.id})
+         
+        #check for a successful page view
+        response = self.client.get(followed_profile_url) 
+        self.assertEqual(response.status_code, 200)
+        
+        
+        #check that the following from the following author to the receiving author exists
+        self.assertEqual(following_author.get_following_id_with(receiving_author), 2)
+        
+        #attempt to unfollow the followed profile
+        response = self.client.post(unfollow_profile_url) 
+        
+        #Check for a successful redirect after the unfollow
+        self.assertEqual(response.status_code, 302)
+        
+        #Check that the following no longer exists in the DB
+        self.assertEqual(following_author.get_following_id_with(receiving_author), None)
+        
+        #Check the API contents for the follower list of the unfollowed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the unfollowing account is not in the JSON response of the list of followers 
+        self.assertNotEqual(response,"outlandish_name")
+        
+        #print("PASS: UNFOLLOWING ACCOUNTS WORKS PROPERLY IN DB AND API")
+        
     def tearDown(self):
         self.client.logout()    
-    
+
 
 class LikeEntryTesting(TestCase):
     # Liking An Entry Testing
@@ -1046,7 +1108,6 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Public Entry", titles)
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
-
 '''
 class SharingTestCase(TestCase):
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
-from .views import MyLoginView, user_wiki, register,get_local_follow_requests,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, get_local_followers
+from .views import MyLoginView, user_wiki, register,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, add_comment_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api
 from django.contrib.auth.views import LogoutView
@@ -54,9 +54,9 @@ urlpatterns = [
     #Author Follow Requests/Followers API
     path('api/authors/<str:author_serial>/inbox/', get_local_follow_requests, name='get_follow_requests' ),
     path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers' ),
+    path('api/authors/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
     
-    
-    
+     
     
     # User Author URLS
     path('authors/', view_authors, name='view_authors'),

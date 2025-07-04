@@ -164,7 +164,7 @@ class Author(BaseModel):
         
         
     def get_following_id_with(self, other_author):
-        
+        '''retrieve the id of the following object between a user and the author they follow if one exists, return None if one does not exist'''
         try:
             
             following_object = AuthorFollowing.objects.get(follower=self.id, following=other_author.id)
