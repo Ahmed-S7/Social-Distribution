@@ -692,31 +692,47 @@ def process_follow_request(request, author_serial, request_id):
 
 
 @api_view(['PUT'])
-def add_local_follower(request, author_serial, new_follower_serial):
-    if request.method == "PUT":
-        """
+def add_local_follower(request, author_serial, new_follower_serial): 
+    """
                 Add a follower to a specific user's following list after validating the new follow object
                 
                 Use: "PUT /api/authors/{author_serial}/followers/{new_follower_serial}"
 
-                returns Json in the following format: 
+                Returns:
+                
+                    -  JSON in the format:
+               
+                    {   "follower addition status": "successful",
+                        
+                        "type": "new follower",
+                        
+                        "follow summary": 
+                        {
+                            "follower": "http://127.0.0.1:8000/s25-project-white/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "following": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+                            "date_followed": "2025-07-03T22:36:30.094650-06:00"
+                        },
+                        
+                        "follower": {
+                            "type": "author",
+                            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "host": "http://s25-project-white/api/",
+                            "displayName": "v",
+                            "github": null,
+                            "profileImage": "/media/https%3A/cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
+                            "web": "http://127.0.0.1:8000/s25-project-white/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "description": ""
+                        }
+                    }
                     
-                        {   "type": "follower",      
-                                "follower": 
-                                            {
-                                            "type":"author",
-                                            "id":"http://nodebbbb/api/authors/222",
-                                            "host":"http://nodebbbb/api/",
-                                            "displayName":"Lara Croft",
-                                            "web":"http://nodebbbb/authors/222",
-                                            "github": "http://github.com/laracroft",
-                                            "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
-                                            }    
-                            }
-                    
-        """ 
-            
-
+                    Upon successful follows   
+                - returns 401 in the event of an unauthorized user adding a follower to a follow list
+                - returns 400 in the event of a PUT request that violates any restrictions
+                     
+    """ 
+    if request.method == "PUT":
+       
+    
         #If the user is local, make sure they're logged in 
         if request.user: 
                 
@@ -747,39 +763,38 @@ def add_local_follower(request, author_serial, new_follower_serial):
                         return Response({"Error": f"{pending_follower} already follows {current_author}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 #CHECK THAT THERE IS A PENDING FOLLOW REQUEST FROM NEW FOLLOWER TO CURRENT AUTHOR
-                try:
-                    
-                    existing_request = FollowRequest.objects.filter( 
+   
+                existing_request = FollowRequest.objects.filter( 
                         Q(requester=pending_follower, requested_account=current_author),
                         Q(state=RequestState.REQUESTING)
                     ).exists()
                     
-                    #IF THERE IS, PREVENT THE CREATION OF A FOLLOW, REQUEST NEEDS PROCESSING
-                    if existing_request:
+                #IF THERE IS, PREVENT THE CREATION OF A FOLLOW, REQUEST NEEDS PROCESSING
+                if existing_request:
                         return Response({"Error": f"{pending_follower} has a pending follow request to {current_author}"}, status=status.HTTP_400_BAD_REQUEST) 
                     
-                    #CHECK for existing accepted follow request, if one exists, attempt a save:
-                    else:
-                        existing_request = FollowRequest.objects.filter( 
+                #CHECK for existing accepted follow request, if one exists, attempt a save:
+                elif FollowRequest.objects.filter( 
                         Q(requester=pending_follower, requested_account=current_author),
                         Q(state=RequestState.ACCEPTED)
-                    ).exists()
-
-                        #Try to make a new following between the pending follower and the current author, save it and send a 200 response
-                        if existing_request:
-                            try:
-                                new_following = AuthorFollowing.objects.create(follower=pending_follower, following=current_author)
-                                new_following.save()
-                                return Response({"type": "new follower", "follow summary": AuthorFollowingSerializer(new_following).data, "follower": AuthorSerializer(pending_follower).data}, status=status.HTTP_200_OK)
-                            except Exception as e:
-                                    return Response({"Follow creation failed": f"{e}"}, status= status.HTTP_500_INTERNAL_SERVER_ERROR)
-   
-                except FollowRequest.DoesNotExist:
-                        return Response({"Cannot Create New Following": f"{pending_follower} has yet to send a follow request to {current_author}"}, status=status.HTTP_400_BAD_REQUEST)
-                            
+                        ).exists():
+                       
+                    #Try to make a new following between the pending follower and the current author, save it and send a 200 response
+                    try:
+                        new_following = AuthorFollowing.objects.create(follower=pending_follower, following=current_author)
+                        new_following.save()
+                        return Response({"follower addition status":"successful","type": "new follower", "follow summary": AuthorFollowingSerializer(new_following).data, "follower": AuthorSerializer(pending_follower).data}, status=status.HTTP_200_OK)
+                    except Exception as e:
+                        return Response({"Follow creation failed": f"{e}"}, status= status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                return Response({"Cannot Create New Following": f"{pending_follower} has yet to send a follow request accepted by {current_author}"}, status=status.HTTP_400_BAD_REQUEST)
+                
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )                
-                            
+    
+    #for remote authors
+    else:
+        pass                    
                     
 
 
