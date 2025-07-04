@@ -5,7 +5,7 @@
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <label for="username">Username:</label>
         <input type="text" name="username" required><br><br>
@@ -19,8 +19,8 @@
         <label>GitHub URL:</label>
         <input type="url" name="github"><br><br>
 
-        <label>Profile Image URL:</label>
-        <input type="url" name="profileImage"><br><br>
+        <label>Profile Image:</label>
+        <input type="file" name="profileImage" accept="image/*"><br><br>
 
         <button type="submit">Register</button>
     </form>
