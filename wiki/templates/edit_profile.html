@@ -1,8 +1,16 @@
 {% load static %}
-<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/edit_profile.css' %}">
 
 <form method="post" action="{% url 'wiki:edit_profile' request.user.username%}" enctype="multipart/form-data">
-
+    <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
+<div class="default_buttons">
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <button type="button">Back to Profile</button>
+    </a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <button type="button">Back to Stream</button>
+    </a>
+</div>
     {% csrf_token %}
 
     <section class="author_profile">
@@ -31,13 +39,5 @@
         {% endif %}
     </section>
     
-    <!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
-<div class="default_buttons">
-    <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="button">Back to Profile</button>
-    </a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="button">Back to Stream</button>
-    </a>
-</div>
+
 </form>
