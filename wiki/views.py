@@ -16,7 +16,7 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpRespons
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate,get_user_model
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
@@ -146,7 +146,7 @@ def register(request):
             if User.objects.filter(username__iexact=username).exists():
                 return render(request, 'register.html', {'error': 'Username already taken.'})
             
-            user = User.objects.create_user(username=username, password=password)
+            user = User.objects.create_user(username=username, password=password, is_active=False)
             
             #Save new author or raise an error
             newAuthor = saveNewAuthor(request, user, username, github, profileImage, web=None)
@@ -176,7 +176,20 @@ class MyLoginView(LoginView):
         login(self.request, form.get_user())
         username = self.request.user.username
         return redirect('wiki:user-wiki', username=username)
-   
+
+    def form_invalid(self, form):
+        username = self.request.POST.get('username')
+        password = self.request.POST.get('password')
+
+        User = get_user_model()
+        try:
+            user = User.objects.get(username=username)
+            if user.check_password(password) and not user.is_active:
+                form.add_error(None, "Your account is pending admin approval. Please wait for confirmation before logging in.")
+        except User.DoesNotExist:
+            pass  # normal invalid credentials case
+
+        return super().form_invalid(form)
     
 @api_view(['GET'])
 def get_authors(request):
@@ -260,7 +273,7 @@ def view_authors(request):
     current_user = request.user
     
     #retrieve all authors except for the current author
-    authors = Author.objects.exclude(user=current_user)
+    authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
 @require_GET  
@@ -269,6 +282,9 @@ def view_external_profile(request, author_serial):
     - shows the current user whether they are following, are friends with or can follow the current user
     '''
     profile_viewing = Author.objects.filter(serial=author_serial).first()
+    if not profile_viewing.user.is_active:
+        messages.error(request, "This user is not yet approved by admin.")
+        return redirect("wiki:view_authors")
     if not profile_viewing:
         return redirect("wiki:view_authors")
 
