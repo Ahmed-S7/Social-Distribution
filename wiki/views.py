@@ -467,11 +467,12 @@ def unfollow_profile(request, author_serial, following_id):
         return HttpResponseServerError(f"Failed to Unfollow This User.")
     
     #CHECK FOR SUCCESSFUL DELETIONS
+    '''
     print("Follow Request Deleted:",active_request.is_deleted)
     print("Active Following Deleted:",active_following.is_deleted)
     if active_friendship_id:
         print("Active Friendship Deleted:", active_request.is_deleted)
-
+    '''
 
 
     #redirect to the requested user's page 
@@ -693,92 +694,133 @@ def process_follow_request(request, author_serial, request_id):
 
 
 
+@api_view(['PUT'])
+def add_local_follower(request, author_serial,new_follower_serial):
+    
+    #GET THE LOCAL AUTHOR, RETURN 404 IF NOT FOUND
+    
+    #IF LOCAL AUTHOR IS LOGGED IN
+    
+        #CHECK THAT THERE IS AN ACCEPTED FOLLOW REQUEST FROM NEW FOLLOWER TO CURRENT AUTHOR
+    
+            #IF THERE IS, CHECK for existing following, return bad request if one does, otherwise:
+            
+                # CREATE A NEW AUTHOR FOLLOWING OBJECT FROM NEW FOLLOWER TO CURRENT AUTHOR
+        
+                # SERIALIZE THE NEW FOLLOW OBJECT AND RETURN IT IF SUCCESSFUL WITH 200 RESPONSE
+
+                
+        # ELSE:
+                
+            # RETURN A 400 BAD REQUEST (CANNOT ADD A NEW FOLLOWER WITHOUT AN ACCEPTED FOLLOW REQUEST)
+            
+    # IF THEY ARE NOT LOGGED IN:
+        
+        # RETURN A 401 UNAUTHORIZED  
+        
+        
+        pass
+
+
+
 @login_required
 @api_view(['GET'])
 def get_local_followers(request, author_serial):   
-    """
-    Get a specific author's followers list requests in the application
     
-    Use: "GET /api/authors/{author_serial}/followers/"
-
-    returns Json in the following format: 
-         
-                {
-                    "type": "followers",      
-                    "followers":[
-                        {
-                            "type":"author",
-                            "id":"http://nodebbbb/api/authors/222",
-                            "host":"http://nodebbbb/api/",
-                            "displayName":"Lara Croft",
-                            "web":"http://nodebbbb/authors/222",
-                            "github": "http://github.com/laracroft",
-                            "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
-                        },
-                        {
-                            // Second follower author object
-                        },
-                        {
-                            // Third follower author object
-                        }
-                    ]
-                } 
-     """
-    current_user = request.user  
-    
-    try: 
-        current_author = get_object_or_404(Author, user=current_user)
-        requested_author = get_object_or_404(Author,serial=author_serial)   
-    except Exception as e:
-        return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
-    
-    #If the user is local, make sure they're logged in 
-    if request.user: 
+    if request.method =='GET':
+        """
+        Get a specific author's followers list requests in the application
         
-        if requested_author == current_author:
-  
-            #get and serialize all of the authors followers 
+        Use: "GET /api/authors/{author_serial}/followers/"
+
+        returns Json in the following format: 
+            
+                    {
+                        "type": "followers",      
+                        "followers":[
+                            {
+                                "type":"author",
+                                "id":"http://nodebbbb/api/authors/222",
+                                "host":"http://nodebbbb/api/",
+                                "displayName":"Lara Croft",
+                                "web":"http://nodebbbb/authors/222",
+                                "github": "http://github.com/laracroft",
+                                "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
+                            },
+                            {
+                                // Second follower author object
+                            },
+                            {
+                                // Third follower author object
+                            }
+                        ]
+                    } 
+                    
+        """
+        current_user = request.user  
+        
+        try: 
+            current_author = get_object_or_404(Author, user=current_user)
+            requested_author = get_object_or_404(Author,serial=author_serial)   
+        except Exception as e:
+            return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
+        
+        #If the user is local, make sure they're logged in 
+        if request.user: 
+            
+            if requested_author == current_author:
+    
+                #get and serialize all of the authors followers 
+                followers_list=[]
+                
+                follower_relations = current_author.followers.all()
+                
+                if follower_relations:
+                    for followers in follower_relations:
+                        #print(followers.follower)
+                        follower = followers.follower
+                        followers_list.append(follower)
+                    #print(followers_list)
+        
+                try:
+                    serialized_followers = AuthorSerializer( followers_list, many=True)
+                    response = serialized_followers.data
+                    return Response({"type": "followers", "followers":response}, status=status.HTTP_200_OK)
+            
+                except Exception as e:
+                        return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
+            else:
+                return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
+        else:   
+            #for now, all external hosts can make get requests
             followers_list=[]
-            
+                
             follower_relations = current_author.followers.all()
-            
+                
             if follower_relations:
                 for followers in follower_relations:
                     #print(followers.follower)
                     follower = followers.follower
                     followers_list.append(follower)
                 #print(followers_list)
-    
+        
             try:
                 serialized_followers = AuthorSerializer( followers_list, many=True)
                 response = serialized_followers.data
                 return Response({"type": "followers", "followers":response}, status=status.HTTP_200_OK)
-        
+            
             except Exception as e:
-                    return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
-        else:
-            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-    else:   
-        #for now, all external hosts can make get requests
-        followers_list=[]
-            
-        follower_relations = current_author.followers.all()
-            
-        if follower_relations:
-            for followers in follower_relations:
-                print(followers.follower)
-                follower = followers.follower
-                followers_list.append(follower)
-            print(followers_list)
+                        return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )         
     
-        try:
-            serialized_followers = AuthorSerializer( followers_list, many=True)
-            response = serialized_followers.data
-            return Response({"type": "followers", "followers":response}, status=status.HTTP_200_OK)
-        
+    if request.method =='PUT':  
+        try: 
+            current_author = get_object_or_404(Author, user=current_user)
+            requested_author = get_object_or_404(Author,serial=author_serial)   
         except Exception as e:
-                    return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
-
+            return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
+        
+        # CHECK THAT THERE IS AN ACCEPTED FOLLOW REQUEST From 
+                
     
 
 
@@ -924,6 +966,11 @@ def edit_profile(request, username):
 
     return render(request, 'edit_profile.html', {'author': author})
 
+
+
+
+
+#THIS NEEDS TO BE ON THE SAME API ENDPOINT AS GET AUTHORS (VIEW SPECS)
 @api_view(['PUT', 'GET']) 
 def edit_profile_api(request, username):
     """
