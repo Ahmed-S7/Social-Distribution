@@ -94,14 +94,14 @@
                             <form action="{% url 'wiki:unfollow_profile' author.serial follow_id %}" method="POST">
                    
                                 {% csrf_token %}
-                                <button class="unfriend_button"  type="submit" >Unfriend User </button> 
+                                <button class="unfriend_button" name='action' value='unfriend' type="submit" >Unfriend User </button> 
 
                             </form>
                             {% elif is_following %}
 
                             <form action="{% url 'wiki:unfollow_profile' author.serial follow_id %}" method="POST">
                                 {% csrf_token %}
-                            <button class="unfollow_button" type="submit" >UnFollow Profile</button>
+                            <button class="unfollow_button" name='action' value='unfollow' type="submit" >UnFollow Profile</button>
                     
                             </form>
 
