@@ -137,7 +137,7 @@ def register(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
         github = request.POST.get('github') or None
-        profileImage = request.POST.get('profileImage') or None
+        profileImage = request.FILES.get('profileImage') or None
 
         userIsValid = validUserName(username)
         
