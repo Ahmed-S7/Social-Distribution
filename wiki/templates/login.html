@@ -6,13 +6,16 @@
     <title>Login</title>
 </head>
 <body>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Log In</button>
-        <a href="{% url 'wiki:register' %}"> 
-            <p>Don't have an account? Register here.</p>
-        </a>
-    </form>
+    <div class="container">
+        <h1>SocialDistribution</h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="login_button">Log In</button>
+            <a href="{% url 'wiki:register' %}"> 
+                <p>Don't have an account? Register here.</p>
+            </a>
+        </form>
+    </div>
 </body>
 </html>
