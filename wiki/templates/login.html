@@ -13,7 +13,7 @@
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <button type="submit">Log In</button>
+        <button class='login_button' type="submit">Log In</button>
         <a href="{% url 'wiki:register' %}"> 
             <p>Don't have an account? Register here.</p>
         </a>

@@ -386,10 +386,12 @@ def cancel_follow_request(request, author_serial, request_id):
     
     requested_author_serial = author_serial
     
-    
-    #retrieve the current follow request
-    active_request = get_object_or_404(FollowRequest, id=request_id)
-    #print("The request being changed is:", active_request)
+    try:
+        #retrieve the current follow request
+        active_request = get_object_or_404(FollowRequest, id=request_id)
+        #print("The request being changed is:", active_request)
+    except FollowRequest.DoesNotExist:
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": author_serial})) 
 
     
     #set the follow request as deleted
