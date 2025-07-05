@@ -50,14 +50,15 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         displayName = username,
         
         serial = serial_id,
-        
-        profileImage=profileImage or "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
+
 
         github=github,
         #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
         web =base_web,
         
         )
+        if profileImage:  # only set if user uploaded one
+            newAuthor.profileImage = profileImage
         newAuthor.save()
         return newAuthor
     
