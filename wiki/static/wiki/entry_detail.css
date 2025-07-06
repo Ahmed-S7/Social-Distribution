@@ -37,7 +37,7 @@ h2, h3, .entry_details{
 }
 
 .view_author_button{
-    background: none;
+    background-color: white;
     border:none;
     font-variant: small-caps;
     color:black;
@@ -45,7 +45,6 @@ h2, h3, .entry_details{
     text-align: center;
     font-family: 'Nunito', sans-serif; 
     font-size:1em;
-    
 }
 
 .view_author_button:hover{
