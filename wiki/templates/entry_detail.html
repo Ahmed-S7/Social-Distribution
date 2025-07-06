@@ -1,4 +1,21 @@
 {% load static %}
+
+<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
+<div class="default_buttons">
+
+    {% if request.user.is_authenticated %}
+
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <p class='back_to_profile_button' type="button">Back to Profile</p>
+    </a>
+
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <p class='back_to_stream_button' type="button">Back to Stream</p>
+    </a>
+
+    {% endif %}
+
+</div>
 <link rel="stylesheet" href="{% static 'wiki/entry_detail.css' %}">
 
 <section class='entry_details'>
@@ -69,16 +86,4 @@
 </div>
 
 
-<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
-<div class="default_buttons">
-    {% if request.user.is_authenticated %}
-    <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="button">Back to Profile</button>
-    </a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="button">Back to Stream</button>
-    </a>
-    {% endif %}
-    
 
-</div>

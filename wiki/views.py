@@ -441,7 +441,7 @@ def unfollow_profile(request, author_serial, following_id):
     
     try:
         #retrieve the current follow request
-        followed_author = Author.objects.get(id=followed_author_serial)
+        followed_author = Author.objects.get(serial=followed_author_serial)
         current_author = Author.objects.get(user=request.user)
         #print("The request being changed is:", active_request)
     except Author.DoesNotExist:
