@@ -4,8 +4,8 @@ body {
     background-color: #f9f9f9;
     margin: 0;
     padding: 0;
-    height: 700px;
-
+    height: 43.75em;
+    flex-direction: column;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -14,10 +14,10 @@ body {
 .container {
     background-color: #fff;
     padding: 2rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
+    border: 0.0625em solid #ccc;
+    border-radius: 0.5em;
+    box-shadow: 0 0.125em 0.5em rgba(0, 0, 0, 0.1);
+    max-width: 25em;
     width: 90%;
 }
 .login_button {
@@ -32,7 +32,6 @@ body {
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
-
 .login_button:hover {
     background-color: #0077aa; 
 }

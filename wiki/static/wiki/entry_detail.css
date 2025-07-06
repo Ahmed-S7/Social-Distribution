@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+:root {
+  --red-hover: rgba(230, 23, 23, 0.93);
+  --nav_bar-color: #e4e9e9;
+  --background-color: #ffffff;
+  --follow-button: #0090ce;
+  --header-color:rgb(137, 198, 225);
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    height: 50rem;
+    flex-direction: column;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+h2, h3, .entry_details{
+    color: rgb(0, 26, 128);
+}
+
+.entry_title{
+    text-align: center;
+}
+/*Full Section For Entries*/
+.entry_details{
+    margin: 2rem auto;
+    padding: 2rem;
+    max-width: 30em;
+    align-items: center;
+    box-shadow: 0 0.125em 0.5em rgba(0, 0, 0, 0.1);
+    border-style:ridge;
+    border-width:0.0625em;
+}
+
+.entry_content{
+    text-align: center;
+}
+.entry_details.entry_author{
+    text-align: left;
+}
+.entry_image{
+    border-color:black;
+    border-style: solid;
+    border-width: 0.0625;
+    max-width:25em;
+    max-height:25em;
+    border-radius:0.5em;
+}
+
+div.comment-section{
+    justify-content: center;
+    text-align: left;
+    max-width:25em;
+}

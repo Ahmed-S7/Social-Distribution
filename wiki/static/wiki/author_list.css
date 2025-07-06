@@ -30,13 +30,14 @@ section .author {
     background-color: rgb(225, 244, 253);
     display:inline-block;
     text-align: center;
-    margin: 2em;
+    margin: 0.5em;
 
 }
 
 section .author:hover {
    transform:scale(1.05);
    transition: transform 0.3s ease-in-out;
+  
 
 }
 
@@ -80,7 +81,8 @@ button{
 }
 
 .view_profile:hover{
-    background-color: rgba(41, 117, 189, 0.183);
+    background-color: rgba(41, 117, 189, 0.183); 
+    cursor:pointer;
 }
 
 .switch_from_author button:hover{
@@ -93,11 +95,10 @@ button{
 .profile_image{
 
     border-style:solid;
-    width: 8em;
+    max-width: 8em;
     height: 8em;
     border-radius:1em;
-
-    
+ 
 }
 
 li{

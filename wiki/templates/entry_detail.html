@@ -1,18 +1,33 @@
 {% load static %}
-<link rel="stylesheet" href="{% static 'wiki/style.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/entry_detail.css' %}">
 
-<h2>{{ entry.title }}</h2>
-<p>{{ entry.content }}</p>
-{% if entry.image %}
-    <img src="{{ entry.image.url }}" alt="Post image">
-{% endif %}
+<section class='entry_details'>
 
-<p><em>By {{ entry.author.displayName }}</em></p>
-{% if is_owner %}
-<a href="{% url 'wiki:edit_entry' entry.serial %}">
-<button type="button">Edit Entry</button>
-</a>
-{% endif %}
+    <h2 class='entry_title'>{{ entry.title }}</h2>
+   
+    {% if entry.image %}
+        <img class='entry_image' src="{{ entry.image.url }}" alt="Post image">
+    {% endif %}
+    <p class='entry_content'>{{ entry.content }}</p>
+    <p class='entry_author'><em>By {{ entry.author.displayName }}</em></p>
+    
+    <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
+    {% if not is_owner %}
+    <a href="{% url 'wiki:view_entry_author' entry.serial %}">
+        <button type="button">View Entry Author Profile</button>
+    </a>
+    {% endif %}
+
+    {% if is_owner %}
+    <a href="{% url 'wiki:edit_entry' entry.serial %}">
+       <button type="button">Edit Entry</button>
+    </a>
+    <a href="{% url 'wiki:delete_entry' entry.serial %}">
+       <button type="button">Delete Entry</button>
+    </a>
+    {% endif %}
+
+</section>
 
 
 <!-- Add Comment Form -->
@@ -64,20 +79,6 @@
         <button type="button">Back to Stream</button>
     </a>
     {% endif %}
-    <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
-    {% if not is_owner %}
-    <a href="{% url 'wiki:view_entry_author' entry.serial %}">
-        <button type="button">View Entry Author Profile</button>
-    </a>
-    {% endif %}
-
-    {% if is_owner %}
-    <a href="{% url 'wiki:edit_entry' entry.serial %}">
-       <button type="button">Edit Entry</button>
-    </a>
-    <a href="{% url 'wiki:delete_entry' entry.serial %}">
-       <button type="button">Delete Entry</button>
-    </a>
-    {% endif %}
+    
 
 </div>

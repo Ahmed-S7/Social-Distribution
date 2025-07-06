@@ -33,13 +33,6 @@ p{
 
 
 
-
-
-
-
-
-
-
 /*TOP OF THE SCREEN*/
 /**********************************************************/
 
@@ -271,7 +264,6 @@ a{
     font-family: 'Nunito', sans-serif;
     border-radius:0.6em; 
     font-size:1.2em; 
-   
     text-align: center;
     align-items: center;
     background-color:lightgreen;
