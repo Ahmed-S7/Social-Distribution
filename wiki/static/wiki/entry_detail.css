@@ -30,13 +30,30 @@ h2, h3, .entry_details{
 .entry_details{
     margin: 2rem auto;
     padding: 2rem;
-    max-width: 30em;
+    max-width:30em;
     align-items: center;
     box-shadow: 0 0.125em 0.5em rgba(0, 0, 0, 0.1);
     border-style:ridge;
     border-width:0.0625em;
 }
 
+button{
+    font-family: 'Nunito', sans-serif;
+}
+
+.view_author_button{
+    background: none;
+    border:none;
+    font-variant: small-caps;
+    color:black;
+    border-radius:0.5em;
+    text-align: center;
+    align-content: center;
+}
+
+.view_author_button:hover{
+    background-color: var(--header-color);
+}
 .entry_content{
     text-align: center;
 }

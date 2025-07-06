@@ -14,7 +14,7 @@
     <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
     {% if not is_owner %}
     <a href="{% url 'wiki:view_entry_author' entry.serial %}">
-        <button type="button">View Entry Author Profile</button>
+        <button class='view_author_button' type="button">View Author Profile</button>
     </a>
     {% endif %}
 
