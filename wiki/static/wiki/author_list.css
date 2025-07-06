@@ -27,10 +27,10 @@ h2{
 section .author {
 
     flex-direction:column;
-    border-style:groove;
+    border-style:solid;
     border-radius: 1em;
-    border-color: rgb(178, 235, 235);
-    background-color: rgb(225, 244, 253);
+    border-color: rgb(182, 221, 251);
+    background-color: rgb(212, 233, 247);
     display:inline-block;
     text-align: center;
     margin: 0.2em;
@@ -87,7 +87,9 @@ button{
     border-style:solid;
     max-width: 8em;
     height: 8em;
+    border-width:0.0625em;
     border-radius:1em;
+    border-color: rgb(182, 221, 251);
  
 }
 
