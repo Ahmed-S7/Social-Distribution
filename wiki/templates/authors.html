@@ -1,18 +1,21 @@
 {% load static %}
-<link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
-<h2>Authors</h2>
 
-    <section class="switch_from_author">
+
+
+<section class="default_buttons">
+    <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="nav_button">Back to Profile</button>
+        <p type="nav_button">Back to Profile</p>
     </a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="nav_button">Back to Stream</button>
+        <p type="nav_button">Back to Stream</p>
     </a>
-    </section>
+</section>
 
 
+<h2>Authors</h2>
 
+<link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
 <section class="authors_list">
 
 <ul class="author_list">
@@ -20,14 +23,14 @@
         <section class="author">
 
         {% if author.profileImage %}
-            <img class="profile_image_logged_user" src="{{ author.profileImage.url }}" alt="Profile Picture">
+            <img class="profile_image" src="{{ author.profileImage.url }}" alt="Profile Picture">
         {% else %}
-            <img class="profile_image_logged_user" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
         {% endif %}
             <p class="list_display_name">{{ author.displayName }}</p>
 
 
-                    <section class="default_buttons">
+                    <section class="view_profile_button">
 
                            
                             <a href="{% url 'wiki:view_external_profile' author.serial %}">

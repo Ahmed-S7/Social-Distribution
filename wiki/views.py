@@ -401,11 +401,14 @@ def cancel_follow_request(request, author_serial, request_id):
     '''
     
     requested_author_serial = author_serial
-    
-    
-    #retrieve the current follow request
-    active_request = get_object_or_404(FollowRequest, id=request_id)
-    #print("The request being changed is:", active_request)
+    print(request_id)
+    try:
+        #retrieve the current follow request
+        active_request = FollowRequest.objects.get(id=request_id)
+        #print("The request being changed is:", active_request)
+    except FollowRequest.DoesNotExist:
+        #print(f"{request_id} is not a valid existing follow request id")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_author_serial})) 
 
     
     #set the follow request as deleted
@@ -435,18 +438,28 @@ def unfollow_profile(request, author_serial, following_id):
     '''
     
     followed_author_serial = author_serial
-    current_author = get_object_or_404(Author, user=request.user)
-    followed_author = get_object_or_404(Author, serial=followed_author_serial)
     
+    try:
+        #retrieve the current follow request
+        followed_author = Author.objects.get(serial=followed_author_serial)
+        current_author = Author.objects.get(user=request.user)
+        #print("The request being changed is:", active_request)
+    except Author.DoesNotExist:
+        print(f"{following_id} is not a valid existing following id")
+        return redirect(reverse("wiki:view_authors"))
 
     
-    #retrieve the current follow request
-    active_following = get_object_or_404(AuthorFollowing, id=following_id)
-   
-  
-    #retrieve the accepted follow request
-    active_request=get_object_or_404(FollowRequest, requester = current_author.id, requested_account=followed_author.id)
+    try:
+        #retrieve the current follow request
+        active_following = AuthorFollowing.objects.get(id=following_id)
     
+        #retrieve the accepted follow request
+        active_request=FollowRequest.objects.get(requester = current_author.id, requested_account=followed_author.id)
+    
+    except AuthorFollowing.DoesNotExist or FollowRequest.DoesNotExist:
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))     
+     
+    # ID of friendship object or None
     active_friendship_id = current_author.get_friendship_id_with(followed_author)
     
     '''#VISUAL REPRESENTATION TEST

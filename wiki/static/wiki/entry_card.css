@@ -7,13 +7,28 @@ html, body{
 }
 
 .post-card {
-    border: 0.0625 solid #ccc;
+    border: 0.0625em solid #6f6c6cac;
     border-radius: 0.625em;
-    padding: 1em;
+    padding: 2em;
     margin: 1.5em auto;
     background-color: #fff;
-    box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.1);
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.208);
     text-decoration: none;
+    justify-content: center;
+    align-content: center;
+    max-width:30em;
+}
+
+.post-card:hover{
+    transform: scale(1.03);
+    transition:transform 0.3s ease-in-out;
+}
+
+.entry_image{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 90%; 
+    border-radius: 0.625em;
 }
 .post-header {
     display: flex;
@@ -32,10 +47,15 @@ html, body{
 }
 .post-content {
     margin: 0.75em 0;
+    justify-content: center;
+    text-align: center;
+    padding-bottom: 2em;
 }
 .post-footer {
-    display: flex;
-    gap: 1.5em;
+    display: inline-flex;
+    justify-content: left;
+    max-height: fit-content;
+    gap: 3em;
 }
 .like-btn, .comment-btn {
     background: none;

@@ -33,13 +33,6 @@ p{
 
 
 
-
-
-
-
-
-
-
 /*TOP OF THE SCREEN*/
 /**********************************************************/
 
@@ -255,6 +248,7 @@ a{
     display: flex;
     justify-content: center;
     width: 100%;
+    border:none;
 }
 
 .follow_button {
@@ -264,6 +258,8 @@ a{
     background-color: var(--follow-button);
     text-align: center;
     align-items: center;
+    border:none;
+    color:white;
 
 }
 
@@ -271,10 +267,10 @@ a{
     font-family: 'Nunito', sans-serif;
     border-radius:0.6em; 
     font-size:1.2em; 
-   
     text-align: center;
     align-items: center;
     background-color:lightgreen;
+     border:none;
 
 }
 
@@ -288,6 +284,7 @@ a{
     font-size:1.2em;
     text-align: center;
     align-items: center;
+    border:none;
 } 
 
 .unfollow_button{
@@ -298,6 +295,7 @@ a{
     font-size:1.2em;
     text-align: center;
     align-items: center;
+    border:none;
 } 
 
 

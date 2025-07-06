@@ -1,0 +1,66 @@
+
+
+body{
+    text-align: center;
+}
+.follow_requests{
+    display: flex;
+    flex-direction: column;
+    width:100%;
+    text-align: center;
+    gap:2em;
+    align-items: center;
+    padding-top: 3em;
+
+}
+.accept_follow {
+        font-family: 'Nunito', sans-serif; 
+        background:none; 
+        border-radius: 1em; 
+        border-style:solid;
+        border-color:lightgreen;
+        color:darkgreen;
+    }
+.reject_follow{
+        font-family: 'Nunito', sans-serif; 
+        background:none; 
+        border-radius: 1em; 
+        border-style:solid;
+        border-color:red;
+        color:red;
+} 
+.follow_request_buttons{
+    display:inline-flex;
+    gap: 6em; 
+}
+
+.request_info{
+    display:flex;
+    flex-direction: column;
+    border-radius: 2em;
+    border-style: solid;
+    border-width:0.0625em;
+    border-color: rgba(177, 175, 173, 0.389);
+    width:45%;
+    text-align: center;
+    padding:1em;
+
+}
+
+.request_info:hover{
+   cursor: pointer;
+   transform:scale(1.05);
+   transition: transform 0.3s ease-in-out; 
+}
+
+.follow_request_buttons .accept_follow:hover{
+    transform:scale(1.1);
+    transition: transform 0.3s ease-in-out; 
+    background-color: azure;
+}
+
+.follow_request_buttons .reject_follow:hover{
+    transform:scale(1.1);
+    transition: transform 0.3s ease-in-out; 
+    background-color: rgba(238, 174, 167, 0.529);
+}

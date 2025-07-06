@@ -14,7 +14,10 @@ h2{
     align-items: center;
     text-align:center;
 }
-
+.author_list{
+    margin:3em;
+    justify-content: center;
+}
 .author_profile{
     justify-content: center;
     align-items: center;
@@ -24,37 +27,25 @@ h2{
 section .author {
 
     flex-direction:column;
-    border-style:groove;
+    border-style:solid;
     border-radius: 1em;
-    border-color: rgb(178, 235, 235);
-    background-color: rgb(225, 244, 253);
+    border-color: rgb(182, 221, 251);
+    background-color: rgb(212, 233, 247);
     display:inline-block;
     text-align: center;
-    margin: 2em;
+    margin: 0.2em;
 
 }
 
 section .author:hover {
    transform:scale(1.05);
    transition: transform 0.3s ease-in-out;
+  
 
 }
 
-.default_buttons{
-
-    border-radius: 1em;
-    border-style:none;
-    display: inline-flex;
-    border-color: rgb(183, 224, 241);
-    padding-left: 0.1em;
-    padding-bottom: 0.2em;
-    display: inline;
-    flex-wrap:wrap;
-   
-}
 .list_display_name{
     font-weight: bold;
-
 
 }
 
@@ -80,7 +71,8 @@ button{
 }
 
 .view_profile:hover{
-    background-color: rgba(41, 117, 189, 0.183);
+    background-color: rgba(41, 117, 189, 0.183); 
+    cursor:pointer;
 }
 
 .switch_from_author button:hover{
@@ -93,11 +85,12 @@ button{
 .profile_image{
 
     border-style:solid;
-    width: 8em;
+    max-width: 8em;
     height: 8em;
+    border-width:0.0625em;
     border-radius:1em;
-
-    
+    border-color: rgb(182, 221, 251);
+ 
 }
 
 li{
