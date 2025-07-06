@@ -106,13 +106,45 @@
         <section class="entry_list">
             <h3>Entries</h3>
             {% if entries %}
+            <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                 <ul class="entry_list">
                     {% for entry in entries %}
-                        <li>
-                            <a href="{% url 'wiki:entry_detail' entry.serial %}">
-                                <strong>{{ entry.title }}</strong> — {{ entry.created_at|date:"M d, Y H:i" }}
-                            </a>
-                        </li>
+                        <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
+                                
+                        <div class="post-card">
+                        <!--Now clicking an entry (entry header) should lead to entry details-->
+                        <a href="{% url 'wiki:entry_detail' entry.serial %}">
+                            <div class="post-header">
+
+                                <div>
+                                    <div class="post-title">{{ entry.title }}</div>
+                                    <small>
+                                        Posted by <strong>{{ entry.author.displayName }}</strong>
+                                        on {{ entry.created_at|date:"M d, Y H:i" }}
+                                    </small>
+                                </div>
+                            </div>
+                        
+
+                            {% if entry.image %}
+                                <div style="margin: 1em 0;">
+                                    <img class='entry_image' src="{{ entry.image.url }}" alt="Post image"/>
+                    
+                                </div>
+                            {% endif %} 
+                            <div class="post-content">{{ entry.content }}</div>
+                                </a>
+                                    <div class="post-footer">
+                                        <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="liked_from_profile" value="true">
+                                            <button type="submit" class="like-btn">❤️{{ entry.likes.count}} </button>
+                                        </form>
+                                        <!--<p>{{ entry.likes.count }} likes</p>-->
+
+                                        <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
+                                    </div>
+                                </div>
                     {% endfor %}
                 </ul>
             {% endif %}
