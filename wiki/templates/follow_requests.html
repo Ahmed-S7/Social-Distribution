@@ -1,31 +1,43 @@
 {%load static%}
+<link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+
+<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
+<div class="default_buttons">
+    <a href="{% url 'wiki:profile' request.user.username%}">
+        <p class='back_to_profile_button'  type="button">Back to Profile</p>
+    </a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}">
+        <p class='back_to_stream_button' type="button">Back to Stream</p>
+    </a>
+</div>
 <h1>Incoming Follow Requests For {{author.displayName}}:</h1>
 
 
 <body>
-<section class="follow requests">
-
+<section class="follow_requests">
+<link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
 {% if follow_requests %}
   {% for follow_request in follow_requests %}
-    <h3>{{ follow_request.requester }} has requested to follow you!</h3>
-    <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
-      {% csrf_token %}
-      <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
-      <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
-    </form>
+
+  <section class="request_info">
+        <section class='follow_request_text'>
+            <h4>{{ follow_request.requester }} has requested to follow you!</h4>
+        </section>
+        <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
+            {% csrf_token %} 
+            <section class='follow_request_buttons'>
+                <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
+                <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
+            </section>
+        </form>
+
+  </section>
+    
   {% endfor %}
 {% else %}
-  <h3>NO FOLLOW REQUESTS FOUND</h3>
+  <h5>NO FOLLOW REQUESTS FOUND</h5>
 {% endif %}
 
 </section>
-<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
-<div class="default_buttons">
-    <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="button">Back to Profile</button>
-    </a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="button">Back to Stream</button>
-    </a>
-</div>
+
 </body>

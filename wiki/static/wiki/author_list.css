@@ -44,18 +44,6 @@ section .author:hover {
 
 }
 
-.default_buttons{
-
-    border-radius: 1em;
-    border-style:none;
-    display: inline-flex;
-    border-color: rgb(183, 224, 241);
-    padding-left: 0.1em;
-    padding-bottom: 0.2em;
-    display: inline;
-    flex-wrap:wrap;
-   
-}
 .list_display_name{
     font-weight: bold;
 

@@ -7,7 +7,7 @@ html, body{
 }
 
 .post-card {
-    border: 0.0625 solid #000000;
+    border: 0.0625em solid #6f6c6cac;
     border-radius: 0.625em;
     padding: 2em;
     margin: 1.5em auto;
@@ -17,6 +17,11 @@ html, body{
     justify-content: center;
     align-content: center;
     max-width:35em;
+}
+
+.post-card:hover{
+    transform: scale(1.03);
+    transition:transform 0.3s ease-in-out;
 }
 
 .entry_image{

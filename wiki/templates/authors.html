@@ -1,18 +1,21 @@
 {% load static %}
-<link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
-<h2>Authors</h2>
 
-    <section class="switch_from_author">
+
+
+<section class="default_buttons">
+    <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <a href="{% url 'wiki:profile' request.user.username%}">
-        <button type="nav_button">Back to Profile</button>
+        <p type="nav_button">Back to Profile</p>
     </a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <button type="nav_button">Back to Stream</button>
+        <p type="nav_button">Back to Stream</p>
     </a>
-    </section>
+</section>
 
 
+<h2>Authors</h2>
 
+<link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
 <section class="authors_list">
 
 <ul class="author_list">
@@ -27,7 +30,7 @@
             <p class="list_display_name">{{ author.displayName }}</p>
 
 
-                    <section class="default_buttons">
+                    <section class="view_profile_button">
 
                            
                             <a href="{% url 'wiki:view_external_profile' author.serial %}">
