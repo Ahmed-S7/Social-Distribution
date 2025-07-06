@@ -4,7 +4,7 @@
 <div class="default_buttons">
 
     {% if request.user.is_authenticated %}
-
+    <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <a href="{% url 'wiki:profile' request.user.username%}">
         <p class='back_to_profile_button' type="button">Back to Profile</p>
     </a>
@@ -17,7 +17,7 @@
 
 </div>
 <link rel="stylesheet" href="{% static 'wiki/entry_detail.css' %}">
-
+<section class='entry_container'>
 <section class='entry_details'>
 
     <h2 class='entry_title'>{{ entry.title }}</h2>
@@ -27,6 +27,11 @@
     {% endif %}
     <p class='entry_content'>{{ entry.content }}</p>
     <p class='entry_author'><em>By {{ entry.author.displayName }}</em></p>
+    <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
+        {% csrf_token %}
+        <input type="hidden" name="liked_from_details" value="true">
+        <button type="submit" class="like-btn">❤️{{ entry.likes.count}} </button>
+    </form>
     
     <!--ENTRY COMMENTERS THAT ARE NOT THE OWNER OF THE ENTRY CAN VIEW THE AUTHOR WHO CREATED THE ENTRY'S PROFILE-->
     {% if not is_owner %}
@@ -44,6 +49,7 @@
     </a>
     {% endif %}
 
+</section>
 </section>
 
 

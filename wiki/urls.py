@@ -46,27 +46,29 @@ urlpatterns = [
     path('api/entry/<uuid:entry_serial>/comments/view/', get_entry_comments_api, name='get_entry_comments_api'),
     path('api/comment/<int:comment_id>/like/', like_comment_api, name='like_comment_api'),
     
+     # Author URLS
+    path('authors/', view_authors, name='view_authors'),
+    path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
     path('api/authors/<str:author_serial>/', get_author, name='get_author'),
     
-    #Author Follow Requests/Followers API
+    #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/inbox/', get_local_follow_requests, name='get_follow_requests' ),
     path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers' ),
     path('api/authors/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
-    
-     
-    
-    # User Author URLS
-    path('authors/', view_authors, name='view_authors'),
-    path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
-    
-    
-    #Author Follow Requests URLS
+   
+   #Follow Requests/Followers URLS
     path('authors/<str:username>/inbox/', check_follow_requests, name='check_follow_requests' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
     path('authors/<str:author_serial>/<str:request_id>/cancel_request', cancel_follow_request, name='cancel_follow_request' ),
     path('authors/<str:author_serial>/<str:following_id>/unfollow', unfollow_profile, name='unfollow_profile'),
+   
+   
+  
+    
+    
+    
 ]

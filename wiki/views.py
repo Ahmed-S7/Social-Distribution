@@ -120,12 +120,17 @@ def like_entry(request, entry_serial):
     if not created:
         like.delete()  # Toggle like off
 
-    #  Redirect to the entry's author's page if the entry was liked from their page  
+    #Redirect to the entry's author's page if the entry was liked from their page  
     if request.POST.get("liked_from_profile") == "true":
        
         return redirect('wiki:view_external_profile', author_serial=liked_author.serial)
     
-    # otherwise go back to the stream
+    #Redirect to the entry's details's page if the entry was liked from its details  
+    if request.POST.get("liked_from_details") == "true":
+
+        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+    
+    #regular stream entry like
     return redirect('wiki:user-wiki', username=request.user.username)
    
 

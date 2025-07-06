@@ -1,7 +1,11 @@
 {% load static %}
 
 
-
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Post</title>
+</head>
 <section class="default_buttons">
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <a href="{% url 'wiki:profile' request.user.username%}">
@@ -48,3 +52,4 @@
 </ul>
 
 </section>
+</html>
