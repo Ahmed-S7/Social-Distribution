@@ -5,10 +5,10 @@ html, head {
     background-color: rgb(255, 255, 255); 
 
 }
-html, h1, h2, h3, p {
-    font-family: 'Nunito', sans-serif;
+html, h1, h3{
+    color:black;
 }
-h2{
+h2{ 
     color:rgb(0, 26, 128);
     justify-content: center;
     align-items: center;
@@ -49,14 +49,6 @@ section .author:hover {
 
 }
 
-.switch_from_author {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 1em;
-    position: relative;
-    
-}
 
 
 button{
@@ -75,11 +67,6 @@ button{
     cursor:pointer;
 }
 
-.switch_from_author button:hover{
-  
-    background-color: rgba(41, 117, 189, 0.183);
-   
-}
 
 
 .profile_image{

@@ -6,6 +6,7 @@
   --background-color: #ffffff;
   --follow-button: #0090ce;
   --header-color:rgb(137, 198, 225);
+  --base-text-color:color:rgb(0, 26, 128);
 }
 html, body{
     font-family: 'Nunito', sans-serif;
@@ -23,9 +24,7 @@ h3{
     font-size: 1.7em;
 }
 
-p{
-    font-size: 1em;
-}
+
 .display_name{
     font-size: 2em;
     padding: none;
@@ -66,7 +65,7 @@ p{
     justify-content: center;
     flex-direction: column;
     align-items: center;
-    padding-top: 3em;
+    padding-top: 5em;
     top:0;
     left:0;  
 }
@@ -154,13 +153,17 @@ p{
     border-color:black;
 }
 
-
+/*linked text*/
 a{
     text-decoration: none;
+    color:black;
+    
 }
 
-
+/*Nav Buttons*/
 .default_buttons {
+    width:100%;
+    line-height: 0em;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -171,25 +174,21 @@ a{
     border: none;
     font-weight: bold;
     background-color:var(--header-color);
-    padding-left:0.5em;
-    padding-right:0.5em;
-    
+    padding-right:5em; 
+    padding-bottom:0.5em;
+    top:0;    
+    font-size: 1.2em;
+    position:fixed;
+    z-index:100;
+    color:rgb(0, 26, 128);
+    text-decoration: none;
 }
 
-.default_buttons p{
-    display: flex;
-    padding: 0em;
-    position: relative;
-    font-family: 'Nunito', sans-serif;
-    text-decoration: none;
-    color: black;
-    font-size: 1.2em;
-    
-}
+
 
 .default_buttons .logout_button{
     display: flex;
-    padding: 0em;
+    padding-right: 1em;
     font-family: 'Nunito', sans-serif;
     text-decoration: none;
     color: black;

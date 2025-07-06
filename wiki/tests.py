@@ -8,7 +8,6 @@ from django.urls import reverse
 
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
-
 class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -229,7 +228,7 @@ class FollowRequestTesting(TestCase):
             requested_account=self.receiving_author
         )
         
-          
+         
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
@@ -408,13 +407,80 @@ class FollowRequestTesting(TestCase):
         self.assertEqual(response.status_code, 200)
         
         #check if the that the unfollowing account is not in the JSON response of the list of followers 
-        self.assertNotEqual(response,"outlandish_name")
+        self.assertNotContains(response,"outlandish_name")
         
         #print("PASS: UNFOLLOWING ACCOUNTS WORKS PROPERLY IN DB AND API")
         
+    def test_friend_user(self):
+        '''Go through logic of creating a friendship, then unfriend and test'''
+        
+        
+        #url to followed/unfollowed account's inbox
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/followers/'
+        
+        #post to the follow request processing page with action being accept
+        process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.following_author.serial, "request_id":self.new_follow_back.id}) 
+        response = self.client.post(process_follow_requests_url, {'action':"accept"})
+        
+        
+        #check for a successful redirect after the POST
+        self.assertEqual(response.status_code, 302)
+
+       
+        check_follow_requests_url= reverse('wiki:check_follow_requests', kwargs={"username":self.following_author.displayName})
+        response = self.client.get(check_follow_requests_url)
+
+        #check for a successful Page View
+        self.assertEqual(response.status_code, 200)
+        
+
+        self.new_follow_back.refresh_from_db()
+
+        #correct status should be accepted now
+        self.assertEqual(self.new_follow_back.state, RequestState.ACCEPTED)
+    
+        
+        #Check that users are now friends
+        self.assertTrue(AuthorFriend.objects.filter(
+            (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
+            (Q(friending=self.following_author) & Q(friended=self.receiving_author))
+            ).exists())
+
+
+        #Confirm the following exists
+        self.assertTrue(AuthorFollowing.objects.filter(follower=self.following_author, following=self.receiving_author).exists())
+        current_following=AuthorFollowing.objects.get(follower=self.following_author, following=self.receiving_author)
+        
+        #unfriend the account
+        unfollow_profile_url= reverse("wiki:unfollow_profile", kwargs={"author_serial":self.receiving_author.serial,"following_id": current_following.id})
+        
+        #check for a successful redirect after the POST
+        response = self.client.post(unfollow_profile_url, {'action':"unfriend"})
+        self.assertEqual(response.status_code, 302)
+        
+        
+        #Check that the friendship no longer exists in the DB
+        self.assertFalse(self.assertTrue(AuthorFriend.objects.filter(
+            (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
+            (Q(friending=self.following_author) & Q(friended=self.receiving_author))
+            ).exists()))
+
+        #Check the following is also subsequently deleted
+        self.assertFalse(self.following_author.is_following(self.receiving_author))
+        
+        #Check the API contents for the follower list of the unfollowed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the unfollowing account is not in the JSON response of the list of followers 
+        self.assertNotContains(response,self.following_author.displayName)
+        
+         
+        #print("PASS: UNFRIENDING ACCOUNTS WORKS PROPERLY IN DB AND API")
+        
     def tearDown(self):
         self.client.logout()    
-
 
 class LikeEntryTesting(TestCase):
     # Liking An Entry Testing
@@ -1108,6 +1174,7 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Public Entry", titles)
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
+
 '''
 class SharingTestCase(TestCase):
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.

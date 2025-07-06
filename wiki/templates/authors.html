@@ -5,10 +5,10 @@
 <section class="default_buttons">
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <a href="{% url 'wiki:profile' request.user.username%}">
-        <p type="nav_button">Back to Profile</p>
+        <p class="nav_button">Back to Profile</p>
     </a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}">
-        <p type="nav_button">Back to Stream</p>
+        <p class="nav_button">Back to Stream</p>
     </a>
 </section>
 
