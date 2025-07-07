@@ -70,6 +70,19 @@ html, body{
     line-height: 1;
 }
 
+.like-btn-custom:hover {
+    color: #e25555 !important;
+    background: #ffeaea;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+.comment-btn-custom:hover {
+    color: #0d6efd !important;
+    background: #eaf1ff;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+
 a{
     text-decoration: none;
     color:black;
