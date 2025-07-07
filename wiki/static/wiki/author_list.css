@@ -23,7 +23,12 @@ h2{
     align-items: center;
     text-align:center; 
 }
-
+.list_display_name{
+    text-overflow: ellipsis;
+    overflow:hidden;
+    max-width: 8em;
+    text-align: center;
+}
 section .author {
 
     flex-direction:column;
@@ -34,6 +39,7 @@ section .author {
     display:inline-block;
     text-align: center;
     margin: 0.2em;
+    max-width: 25em;
 
 }
 
@@ -69,7 +75,8 @@ button{
 
 
 .profile_image{
-
+    object-fit:cover;
+    object-position: center;
     border-style:solid;
     max-width: 8em;
     height: 8em;

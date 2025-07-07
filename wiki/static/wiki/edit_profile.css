@@ -82,6 +82,7 @@ html, body {
   height: 7.5em;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center;
   margin: 0 auto;
   border: 0.125em solid black;
 }

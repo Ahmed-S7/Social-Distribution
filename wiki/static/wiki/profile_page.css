@@ -26,8 +26,12 @@ h3{
 
 
 .display_name{
-    font-size: 2em;
+    font-size: 1em;
     padding: none;
+    max-width:10.8em;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-align: center;
 }
 
 
@@ -146,10 +150,13 @@ h3{
 
 /*Image Profile For Logged In Users*/
 .profile_image_logged_user{
-    border-radius: 4em;
+    border-width: 0.15em;
     border-style:solid;
-    width:8em;
-    height: 8em;
+    border-radius:50%;
+    object-fit:cover;
+    object-position: center;
+    width:8.2em;
+    height:8.2em;
     border-color:black;
 }
 
@@ -183,6 +190,10 @@ a{
     text-decoration: none;
 }
 
+.default_buttons p{
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
 
 
 .default_buttons .logout_button{

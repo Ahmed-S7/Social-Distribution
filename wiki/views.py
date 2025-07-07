@@ -146,6 +146,7 @@ def register(request):
 
         userIsValid = validUserName(username)
         
+        #TODO: add password validation for pass length when connecting with other groups, leave as is for now
         if userIsValid and password == confirm_password: 
             
             if User.objects.filter(username__iexact=username).exists():
@@ -165,9 +166,12 @@ def register(request):
             if password != confirm_password:
                 errorList.append("Passwords do not match")
 
-            if not userIsValid:
+            if not userIsValid and len(username) >= 150:
                 errorList.append("Username must be under 150 characters")
-                
+            
+            if  not userIsValid and " " in username:
+               errorList.append("Username cannot contain spaces")
+            
             errors = " ".join(errorList)
             return render(request, 'register.html', {'error': errors})
             
@@ -1055,6 +1059,13 @@ def edit_profile(request, username):
                     'error': 'Username is already taken.'
                 })
 
+            #ensures a valid username is entered (no spaces, less than 50 characters)
+            if not validUserName(new_username):
+                return render(request, 'edit_profile.html', {
+                    'author': author,
+                    'error': 'Please select a username with no spaces that is under 150 characters in length.'
+                })
+                
             request.user.username = new_username
             request.user.save()
             author.displayName = new_username

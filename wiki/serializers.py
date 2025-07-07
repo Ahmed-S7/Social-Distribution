@@ -26,6 +26,13 @@ class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model= Author
         fields = ["type", "id", "host", "displayName", "github", "profileImage", "web", "description"]
+    
+    def validate_displayName(self, value):
+        # Enforce no spaces in username
+        if  " " in value:
+            raise serializers.ValidationError("Display name cannot contain any spaces.")
+        if len(value) >= 150:
+            raise serializers.ValidationError("Display name cannot be longer than 150 characters")
         
         
 class FollowRequestSerializer(serializers.ModelSerializer):
