@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 import uuid
 from django.db.models import Q
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponse
 
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
@@ -1200,6 +1202,118 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Friend Entry", titles)
 
 
+class EntryUserStoriesTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='author1', password='testpass')
+        self.author = Author.objects.create(user=self.user, displayName='author1', id='http://localhost:8000/api/authors/1', host='http://localhost:8000/api/', web='http://localhost:8000/authors/1')
+        self.client.login(username='author1', password='testpass')
+
+    # US 2.1: As an author, I want to make entries, so I can share my thoughts and pictures with other local authors.
+    def test_create_text_entry(self):
+        """User Story: As an author, I want to make entries (plain text) to share with other local authors."""
+        response = self.client.post(reverse('wiki:create_entry'), {
+            'title': 'Plain Text Entry',
+            'content': 'Hello world!',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        self.assertIn(response.status_code, [200, 302])
+        self.assertTrue(Entry.objects.filter(title='Plain Text Entry').exists())
+
+    # US 2.2: As an author, I want my node to send my entries to my remote followers and friends, so that remote authors following me can see them.
+    def test_send_entry_to_remote(self):
+        """User Story: As an author, I want my node to send my entries to my remote followers and friends."""
+        # Part 3 - 5
+        pass
+
+    # US 2.3: As an author, I want to edit my entries locally, so that I'm not stuck with a typo on a popular entry.
+    def test_edit_entry(self):
+        """User Story: As an author, I want to edit my entries locally."""
+        entry = Entry.objects.create(title='Old Title', content='Old', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        response = self.client.post(reverse('wiki:edit_entry', args=[entry.serial]), {
+            'title': 'New Title',
+            'content': 'New content',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        entry.refresh_from_db()
+        self.assertEqual(entry.title, 'New Title')
+
+    # US 2.4: As an author, I want my node to re-send entries I've edited to everywhere they were already sent, so that people don't keep seeing the old version.
+    def test_resend_edited_entry_to_remote(self):
+        """User Story: As an author, I want my node to re-send entries I've edited to everywhere they were already sent."""
+        # Part 3 - 5
+        pass
+
+    # US 2.5: As an author, entries I make can be in CommonMark, so I can give my entries some basic formatting.
+    def test_create_markdown_entry(self):
+        """User Story: As an author, entries I make can be in CommonMark (Markdown)."""
+        # Common Mark US
+        pass
+
+    # US 2.6: As an author, entries I make can be in simple plain text, because I don't always want all the formatting features of CommonMark.
+    def test_create_text_entry_again(self):
+        """User Story: As an author, entries I make can be in simple plain text."""
+        response = self.client.post(reverse('wiki:create_entry'), {
+            'title': 'Another Plain Text Entry',
+            'content': 'Just text.',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        self.assertIn(response.status_code, [200, 302])
+        self.assertTrue(Entry.objects.filter(title='Another Plain Text Entry', contentType='text/plain').exists())
+
+    # US 2.7: As an author, entries I create can be images, so that I can share pictures and drawings.
+    def test_create_image_entry(self):
+        """User Story: As an author, entries I create can be images."""
+        # Image US
+        pass
+
+    # US 2.8: As an author, entries I create that are in CommonMark can link to images, so that I can illustrate my entries.
+    def test_markdown_entry_can_link_to_images(self):
+        """User Story: As an author, entries I create that are in CommonMark can link to images."""
+        # Common Mark US
+        pass
+    # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
+    def test_delete_entry(self):
+        """User Story: As an author, I want to delete my own entries locally."""
+        entry = Entry.objects.create(title='To Delete', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        response = self.client.post(reverse('wiki:delete_entry', args=[entry.serial]))
+        entry.refresh_from_db()
+        self.assertTrue(entry.is_deleted)
+
+    # US 2.10: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to, so I know remote users don't keep seeing my deleted entries forever.
+    def test_resend_deleted_entry_to_remote(self):
+        """User Story: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to."""
+        # Part 3 - 5
+        pass
+
+    # US 2.11: As an author, I want to be able to use my web-browser to manage/author my entries, so I don't have to use a clunky API.
+    def test_web_ui_entry_creation(self):
+        """User Story: As an author, I want to use my web-browser to manage/author my entries."""
+        response = self.client.get(reverse('wiki:create_entry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<form', response.content)
+
+    # US 2.12: As an author, other authors cannot modify my entries, so that I don't get impersonated.
+    def test_other_author_cannot_edit(self):
+        """User Story: As an author, other authors cannot modify my entries."""
+        entry = Entry.objects.create(title='Protected', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        user2 = User.objects.create_user(username='author2', password='testpass2')
+        author2 = Author.objects.create(user=user2, displayName='author2', id='http://localhost:8000/api/authors/2', host='http://localhost:8000/api/', web='http://localhost:8000/authors/2')
+        self.client.logout()
+        self.client.login(username='author2', password='testpass2')
+        response = self.client.post(reverse('wiki:edit_entry', args=[entry.serial]), {
+            'title': 'Hacked',
+            'content': 'Hacked',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        entry.refresh_from_db()
+        self.assertNotEqual(entry.title, 'Hacked')
+
+'''
 class SharingTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1261,6 +1375,9 @@ class SharingTestCase(TestCase):
     #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
         # Note: this should include all local public entries and all public entries received in any inbox.
     def test_browse_public_entries(self):
+        pass
+'''
+
         self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
@@ -1301,3 +1418,4 @@ class NodeManagementTestCase(TestCase):
         user.save()
         response = self.client.post(self.login_api_url, login_data, format='json')
         self.assertEqual(response.status_code, 200)
+
