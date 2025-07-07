@@ -220,12 +220,21 @@ class Entry(BaseModel):
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
+    description = models.TextField(blank=True, null=True, default="")
+    contentType = models.CharField(max_length=50, default="text/plain")
+    web = models.URLField(blank=True, null=True, default=None)
+    
     def get_entry_url(self):
-        return f"http://s25-project-white/entry/{self.serial}"
+        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+    
+    def get_web_url(self):
+        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
     
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = self.get_entry_url()
+        if not self.web:
+            self.web = self.get_web_url()
         return super().save(*args, **kwargs)
 
     def __str__(self):
