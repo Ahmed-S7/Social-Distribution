@@ -173,8 +173,32 @@ def register(request):
             
     return render(request, 'register.html')
 
+@api_view(['POST'])
+def register_api(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    confirm_password = request.data.get('confirm_password', "").strip()
+    github = request.data.get('github') or None
 
+    if not username or not password or not confirm_password:
+        return Response({"detail": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
+    if password != confirm_password:
+        return Response({"detail": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not validUserName(username):
+        return Response({"detail": "Invalid username"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if User.objects.filter(username__iexact=username).exists():
+        return Response({"detail": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.create_user(username=username, password=password, is_active=False)
+
+    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None)
+    if not author:
+        return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({"detail": "Registration successful, pending admin approval"}, status=status.HTTP_201_CREATED)
 
 class MyLoginView(LoginView):
     def form_valid(self, form):
@@ -196,6 +220,23 @@ class MyLoginView(LoginView):
 
         return super().form_invalid(form)
     
+@api_view(['POST'])
+def login_api(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    if not username or not password:
+        return Response({"detail": "Missing username or password"}, status=400)
+    User = get_user_model()
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response({"detail": "Invalid credentials"}, status=403)
+    if not user.check_password(password):
+        return Response({"detail": "Invalid credentials"}, status=403)
+    if not user.is_active:
+        return Response({"detail": "pending admin approval"}, status=403)
+    return Response({"detail": "Login successful"}, status=200)
+
 @api_view(['GET'])
 def get_authors(request):
     """
