@@ -133,8 +133,8 @@
                                 </div>
                             {% endif %} 
                             <div class="post-content">{{ entry.content }}</div>
-                                </a>
-                                    <div class="post-footer">
+                            </a>
+                                <div class="post-footer">
                                         <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
                                             {% csrf_token %}
                                             <input type="hidden" name="liked_from_profile" value="true">
@@ -142,9 +142,9 @@
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                        <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
-                                    </div>
+                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
                                 </div>
+                            </div>
                     {% endfor %}
                 </ul>
             {% endif %}
@@ -155,28 +155,27 @@
     </section>
         
 
-                  <section class = "nav_buttons">
+     <section class = "nav_buttons">
+        {% if request.user.is_authenticated %}
+        {% if request.user.username == author.displayName %}
+               <div class="profile_buttons">
 
-                        {% if request.user.is_authenticated %}
-                        {% if request.user.username == author.displayName %}
-                        <div class="profile_buttons">
-
-                            <a href="{% url 'wiki:check_follow_requests' request.user.username %}">
-                                    <p>Check Follow Requests</p>
-                            </a>
-                            <a href="{% url 'wiki:view_authors' %}">
-                                    <p>Browse Authors </p>
-                            </a>
-                            <a href="{% url 'wiki:create_entry' %}">
-                                    <p>Add Entry</p>
-                            </a>
+                        <a href="{% url 'wiki:check_follow_requests' request.user.username %}">
+                            <p>Check Follow Requests</p>
+                        </a>
+                        <a href="{% url 'wiki:view_authors' %}">
+                            <p>Browse Authors </p>
+                        </a>
+                        <a href="{% url 'wiki:create_entry' %}">
+                            <p>Add Entry</p>
+                        </a>
                             <a href="{% url 'wiki:edit_profile' user.username %}">
-                                    <p>Edit Profile</p>
+                        <p>Edit Profile</p>
                             
-                        </div>
-                        {% endif %}
-                        {% endif %}
-                    </section>
-       
-    
+                </div>
+        {% endif %}
+        {% endif %}
+    </section>               
+                    
+                    
 
