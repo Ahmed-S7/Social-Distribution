@@ -125,8 +125,6 @@ class IdentityTestCase(TestCase):
     def tearDown(self):
         self.client.logout()
 
-class PostingTestCase(TestCase):
-    pass
 
 class FollowRequestTesting(TestCase):
     def setUp(self):
@@ -1057,7 +1055,6 @@ class VisibilityTestCase(TestCase):
             github='https://github.com/test_author',
             serial=uuid.uuid4(),
             web='https://example.com/',
-            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
         )
         self.publicEntry = Entry.objects.create(
             title='Public Entry',
@@ -1115,10 +1112,16 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.3 As an author, I want my friends to see my friends-only, unlisted, and public entries in their stream.
     def test_friends_only_visibility(self):
-        url = f'{BASE_PATH}/entry/{self.friendEntry.serial}/'
-        response = self.client.get(url, HTTP_ACCEPT='application/json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json().get("visibility"), "FRIENDS")
+        self.client.force_authenticate(user=self.user2)
+        AuthorFriend.objects.create(friending=self.author2, friended=self.author)
+        AuthorFollowing.objects.create(follower=self.author2, following=self.author)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+        self.assertIn("Unlisted Entry", titles)
+        self.assertIn("Friend Entry", titles)
     
     # Visibility 4.4 As an author, I want anyone following me to see my unlisted and public entries in their stream.
     def test_following_visibility(self):
@@ -1144,11 +1147,32 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.6 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
-        pass
+        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.unlistedEntry.title)
+        self.assertContains(response, self.unlistedEntry.content)
+        url = f'{BASE_PATH}/entry/{self.publicEntry.serial}/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.publicEntry.title)
+        self.assertContains(response, self.publicEntry.content)
 
     # Visibility 4.7 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
     def test_friend_only_entry(self):
-        pass
+        self.client.force_authenticate(user=self.user2)
+        friendship = AuthorFriend.objects.create(friending=self.author2, friended=self.author)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Friend Entry", titles)
+        friendship.delete()    
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertNotIn("Friend Entry", titles)
 
     # Visibility 4.8 As an author, I don't want anyone except the node admin to see my deleted entries.
     def test_deleted_entries_visibility(self):
@@ -1175,18 +1199,105 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
 
-'''
+
 class SharingTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Create user and authenticate properly
+        self.user = User.objects.create_user(
+            username='test_user',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2',
+            password='test_password2'
+        )
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+        )
+        self.unlistedEntry = Entry.objects.create(
+            title='Unlisted Entry',
+            content='This is a Unlisted entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="UNLISTED"
+        )
+        self.publicEntry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a Public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
     def test_public_unlisted_link(self):
-        pass
+        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.unlistedEntry.title)
+        self.assertContains(response, self.unlistedEntry.content)
 
-    # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
-    def test_push_images_to_other_nodes(self):
-        pass
+    # # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
+    # def test_push_images_to_other_nodes(self):
+    #     pass
 
     #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
         # Note: this should include all local public entries and all public entries received in any inbox.
     def test_browse_public_entries(self):
-        pass
-'''
+        self.client.force_authenticate(user=self.user2)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        entries = response.json() 
+        titles = [entry["title"] for entry in entries]
+        self.assertIn("Public Entry", titles)
+
+class NodeManagementTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_superuser(
+            username='admin_user',
+            password='admin_password', 
+            email='admin@ualberta.ca'
+        )
+        self.register_api_url = f'{BASE_PATH}/register/'
+        self.login_api_url = f'{BASE_PATH}/login/'
+    
+    # Node Management 8.3 As a node admin, I want to be able to allow users to sign-up but require my approval to complete sign-up and use my node, so that I can prevent unwanted users and spambots.
+    def test_sign_up_approval(self):
+        register_data = {
+            'username': 'pending_user',
+            'password': 'pass',
+            'confirm_password': 'pass',
+        }
+        response = self.client.post(self.register_api_url, register_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(username='pending_user')
+        self.assertFalse(user.is_active)
+        login_data = {
+            'username': 'pending_user',
+            'password': 'pass',
+        }
+        response = self.client.post(self.login_api_url, login_data, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("pending admin approval", response.json().get('detail', ''))
+        user.is_active = True
+        user.save()
+        response = self.client.post(self.login_api_url, login_data, format='json')
+        self.assertEqual(response.status_code, 200)

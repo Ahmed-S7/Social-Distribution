@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, edit_profile_api, entry_detail, entry_detail_api, profile_view
 from .views import MyLoginView, user_wiki, register,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_authors, view_external_profile, follow_profile, get_author, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, add_comment_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
-from .views import get_entry_comments_api
+from .views import get_entry_comments_api, register_api, login_api
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -20,12 +20,15 @@ urlpatterns = [
     path('<str:username>/wiki/', user_wiki, name='user-wiki'),
     path('<str:username>/profile/', profile_view, name='profile'),
     path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
+    
     path('api/<str:username>/wiki/', user_wiki, name='user-wiki'),
     
     
     # Profile related API
     path('api/<str:username>/profile/edit/', edit_profile_api, name='edit_profile_api'),
     path('api/<str:username>/profile/', edit_profile_api, name='edit_profile_api'),
+    path('api/register/', register_api, name='register_api'),
+    path('api/login/', login_api, name='login_api'),
 
     # Entry Related URLs
     path('entry/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
