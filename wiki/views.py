@@ -364,8 +364,8 @@ def view_external_profile(request, author_serial):
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
         is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)if logged_in_author else False
         is_a_friend = logged_in_author.is_friends_with(profile_viewing)if logged_in_author else False
-        friends_a = logged_in_author.friend_a.all()if logged_in_author else Author.objects.none()
-        friends_b = logged_in_author.friend_b.all()if logged_in_author else Author.objects.none()
+        friends_a = profile_viewing.friend_a.all()if logged_in_author else Author.objects.none()
+        friends_b = profile_viewing.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
 
         
@@ -373,26 +373,29 @@ def view_external_profile(request, author_serial):
         '''
         print("Entries:", all_entries or None)
         print("followers:", followers or None)
+        print("follower count:", len(followers) or None)
         print("following:", following or None)
-        print("Is friends with this account:", is_a_friend)
-        print("Is following this account:", is_following)
+        print(f"Accounts {profile_viewing} is following:", len(following) or None)
+        print(f"{logged_in_author} is friends with this account:", is_a_friend)
+        print(f"{logged_in_author} is following this account:", is_following)
+        print(f"{profile_viewing} friend count:", len(total_friends) or None)
         '''
         
         # Followed
         followed_ids = AuthorFollowing.objects.filter(
-            follower=logged_in_author
-        ).values_list('following', flat=True)
+            following=profile_viewing
+        ).values_list('follower', flat=True)
         
         # Friends
         friend_pairs = AuthorFriend.objects.filter(
-            Q(friending=logged_in_author) | Q(friended=logged_in_author)
+            Q(friending=profile_viewing) | Q(friended=profile_viewing)
         ).values_list('friending', 'friended')
 
         friend_ids = set()
         for friending_id, friended_id in friend_pairs:
-            if friending_id != logged_in_author.id:
+            if friending_id != profile_viewing.id:
                 friend_ids.add(friending_id)
-            if friended_id != logged_in_author.id:
+            if friended_id != profile_viewing.id:
                 friend_ids.add(friended_id)
                 
         #Entries the current user is permitted to view
@@ -402,8 +405,7 @@ def view_external_profile(request, author_serial):
             Q(visibility='PUBLIC') |
             Q(visibility='FRIENDS', author__in=friend_ids) |
             Q(visibility='UNLISTED', author__id__in=followed_ids)
-        )
-        
+        ).order_by('-created_at')
         
         #store existing follow request if it exists
         try:
@@ -422,10 +424,11 @@ def view_external_profile(request, author_serial):
         #store existing friendship if it exists 
         friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
         
-        '''#CHECK VALUES
+        #CHECK VALUES
+        '''
         print("Following ID is:",following_id)
         print("Friendship ID is:",friendship_id)
-        print("The current request is:", current_request) 
+        print("The current request is:", current_request_id) 
         print("List of User's Entries:", all_entries)
         '''
        
