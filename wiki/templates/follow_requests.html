@@ -10,39 +10,39 @@
   }
 </style>
 
-<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
-<div class="default_buttons d-flex justify-content-between align-items-center px-3">
-    <a href="{% url 'wiki:profile' request.user.username%}" class="btn btn-primary">Back to Profile</a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
-</div>
- <h1 class='heading'>Incoming Follow Requests For {{author.displayName}}:</h1> 
-
-
 <body>
-<section class="follow_requests">
-<link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
-{% if follow_requests %}
-  {% for follow_request in follow_requests %}
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4" style="background:#89c6e1; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; height: 4.5em; padding: 1em 2em;">
+    <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
+  </div>
+  <div style="height:5.5em"></div>
+  <div class="container mt-4">
+    <h1 class='heading'>Incoming Follow Requests For {{author.displayName}}:</h1> 
 
-  <section class="request_info">
-        <section class='follow_request_text'>
-            <h4>{{ follow_request.requester }} has requested to follow you!</h4>
-        </section>
-        <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
-            {% csrf_token %} 
-            <section class='follow_request_buttons'>
-                <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
-                <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
+    <section class="follow_requests">
+    <link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
+    {% if follow_requests %}
+      {% for follow_request in follow_requests %}
+
+      <section class="request_info">
+            <section class='follow_request_text'>
+                <h4>{{ follow_request.requester }} has requested to follow you!</h4>
             </section>
-        </form>
+            <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
+                {% csrf_token %} 
+                <section class='follow_request_buttons'>
+                    <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
+                    <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
+                </section>
+            </form>
 
-  </section>
-  
-  {% endfor %}
-{% else %}
-  <h5 class="heading">NO FOLLOW REQUESTS FOUND</h5>
-{% endif %}
+      </section>
+      
+      {% endfor %}
+    {% else %}
+      <h5 class="heading">NO FOLLOW REQUESTS FOUND</h5>
+    {% endif %}
 
-</section>
-
+    </section>
+  </div>
 </body>
