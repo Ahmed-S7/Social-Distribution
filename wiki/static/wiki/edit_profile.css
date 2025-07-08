@@ -54,7 +54,10 @@ html, body {
   color: rgba(0, 14, 84, 0.771);
 }
 
-
+.author_profile_card{
+  font-family: 'Nunito', sans-serif;
+  padding-top:5em;
+}
 
 .post-header {
   display: flex;

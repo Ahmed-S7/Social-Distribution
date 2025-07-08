@@ -1,5 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
+:root{
+  --red-hover: rgba(230, 23, 23, 0.93);
+  --nav_bar-color: #e4e9e9;
+  --background-color: #ffffff;
+  --follow-button: #0090ce;
+  --header-color:rgb(137, 198, 225);
+  --base-text-color:color:rgb(0, 26, 128);
+  --border-color:rgb(208, 209, 210); 
+  --border-radius: 0.8em;
+
+}
+
 html, head {
     font-family: 'Nunito', sans-serif;
     background-color: rgb(255, 255, 255); 
@@ -7,6 +19,10 @@ html, head {
 }
 html, h1, h3{
     color:black;
+}
+
+p{
+    font-family: 'Nunito', sans-serif;
 }
 h2{ 
     color:rgb(0, 26, 128);
@@ -33,13 +49,15 @@ section .author {
 
     flex-direction:column;
     border-style:solid;
-    border-radius: 1em;
-    border-color: rgb(182, 221, 251);
-    background-color: rgb(212, 233, 247);
+    border-radius: var(--border-radius);
+    border-color: var(--border-color);
+    border-width:0.15em;
+    background-color: rgb(254, 254, 254);
     display:inline-block;
     text-align: center;
     margin: 0.2em;
     max-width: 25em;
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.208);
 
 }
 
@@ -81,8 +99,8 @@ button{
     max-width: 8em;
     height: 8em;
     border-width:0.0625em;
-    border-radius:1em;
-    border-color: rgb(182, 221, 251);
+    border-radius: var(--border-radius);
+    border-color: var(--border-color);
  
 }
 

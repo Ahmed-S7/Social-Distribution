@@ -60,7 +60,7 @@ class IdentityTestCase(TestCase):
             web='https://example.com/2'
         )
 
-    '''
+    
     # Identity 1.1 As an author, I want a consistent identity per node, so that URLs to me/my entries are predictable and don't stop working
     def test_consistent_identity_author(self):
         url = f'{BASE_PATH}/authors/{self.author.serial}/'
@@ -100,7 +100,7 @@ class IdentityTestCase(TestCase):
     # Identity 1.5 As an author, I want to my (new, public) GitHub activity to be automatically turned into public entries, so everyone can see my GitHub activity too.
     def test_github_activity(self):
         pass
-    '''
+    
     # Identity 1.6 As an author, I want to be able to edit my profile: name, description, picture, and GitHub.
     # Identiy 1.7 As an author, I want to be able to use my web browser to manage my profile, so I don't have to use a clunky API.
     def test_edit_profile(self):
@@ -132,7 +132,7 @@ class IdentityTestCase(TestCase):
     def tearDown(self):
         self.client.logout()
 
-'''
+
 class FollowRequestTesting(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1427,4 +1427,3 @@ class NodeManagementTestCase(TestCase):
         response = self.client.post(self.login_api_url, login_data, format='json')
         self.assertEqual(response.status_code, 200)
 
-'''

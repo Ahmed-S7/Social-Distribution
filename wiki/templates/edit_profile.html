@@ -12,31 +12,32 @@
     <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
 </div>
     {% csrf_token %}
+    <section class="author_profile_card">
+        <section class="author_profile">
+            {% if author.profileImage %}
+                <img class="profile_image" src="{{ author.profileImage.url }}" alt="Profile image">
+            {% else %}
+                <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+            {% endif %}
 
-    <section class="author_profile">
-        {% if author.profileImage %}
-            <img class="profile_image" src="{{ author.profileImage.url }}" alt="Profile image">
-        {% else %}
-            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-        {% endif %}
+            <label for="profileImage">Change Profile Image:</label>
+            <input type="file" id="profileImage" name="profileImage" accept="image/*" class="editable_input" />
 
-        <label for="profileImage">Change Profile Image:</label>
-        <input type="file" id="profileImage" name="profileImage" accept="image/*" class="editable_input" />
+            <label for="displayName">Display Name:</label>
+            <input type="text" id="displayName" name="displayName" value="{{ author.displayName }}" class="editable_input" required />
 
-        <label for="displayName">Display Name:</label>
-        <input type="text" id="displayName" name="displayName" value="{{ author.displayName }}" class="editable_input" required />
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" class="editable_input">{% if author.description %}{{ author.description }}{% endif %}</textarea>
 
-        <label for="description">Description:</label>
-        <textarea id="description" name="description" class="editable_input">{% if author.description %}{{ author.description }}{% endif %}</textarea>
+            <label for="github">GitHub URL:</label>
+            <input type="url" id="github" name="github" value="{{ author.github|default_if_none:'' }}" class="editable_input" />
 
-        <label for="github">GitHub URL:</label>
-        <input type="url" id="github" name="github" value="{{ author.github|default_if_none:'' }}" class="editable_input" />
+            <button class="save_button" type="submit">Save Changes</button>
 
-        <button class="save_button" type="submit">Save Changes</button>
-
-        {% if error %}
-        <p class="error-message">{{ error }}</p>
-        {% endif %}
+            {% if error %}
+            <p class="error-message">{{ error }}</p>
+            {% endif %}
+        </section>
     </section>
     
 

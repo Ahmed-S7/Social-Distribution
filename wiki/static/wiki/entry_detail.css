@@ -17,6 +17,10 @@ body {
     margin:0em;
     
 }
+
+.mt-4{
+    font-family: 'Nunito', sans-serif;
+}
 h2, h3, .entry_details{
     color: rgb(0, 26, 128);
 }

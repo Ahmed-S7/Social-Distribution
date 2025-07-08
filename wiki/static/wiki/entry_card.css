@@ -1,11 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
-html, body{
+html, body, h1,h2,p{
     font-family: 'Nunito', sans-serif;
     background-color: rgb(255, 255, 255); 
 }
 
 .post-card {
+    font-family: 'Nunito', sans-serif;
     border: 0.0625em solid #6f6c6cac;
     border-radius: 0.625em;
     padding: 2em;
