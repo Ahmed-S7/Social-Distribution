@@ -441,21 +441,33 @@ def view_external_profile(request, author_serial):
         
         #store existing follow request if it exists
         try:
-            
-            current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
-            current_request_id = current_request.id
+            if logged_in_author:
+                current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
+                current_request_id = current_request.id
+            else:
+                current_request_id = None
         
-        except FollowRequest.DoesNotExist:
+        except FollowRequest.DoesNotExist or not logged_in_author:
             current_request_id = None
         
-        #store existing following if it exists 
-        following_id = logged_in_author.get_following_id_with(profile_viewing)
-        
-        
+        print(current_request_id)
+        #for logged in users only:
+        if logged_in_author:
             
-        #store existing friendship if it exists 
-        friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
+            #store existing following if it exists 
+            following_id = logged_in_author.get_following_id_with(profile_viewing)
+            
+            
+                
+            #store existing friendship if it exists 
+            friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
         
+        else:
+            
+     
+            following_id,friendship_id = None, None
+            
+            
         #CHECK VALUES
         '''
         print("Following ID is:",following_id)
@@ -481,7 +493,7 @@ def view_external_profile(request, author_serial):
                        "is_currently_requesting":is_currently_requesting,
                        "request_id": current_request_id,
                        "follow_id": following_id,
-                       "friendship_id":friendship_id,
+                       "friendship_id":friendship_id ,
                        }
                       )
     else:
