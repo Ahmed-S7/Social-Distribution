@@ -1,121 +1,212 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 
+:root {
+  --red-hover: rgba(230, 23, 23, 0.93);
+  --nav_bar-color: #e4e9e9;
+  --background-color: #ffffff;
+  --follow-button: #62c7f3;
+}
 html, body{
     font-family: 'Nunito', sans-serif;
-  
+    padding:0;
+    margin:0;
 }
+
+
 h1,h2{
     color:rgb(0, 26, 128);
 }
 
-.profile_image{
-    border-radius: 1em;
-    border-style:solid;
-    width:8em;
-    height: 8em;
-}
+
 h3{
     font-size: 1.7em;
 }
 
 p{
-    font-size: 2.5em;
+    font-size: 1em;
 }
 .display_name{
-    font-size: 3em;
+    font-size: 2em;
     padding: none;
 }
-.author_profile{
+
+
+
+
+
+
+
+
+
+
+/*TOP OF THE SCREEN*/
+/**********************************************************/
+
+
+/*Profile picture with name*/
+.profile_pic_and_name{
+    display:inline-flex;
     justify-content: center;
+    flex-direction: column;
     align-items: center;
-    text-align:center;
-}
-
-.author_profile{
-     font-family: 'Nunito', sans-serif;
-     border-radius: 0.5em;
-     font-variant: small-caps;
-     font-weight: bold;
-     font-size:small;
-}
-
-
-
-.profile_buttons{
+    top:0;
+    left:0;
     
-    border-radius: 0.2em;
-    font-size: 1em;
+}
+
+.edit_profile_button{ 
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
+
+}
+
+
+
+
+/*Follow And Entry Details*/
+/********************************/
+
+
+/*Profile picture, name, entry counts, and follow details inline*/
+.pic_name_followers_entries{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 4em; 
+    padding: 0;
+    align-items: center;
+}
+
+.follow_and_entry_labels{
+    text-align: center;
+}
+
+
+
+/*follow and entry counts*/
+.follow_and_entry_labels .folow_and_entry_count{
+    font-size: 2em;
+    font-size:x-large;
+    font-weight: normal;
+    color:rgb(62, 62, 62);
+    margin: 0;
+    line-height: 1;
+}
+
+/*follow and entry count titles*/
+.follow_and_entry_labels .follow_and_entry_title{
+    font-size: 1.1em;
+    margin: 0;
+    line-height: 3;
+}
+
+/*Buttons on a logged in user page (excluding nav_button)*/
+.profile_buttons {
+    font-size: 0.8em;
     display:flex;
     justify-content: center;
-    gap:2em;
- 
-   
+    position:fixed;
+    bottom:0em;
+    width:100%;
+    padding:0em;
+    background-color:rgb(222, 239, 242);
+    margin:0;
+    justify-content: space-evenly;
 }
-.profile_buttons button{
-    background-color: rgba(61, 136, 221, 0.483);
-    border-radius: 0.4em;
-    font-size: 2em;
-    font-variant: small-caps;
-    border-style: inset;
+
+/*User Description*/
+.description_content{
+    border-color: black;
+    border-style:solid;
+
+}
+
+/*User options text style (check follow requests, browse authors, add entry, edit profile*/
+.profile_buttons p{
+    font-size: 1.5em;
     border-style: none;
-   
+    text-decoration: none;
+    color: black;
+    display: inline-block;
+    padding:0em;
+    font-weight:bold;
+}
+.profile_buttons p:hover{
+   color:rgb(0, 76, 89);
+
+}
+
+/*Image Profile For Logged In Users*/
+.profile_image_logged_user{
+    border-radius: 4em;
+    border-style:solid;
+    width:8em;
+    height: 8em;
 }
 
 
-.nav_button{
-font-family: 'Nunito', sans-serif;
-background-color: rgb(255, 255, 255);
-font-size: x-large;
-border-style: none;
+a{
+    text-decoration: none;
 }
 
 
-
-
-.default_buttons{
+.default_buttons {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding: 1em;
+    align-items: center;
+    padding-top: 0em;
+    font-family: 'Nunito', sans-serif;
+    text-decoration: none;
+    color: inherit;
+    border: none;
+    font-weight: bold;
+    
+    
+}
+
+.default_buttons p{
+    display: flex;
+    padding: 0em;
     position: relative;
     font-family: 'Nunito', sans-serif;
-    font-family: 'Nunito', sans-serif;
+    text-decoration: none;
+    color: black;
+    font-size: 1.2em;
+    
 }
 
-.default_buttons button{
+.default_buttons .logout_button{
+    display: flex;
+    padding: 0em;
     font-family: 'Nunito', sans-serif;
-    background-color: rgb(255, 255, 255);
-    font-size: x-large;
-    border-style: none;
+    text-decoration: none;
+    color: black;
+    border:none;
+    background-color: inherit;
+    font-size: 1.2em;
+    font-weight:bold;
+
+    
+}
+.description_content{
+    text-align: center;
 }
 
 
-.default_buttons button:hover{
+
+/* Nav Buttons*/
+
+ .logout_button:hover{
   
-    background-color: rgba(41, 117, 189, 0.183);
+    color: rgba(230, 23, 23, 0.93);
+    
    
 }
-
-.profile_buttons button:hover{
-    transform:scale(1.1);
-    transition: transform 0.3s ease-in-out;
-
-}
-.logout_button{
-    background-color: rgb(233, 112, 112);
-    border-radius: 0.5em;
-    font-size: 1.6em;
-    
-}
-.logout_button:hover{
-    background-color: rgb(233, 112, 112);
-    border-radius: 0.5em;
-    font-size: 1.6em;
-    transform:scale(1.1);
-    transition: transform 0.3s ease-in-out;
-    
-
-    
+.back_to_stream_button:hover{
+   
+     background-color: rgba(41, 117, 189, 0.183);
+   
 }
 
 .entry_list {
@@ -123,21 +214,93 @@ border-style: none;
     padding: 0;
 }
 .entry_list li {
-    margin-bottom: 10px;
+    margin-bottom: 0.625em;
+}
+
+
+
+
+
+
+
+/*For someone viewing an author profile that doesn't belong to them*/
+/*******************************************************************/
+.follow_info_button form{
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .follow_button {
     font-family: 'Nunito', sans-serif;
     border-radius:0.4em; 
     font-size:2em; 
-    background-color:lightblue;
+    background-color: var(--follow-button);
+    text-align: center;
+    align-items: center;
 
 }
+
+.unfriend_button {
+    font-family: 'Nunito', sans-serif;
+    border-radius:0.4em; 
+    font-size:2em; 
+    background-color: var(--follow-button);
+    text-align: center;
+    align-items: center;
+    background-color:lightgreen;
+
+}
+
+.unrequest_button{
+    font-family: 'Nunito', sans-serif;
+    color: white; 
+    background-color: var(--red-hover);
+    border-radius:0.4em; 
+    font-size:2em;
+} 
 
 .unfollow_button{
     font-family: 'Nunito', sans-serif;
     color: white; 
-    background-color: red; 
+    background-color: var(--red-hover);
     border-radius:0.4em; 
     font-size:2em;
 } 
+
+
+
+/*Generated by copilot: "[create media compatibility for the following CSS]": https://www.bing.com/search?pglt=427&q=cocpilot&cvid=43e38a2640d640a6900c0d7a4b592962&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQNIBBzk4N2owajGoAgiwAgE&FORM=ANNTA1&PC=EDGEDB, June, 2025 
+/* For phones and small screens */
+/* For small screens (phones) */
+@media (max-width: 600px) {
+  .profile_image_logged_user {
+    width: 6em;
+    height: 6em;
+  }
+
+  .follow_button,
+  .unfollow_button,
+  .unfriend_button {
+    font-size: 1.4em;
+    padding: 0.5em 1em;
+  }
+
+  .profile_buttons {
+    height: auto;
+    padding: 0.8em 0;
+  }
+}
+
+/* For tablets and mid-range */
+@media (max-width: 900px) {
+  .profile_image_logged_user {
+    width: 7em;
+    height: 7em;
+  }
+
+  .profile_buttons {
+    font-size: 0.9em;
+    height: auto;
+  }
+}

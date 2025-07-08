@@ -5,10 +5,11 @@ from django.contrib.auth.models import User
 import uuid
 from django.db.models import Q
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import HttpResponse
 
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
-
 class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -60,7 +61,7 @@ class IdentityTestCase(TestCase):
 
     # Identity 1.1 As an author, I want a consistent identity per node, so that URLs to me/my entries are predictable and don't stop working
     def test_consistent_identity_author(self):
-        url = f'{BASE_PATH}/author/{self.author.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["displayName"], "test_author")
@@ -126,8 +127,6 @@ class IdentityTestCase(TestCase):
     def tearDown(self):
         self.client.logout()
 
-class PostingTestCase(TestCase):
-    pass
 
 class FollowRequestTesting(TestCase):
     def setUp(self):
@@ -146,10 +145,14 @@ class FollowRequestTesting(TestCase):
             username='test_user3',
             password='test_password3'
         )
+        
         self.following_user = User.objects.create_user(
             username='test_user4',
             password='test_password4'
         )
+        
+        
+        
         # Proper authentication for Django views
         self.client.login(username='test_user', password='test_password')
         
@@ -195,7 +198,7 @@ class FollowRequestTesting(TestCase):
         self.receiving_author = Author.objects.create(
             id=3,
             user=self.receiving_user,
-            displayName='receiving_author',
+            displayName='outlandish_name',
             description='test_description2',
             github='https://github.com/test_author2',
             serial=uuid.uuid4(),
@@ -203,9 +206,14 @@ class FollowRequestTesting(TestCase):
         )
         
         self.existing_following= AuthorFollowing.objects.create(
-            follower=self.following_author,
-            following=self.receiving_author
+            following=self.receiving_author,
+            follower=self.following_author
         )
+        self.existing_following2= AuthorFollowing.objects.create(
+            following=self.requesting_author2,
+            follower=self.receiving_author
+        ) 
+
         self.new_follow_back= FollowRequest.objects.create(
             requester=self.receiving_author,
             requested_account=self.following_author
@@ -220,8 +228,7 @@ class FollowRequestTesting(TestCase):
             requested_account=self.receiving_author
         )
         
-        
-        
+         
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #Following/Friends 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
@@ -230,8 +237,9 @@ class FollowRequestTesting(TestCase):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
         url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 400)
-        print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
+        self.assertEqual(response.status_code, 401)
+        
+        #print("PASS: UNAUTHENTICATED LOCAL USERS CANNOT CHECK AN INBOX THAT IS NOT THEIRS")
      #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
@@ -240,8 +248,9 @@ class FollowRequestTesting(TestCase):
         
         #the right sending author
         self.assertContains(response,"sending_author")
-        print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
-     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
+        #print("PASS: THE AUTHOR SENDING FOLLOW REQUESTS IS PROPERLY PRESENTED IN THE API")
+     
+    #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
@@ -249,7 +258,7 @@ class FollowRequestTesting(TestCase):
         
         self.assertContains(response, "state")
         self.assertEqual(response.data[0]["state"], RequestState.REQUESTING)   
-        print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
+        #print("PASS: THE INITIAL STATE OF THE FOLLOW REQUESTS IS CORRECT")
 
     #Following/Friends 6.1 As an author, I want to follow local authors, so that I can see their public entries.
     #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
@@ -258,7 +267,7 @@ class FollowRequestTesting(TestCase):
         url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
+        #print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
     
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
@@ -287,7 +296,7 @@ class FollowRequestTesting(TestCase):
         
         #check that the requester now follows the account it requested
         self.assertTrue(AuthorFollowing.objects.filter(follower=self.requesting_author1, following=self.receiving_author).exists())
-        print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+        #print("PASS: ACCEPTED FOLLOW REQUESTS ARE WORKING PROPERLY")
         
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.    
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
@@ -310,11 +319,12 @@ class FollowRequestTesting(TestCase):
 
         self.new_follow_request2.refresh_from_db()
 
-        #correct status should be accepted now
+        #correct status should be rejected now
         self.assertEqual(self.new_follow_request2.state, RequestState.REJECTED)
     
-        print("PASSED: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
-   
+        #print("PASS: REJECTED FOLLOW REQUESTS ARE WORKING PROPERLY")
+    
+     
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     #Following/Friends 6.6 As an author, if I am following another author, and they are following me (only after both follow requests are approved), I want us to be considered friends, so that they can see my friends-only entries.
     def test_friends_created_after_mutual_follow(self):
@@ -347,12 +357,130 @@ class FollowRequestTesting(TestCase):
             (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
             (Q(friending=self.following_author) & Q(friended=self.receiving_author))
             ).exists())
-        
+        #print("PASS: FRIENDSHIP CREATED AFTER MUTUAL FOLLOWING") 
     
-  
+    
+    #Following/Friends 6.5 As an author, I want to unfollow authors I am following, so that I don't have to see their entries anymore.
+    def test_unfollow_user(self):
+        
+        #"receiving_author" is following "following_author" in this specific test case
+        following_author= self.receiving_author
+        receiving_author= self.requesting_author2 
+   
+        #url to followed/unfollowed account's inbox
+        url = f'{BASE_PATH}/authors/{receiving_author.serial}/followers/'
+        
+        #Check the API contents for the follower list of the followed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the following account is in the JSON response of the list of followers 
+        self.assertContains(response,"outlandish_name")
+      
+        #profile page of the followed profile's URL
+        followed_profile_url= reverse("wiki:view_external_profile", kwargs={"author_serial":receiving_author.serial})
+        
+        #unfollow profile endpoint
+        unfollow_profile_url= reverse("wiki:unfollow_profile", kwargs={"author_serial":following_author.serial,"following_id": self.existing_following2.id})
+         
+        #check for a successful page view
+        response = self.client.get(followed_profile_url) 
+        self.assertEqual(response.status_code, 200)
+        
+        
+        #check that the following from the following author to the receiving author exists
+        self.assertEqual(following_author.get_following_id_with(receiving_author), 2)
+        
+        #attempt to unfollow the followed profile
+        response = self.client.post(unfollow_profile_url) 
+        
+        #Check for a successful redirect after the unfollow
+        self.assertEqual(response.status_code, 302)
+        
+        #Check that the following no longer exists in the DB
+        self.assertEqual(following_author.get_following_id_with(receiving_author), None)
+        
+        #Check the API contents for the follower list of the unfollowed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the unfollowing account is not in the JSON response of the list of followers 
+        self.assertNotContains(response,"outlandish_name")
+        
+        #print("PASS: UNFOLLOWING ACCOUNTS WORKS PROPERLY IN DB AND API")
+        
+    def test_friend_user(self):
+        '''Go through logic of creating a friendship, then unfriend and test'''
+        
+        
+        #url to followed/unfollowed account's inbox
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/followers/'
+        
+        #post to the follow request processing page with action being accept
+        process_follow_requests_url= reverse("wiki:process_follow_request", kwargs={"author_serial":self.following_author.serial, "request_id":self.new_follow_back.id}) 
+        response = self.client.post(process_follow_requests_url, {'action':"accept"})
+        
+        
+        #check for a successful redirect after the POST
+        self.assertEqual(response.status_code, 302)
+
+       
+        check_follow_requests_url= reverse('wiki:check_follow_requests', kwargs={"username":self.following_author.displayName})
+        response = self.client.get(check_follow_requests_url)
+
+        #check for a successful Page View
+        self.assertEqual(response.status_code, 200)
+        
+
+        self.new_follow_back.refresh_from_db()
+
+        #correct status should be accepted now
+        self.assertEqual(self.new_follow_back.state, RequestState.ACCEPTED)
+    
+        
+        #Check that users are now friends
+        self.assertTrue(AuthorFriend.objects.filter(
+            (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
+            (Q(friending=self.following_author) & Q(friended=self.receiving_author))
+            ).exists())
+
+
+        #Confirm the following exists
+        self.assertTrue(AuthorFollowing.objects.filter(follower=self.following_author, following=self.receiving_author).exists())
+        current_following=AuthorFollowing.objects.get(follower=self.following_author, following=self.receiving_author)
+        
+        #unfriend the account
+        unfollow_profile_url= reverse("wiki:unfollow_profile", kwargs={"author_serial":self.receiving_author.serial,"following_id": current_following.id})
+        
+        #check for a successful redirect after the POST
+        response = self.client.post(unfollow_profile_url, {'action':"unfriend"})
+        self.assertEqual(response.status_code, 302)
+        
+        
+        #Check that the friendship no longer exists in the DB
+        self.assertFalse(self.assertTrue(AuthorFriend.objects.filter(
+            (Q(friending=self.receiving_author) & Q(friended=self.following_author)) |
+            (Q(friending=self.following_author) & Q(friended=self.receiving_author))
+            ).exists()))
+
+        #Check the following is also subsequently deleted
+        self.assertFalse(self.following_author.is_following(self.receiving_author))
+        
+        #Check the API contents for the follower list of the unfollowed author
+        #ensure proper response
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        #check if the that the unfollowing account is not in the JSON response of the list of followers 
+        self.assertNotContains(response,self.following_author.displayName)
+        
+         
+        #print("PASS: UNFRIENDING ACCOUNTS WORKS PROPERLY IN DB AND API")
+        
     def tearDown(self):
         self.client.logout()    
-    
 
 class LikeEntryTesting(TestCase):
     # Liking An Entry Testing
@@ -929,7 +1057,6 @@ class VisibilityTestCase(TestCase):
             github='https://github.com/test_author',
             serial=uuid.uuid4(),
             web='https://example.com/',
-            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
         )
         self.publicEntry = Entry.objects.create(
             title='Public Entry',
@@ -987,10 +1114,16 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.3 As an author, I want my friends to see my friends-only, unlisted, and public entries in their stream.
     def test_friends_only_visibility(self):
-        url = f'{BASE_PATH}/entry/{self.friendEntry.serial}/'
-        response = self.client.get(url, HTTP_ACCEPT='application/json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json().get("visibility"), "FRIENDS")
+        self.client.force_authenticate(user=self.user2)
+        AuthorFriend.objects.create(friending=self.author2, friended=self.author)
+        AuthorFollowing.objects.create(follower=self.author2, following=self.author)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Public Entry", titles)
+        self.assertIn("Unlisted Entry", titles)
+        self.assertIn("Friend Entry", titles)
     
     # Visibility 4.4 As an author, I want anyone following me to see my unlisted and public entries in their stream.
     def test_following_visibility(self):
@@ -1016,11 +1149,32 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.6 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
-        pass
+        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.unlistedEntry.title)
+        self.assertContains(response, self.unlistedEntry.content)
+        url = f'{BASE_PATH}/entry/{self.publicEntry.serial}/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.publicEntry.title)
+        self.assertContains(response, self.publicEntry.content)
 
     # Visibility 4.7 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
     def test_friend_only_entry(self):
-        pass
+        self.client.force_authenticate(user=self.user2)
+        friendship = AuthorFriend.objects.create(friending=self.author2, friended=self.author)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertIn("Friend Entry", titles)
+        friendship.delete()    
+        response = self.client.get(url)
+        data = response.json()
+        titles = [entry["title"] for entry in data]
+        self.assertNotIn("Friend Entry", titles)
 
     # Visibility 4.8 As an author, I don't want anyone except the node admin to see my deleted entries.
     def test_deleted_entries_visibility(self):
@@ -1047,18 +1201,221 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
 
-'''
-class SharingTestCase(TestCase):
-    # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
-    def test_public_unlisted_link(self):
+
+class EntryUserStoriesTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='author1', password='testpass')
+        self.author = Author.objects.create(user=self.user, displayName='author1', id='http://localhost:8000/api/authors/1', host='http://localhost:8000/api/', web='http://localhost:8000/authors/1')
+        self.client.login(username='author1', password='testpass')
+
+    # US 2.1: As an author, I want to make entries, so I can share my thoughts and pictures with other local authors.
+    def test_create_text_entry(self):
+        """User Story: As an author, I want to make entries (plain text) to share with other local authors."""
+        response = self.client.post(reverse('wiki:create_entry'), {
+            'title': 'Plain Text Entry',
+            'content': 'Hello world!',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        self.assertIn(response.status_code, [200, 302])
+        self.assertTrue(Entry.objects.filter(title='Plain Text Entry').exists())
+
+    # US 2.2: As an author, I want my node to send my entries to my remote followers and friends, so that remote authors following me can see them.
+    def test_send_entry_to_remote(self):
+        """User Story: As an author, I want my node to send my entries to my remote followers and friends."""
+        # Part 3 - 5
         pass
 
-    # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
-    def test_push_images_to_other_nodes(self):
+    # US 2.3: As an author, I want to edit my entries locally, so that I'm not stuck with a typo on a popular entry.
+    def test_edit_entry(self):
+        """User Story: As an author, I want to edit my entries locally."""
+        entry = Entry.objects.create(title='Old Title', content='Old', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        response = self.client.post(reverse('wiki:edit_entry', args=[entry.serial]), {
+            'title': 'New Title',
+            'content': 'New content',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        entry.refresh_from_db()
+        self.assertEqual(entry.title, 'New Title')
+
+    # US 2.4: As an author, I want my node to re-send entries I've edited to everywhere they were already sent, so that people don't keep seeing the old version.
+    def test_resend_edited_entry_to_remote(self):
+        """User Story: As an author, I want my node to re-send entries I've edited to everywhere they were already sent."""
+        # Part 3 - 5
         pass
+
+    # US 2.5: As an author, entries I make can be in CommonMark, so I can give my entries some basic formatting.
+    def test_create_markdown_entry(self):
+        """User Story: As an author, entries I make can be in CommonMark (Markdown)."""
+        # Common Mark US
+        pass
+
+    # US 2.6: As an author, entries I make can be in simple plain text, because I don't always want all the formatting features of CommonMark.
+    def test_create_text_entry_again(self):
+        """User Story: As an author, entries I make can be in simple plain text."""
+        response = self.client.post(reverse('wiki:create_entry'), {
+            'title': 'Another Plain Text Entry',
+            'content': 'Just text.',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        self.assertIn(response.status_code, [200, 302])
+        self.assertTrue(Entry.objects.filter(title='Another Plain Text Entry', contentType='text/plain').exists())
+
+    # US 2.7: As an author, entries I create can be images, so that I can share pictures and drawings.
+    def test_create_image_entry(self):
+        """User Story: As an author, entries I create can be images."""
+        # Image US
+        pass
+
+    # US 2.8: As an author, entries I create that are in CommonMark can link to images, so that I can illustrate my entries.
+    def test_markdown_entry_can_link_to_images(self):
+        """User Story: As an author, entries I create that are in CommonMark can link to images."""
+        # Common Mark US
+        pass
+    # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
+    def test_delete_entry(self):
+        """User Story: As an author, I want to delete my own entries locally."""
+        entry = Entry.objects.create(title='To Delete', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        response = self.client.post(reverse('wiki:delete_entry', args=[entry.serial]))
+        entry.refresh_from_db()
+        self.assertTrue(entry.is_deleted)
+
+    # US 2.10: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to, so I know remote users don't keep seeing my deleted entries forever.
+    def test_resend_deleted_entry_to_remote(self):
+        """User Story: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to."""
+        # Part 3 - 5
+        pass
+
+    # US 2.11: As an author, I want to be able to use my web-browser to manage/author my entries, so I don't have to use a clunky API.
+    def test_web_ui_entry_creation(self):
+        """User Story: As an author, I want to use my web-browser to manage/author my entries."""
+        response = self.client.get(reverse('wiki:create_entry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<form', response.content)
+
+    # US 2.12: As an author, other authors cannot modify my entries, so that I don't get impersonated.
+    def test_other_author_cannot_edit(self):
+        """User Story: As an author, other authors cannot modify my entries."""
+        entry = Entry.objects.create(title='Protected', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        user2 = User.objects.create_user(username='author2', password='testpass2')
+        author2 = Author.objects.create(user=user2, displayName='author2', id='http://localhost:8000/api/authors/2', host='http://localhost:8000/api/', web='http://localhost:8000/authors/2')
+        self.client.logout()
+        self.client.login(username='author2', password='testpass2')
+        response = self.client.post(reverse('wiki:edit_entry', args=[entry.serial]), {
+            'title': 'Hacked',
+            'content': 'Hacked',
+            'contentType': 'text/plain',
+            'visibility': 'PUBLIC',
+        })
+        entry.refresh_from_db()
+        self.assertNotEqual(entry.title, 'Hacked')
+
+'''
+class SharingTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # Create user and authenticate properly
+        self.user = User.objects.create_user(
+            username='test_user',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_user2',
+            password='test_password2'
+        )
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+        )
+        self.unlistedEntry = Entry.objects.create(
+            title='Unlisted Entry',
+            content='This is a Unlisted entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="UNLISTED"
+        )
+        self.publicEntry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a Public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+    # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
+    def test_public_unlisted_link(self):
+        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.unlistedEntry.title)
+        self.assertContains(response, self.unlistedEntry.content)
+
+    # # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
+    # def test_push_images_to_other_nodes(self):
+    #     pass
 
     #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
         # Note: this should include all local public entries and all public entries received in any inbox.
     def test_browse_public_entries(self):
         pass
 '''
+
+        self.client.force_authenticate(user=self.user2)
+        url = f'{BASE_PATH}/test_author2/wiki/'
+        response = self.client.get(url)
+        entries = response.json() 
+        titles = [entry["title"] for entry in entries]
+        self.assertIn("Public Entry", titles)
+
+class NodeManagementTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_superuser(
+            username='admin_user',
+            password='admin_password', 
+            email='admin@ualberta.ca'
+        )
+        self.register_api_url = f'{BASE_PATH}/register/'
+        self.login_api_url = f'{BASE_PATH}/login/'
+    
+    # Node Management 8.3 As a node admin, I want to be able to allow users to sign-up but require my approval to complete sign-up and use my node, so that I can prevent unwanted users and spambots.
+    def test_sign_up_approval(self):
+        register_data = {
+            'username': 'pending_user',
+            'password': 'pass',
+            'confirm_password': 'pass',
+        }
+        response = self.client.post(self.register_api_url, register_data, format='json')
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(username='pending_user')
+        self.assertFalse(user.is_active)
+        login_data = {
+            'username': 'pending_user',
+            'password': 'pass',
+        }
+        response = self.client.post(self.login_api_url, login_data, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("pending admin approval", response.json().get('detail', ''))
+        user.is_active = True
+        user.save()
+        response = self.client.post(self.login_api_url, login_data, format='json')
+        self.assertEqual(response.status_code, 200)
+

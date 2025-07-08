@@ -5,9 +5,20 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import Manager, QuerySet, Q, UniqueConstraint
 from django.dispatch import receiver
+from django.forms import DateTimeField
+from django.utils.timezone import make_aware
+import pytz
+from datetime import datetime
+
 # Create your models here.
 
 
+# derived from: Django Software Foundation. (2025). Time zones. Django documentation (Version 5.2). Retrieved from https://docs.djangoproject.com/en/5.2/topics/i18n/timezones/
+def get_mst_time():
+    edmonton_timezone = pytz.timezone("America/Edmonton")
+    naive_now = datetime.now()
+    aware_now = edmonton_timezone.localize(naive_now)
+    return aware_now
         
 #The following soft-deletion logic (AppQuerySet, AppManager and BaseModel) was derived from Medium's article: https://medium.com/@tomisinabiodun/implementing-soft-delete-in-django-an-intuitive-guide-5c0f95da7f0d, June 15, 2025
 class AppQuerySet(QuerySet):
@@ -27,10 +38,10 @@ class AppManager(Manager):
   
   
 class BaseModel(models.Model):
-    '''A model that extends from the Django base model
+    '''
+       A model that extends from the Django base model
      - this model is capable of soft deletion so that deleted entities are still visible in the database  to administors
      - this way, all deleted data is visible in admin dashboards until permenantly deleted by an administrator
-    
     '''
     class Meta:
         abstract = True
@@ -74,6 +85,9 @@ class Author(BaseModel):
     all_objects = models.Manager()
     type = models.CharField(default="author")
     
+    #for future user story
+    #is_registered= models.BooleanField(default=False)
+    
     user = models.OneToOneField(User, on_delete= models.CASCADE)
      
     id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
@@ -94,11 +108,19 @@ class Author(BaseModel):
     
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
-        return self.requesting.filter(is_deleted=False)
+        return self.requesting.all()
         
     def get_follow_requests_recieved(self):
         '''Returns a list of all of the follow requests recieved by an author'''
-        return self.follow_requests.filter(is_deleted=False)
+        return self.follow_requests.order_by('-created_at')
+    
+    def get_all_entries(self):
+        '''Returns a list of all of the entries recieved by an author'''
+        return self.posts.order_by('-created_at')
+    
+    def get_unlisted_entries(self):
+        '''Returns a list of all of the public entries created by an author'''
+        return self.entries.filter(visibility=VisibilityOptions.PUBLIC)
     
     def get_web_url(self):
         '''Get the fully qualified URL to an author's page'''
@@ -109,7 +131,7 @@ class Author(BaseModel):
         return InboxItem.objects.get(author=self)
     
     def is_already_requesting(self, other_author):
-        '''checks if an autor is actively requesting a specific author'''
+        '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
     def get_friends(self):
@@ -117,19 +139,41 @@ class Author(BaseModel):
         retrieves a list of a user's friends
         '''
         pass
-    
+      
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
-        return AuthorFollowing.objects.filter(follower=self, following=other_author, is_deleted=False).exists()
+        return AuthorFollowing.objects.filter(follower=self, following=other_author).exists()
         
     def is_friends_with(self, other_author):
         '''checks if an author is friends with another author'''
-
-        if AuthorFriend.objects.filter(friending=self.id) or AuthorFriend.objects.filter(friended=self.id):
+        if AuthorFriend.objects.filter(friending=self.id, friended=other_author.id).exists() or AuthorFriend.objects.filter(friending=other_author.id, friended=self.id).exists():
             return True
         
         return False
+    def get_friendship_id_with(self, other_author):
+        '''Returns the frienship object between two authors, None if it does not exist'''
+        ordered_friend_ids = sorted([self.id, other_author.id])
+            
+        try:
+            friendship = AuthorFriend.objects.get(friending=ordered_friend_ids[0], friended=ordered_friend_ids[1])
         
+        except AuthorFriend.DoesNotExist:
+            return None
+        
+        return friendship.id
+        
+        
+    def get_following_id_with(self, other_author):
+        '''retrieve the id of the following object between a user and the author they follow if one exists, return None if one does not exist'''
+        try:
+            
+            following_object = AuthorFollowing.objects.get(follower=self.id, following=other_author.id)
+            follow_id = following_object.id
+        
+        except AuthorFollowing.DoesNotExist:
+            follow_id = None
+            
+        return follow_id
    
         
       
@@ -168,20 +212,29 @@ class Entry(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
 
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
     image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=get_mst_time)
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
+    description = models.TextField(blank=True, null=True, default="")
+    contentType = models.CharField(max_length=50, default="text/plain")
+    web = models.URLField(blank=True, null=True, default=None)
+    
     def get_entry_url(self):
-        return f"http://s25-project-white/entry/{self.serial}"
+        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+    
+    def get_web_url(self):
+        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
     
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = self.get_entry_url()
+        if not self.web:
+            self.web = self.get_web_url()
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -192,7 +245,7 @@ class Page(BaseModel):
     all_objects = models.Manager()
     title = models.CharField(max_length=100, unique=True)
     content = models.TextField()
-    updated = models.DateTimeField(auto_now=True)
+    updated = models.DateTimeField(default=get_mst_time)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -217,7 +270,7 @@ class Comment(BaseModel):
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=get_mst_time)
 
 class CommentLike(BaseModel):
    
@@ -237,7 +290,7 @@ class RemotePost(BaseModel):
     origin = models.URLField()
     author = models.CharField(max_length=100)
     content = models.TextField()
-    received_at = models.DateTimeField(auto_now_add=True)
+    received_at = models.DateTimeField(default=get_mst_time)
     
     
 
@@ -263,14 +316,17 @@ class AuthorFriend(BaseModel):
         all_objects = models.Manager()
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
         friended = models.ForeignKey(Author, related_name="friend_b", null=False, on_delete=models.CASCADE)
-        friended_at =  models.DateTimeField(auto_now_add=True)
+        friended_at =  models.DateTimeField(default=get_mst_time)
        
         #prevents any duplicate friend requests
         class Meta:
+            
+    
             constraints = [
-                models.UniqueConstraint(fields=['friending', 'friended']
-                                        , name='unique_active_friendship'),
-              
+                UniqueConstraint(fields=['friending', 'friended'],
+                                        condition=Q(is_deleted=False),
+                                        name='unique_active_friendship'
+            )
             ]
             
         #prevent self-friending
@@ -314,11 +370,11 @@ class AuthorFollowing(BaseModel):
     all_objects = models.Manager()
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
     following = models.ForeignKey(Author, related_name="followers", on_delete=models.CASCADE, null=False)
-    date_followed = models.DateTimeField(auto_now_add=True)
+    date_followed = models.DateTimeField(default=get_mst_time)
     
     class Meta:
         constraints = [
-                models.UniqueConstraint(
+                UniqueConstraint(
                 fields=['follower', 'following'],
                 condition=Q(is_deleted=False),
                 name='unique_active_following'
@@ -377,10 +433,10 @@ class FollowRequest(BaseModel):
     requester = models.ForeignKey(Author, related_name="requesting", on_delete=models.CASCADE, null=False) 
     requested_account = models.ForeignKey(Author, related_name="follow_requests", on_delete=models.CASCADE, null=False)
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=get_mst_time)
     class Meta:
         constraints = [
-            models.UniqueConstraint(
+            UniqueConstraint(
             fields=['requester', 'requested_account', 'state'],
             condition=Q(is_deleted=False),
             name='unique_active_follow_request'
@@ -388,7 +444,7 @@ class FollowRequest(BaseModel):
             
         ]
         
-    def get_request_state(self)->str:
+    def get_request_state(self):
         """returns the state of active follow requests"""
         return self.state
         
@@ -421,11 +477,10 @@ class FollowRequest(BaseModel):
              raise ValidationError("You cannot send yourself a follow request.")
          
          #Validation Error Raised if a follow request already exists with:  
-         if  not self.is_deleted and FollowRequest.objects.filter(
+         if FollowRequest.objects.filter(
              requester=self.requester, # the same requesting user
              requested_account=self.requested_account, # the same requested user
-             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING], #with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
-             is_deleted = False
+             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING] # with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
              ).exclude(pk=self.pk).exists():
             
             raise ValidationError("User already has an active follow request or relationship with this user")
@@ -440,10 +495,17 @@ class FollowRequest(BaseModel):
 def delete_related_user(sender, instance, **kwargs):
     if instance.user:
         instance.user.delete()       
-        
-    
+     
+'''  
+     IN PROGRESS
+@receiver(post_save, AuthorFollowing=AuthorFollowing)
+def friend_users(sender, instance, **kwargs):
+
+''' 
+            
 class InboxItem(BaseModel):
-    '''A general model for all of the different objects that can be pushed to the inbox 
+    '''
+    A general model for all of the different objects that can be pushed to the inbox 
     
     FIELDS:
     
@@ -464,9 +526,10 @@ class InboxItem(BaseModel):
         default=None
     )
     content = models.JSONField()
-    created_at =models.DateTimeField(auto_now_add=True)
+    created_at =models.DateTimeField(default=get_mst_time)
     objects = AppManager()
     all_objects = models.Manager()
+    
     def get_follow_requester_name(self):
         try:
             return self.get_content().get("actor")["displayName"]
