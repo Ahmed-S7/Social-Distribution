@@ -27,14 +27,36 @@ class AuthorSerializer(serializers.ModelSerializer):
         model= Author
         fields = ["type", "id", "host", "displayName", "github", "profileImage", "web", "description"]
     
+
     def validate_displayName(self, value):
         # Enforce no spaces in username
         if  " " in value:
             raise serializers.ValidationError("Display name cannot contain any spaces.")
         if len(value) >= 150:
             raise serializers.ValidationError("Display name cannot be longer than 150 characters")
+        return value
+    
+    def update(self, instance, validated_data):
+        """
+        Update and return an existing `Author` instance, given the validated data
+        """
+  
+        if 'displayName' in validated_data:
+            instance.displayName = validated_data['displayName']
+            instance.user.username = instance.displayName  
+
+        if 'github' in validated_data:
+            instance.github = validated_data['github']
+            
+        if 'description' in validated_data:
+            instance.description = validated_data['description']    
+    
+        if 'profileImage' in validated_data:
+            instance.profileImage = validated_data['profileImage']
         
-        
+        instance.save()
+        return instance
+    
 class FollowRequestSerializer(serializers.ModelSerializer):
     actor = AuthorSerializer(source="requester")
     object = AuthorSerializer(source="requested_account")

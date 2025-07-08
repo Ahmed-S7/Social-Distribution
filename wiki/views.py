@@ -280,13 +280,13 @@ def get_authors(request):
 
 
 @login_required
-@api_view(['GET'])
-def get_author(request, author_serial):
+@api_view(['GET', "PUT"])
+def get_or_edit_author_api(request, author_serial):
     """
     Get a specific author in the application
     
 
-    Use: "GET /api/author/{author_serial}"
+    Use: "GET /api/authors/{author_serial}"
     
     Args: 
     
@@ -311,10 +311,26 @@ def get_author(request, author_serial):
         - returns error details if they arise     
     
     """
-    # CHANGED FOR TESTING
     author = get_object_or_404(Author, serial=author_serial)
-    serializer =AuthorSerializer(author)
-    return Response(serializer.data)
+    
+    if request.method=="GET":
+        # CHANGED FOR TESTING
+        
+        serializer =AuthorSerializer(author)
+        return Response(serializer.data)
+
+    # PUT
+    updated_author_serializer = AuthorSerializer(author, data=request.data, partial=True)
+     
+    if updated_author_serializer.is_valid(raise_exception=True):
+
+        try:
+            updated_author_serializer.save()
+        except Exception as e:
+            return Response({"Failed to update author info": e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(updated_author_serializer.data, status=status.HTTP_200_OK)
+    return Response(updated_author_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @login_required   
@@ -1080,40 +1096,6 @@ def edit_profile(request, username):
         return redirect('wiki:profile', username=new_username)
 
     return render(request, 'edit_profile.html', {'author': author})
-
-
-
-
-
-#THIS NEEDS TO BE ON THE SAME API ENDPOINT AS GET AUTHORS (VIEW SPECS)
-@api_view(['PUT', 'GET']) 
-def edit_profile_api(request, username):
-    """
-    GET /api/profile/edit/{username}/
-    View the author's profile.
-
-    PUT /api/profile/edit/{username}/
-    Edits the author's profile.
-    """
-    try:
-        author = Author.objects.get(user__username=username)
-    except Author.DoesNotExist:
-        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        author_data = AuthorSerializer(author).data
-        entries = Entry.objects.filter(author=author).order_by('-created_at')
-        entry_data = EntrySerializer(entries, many=True).data
-        author_data['entries'] = entry_data
-        return Response(author_data, status=status.HTTP_200_OK)
-
-    # PUT
-    serializer = AuthorSerializer(author, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

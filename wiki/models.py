@@ -88,7 +88,7 @@ class Author(BaseModel):
     #for future user story
     #is_registered= models.BooleanField(default=False)
     
-    user = models.OneToOneField(User, on_delete= models.CASCADE)
+    user = models.OneToOneField(User, on_delete= models.CASCADE, related_name="author")
      
     id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
      
@@ -180,26 +180,15 @@ class Author(BaseModel):
     def __str__(self):
         return self.displayName
     
-    def save(self, *args, **kwargs):
-        if self.user.username != self.displayName:
-            self.user.username = self.displayName
-            self.user.save()
-    
-        return super().save(*args,**kwargs)
-     
-    #implemented using code from ChatGPT:https://chatgpt.com/, "How can I get updated author names to be reflected by their user and vice versa?", June 15, 2024
-    @receiver(post_save, sender=User)    
-    def sync_username(sender, instance, **kwargs):
-        '''ensure that any changes to an Author's respective user object are reflected by the author's display name for consistency'''
-        try:
-            author = instance.author
-            if instance.username!= author.displayName:
-                author.displayName = instance.username
-                author.save()
-        except: #only requires an update if the user has an associated author
-            pass
-
-
+@receiver(post_save, sender=User)
+def update_author_name(sender, instance, **kwargs):
+    try:
+        author = Author.objects.get(user=instance)
+        author.displayName = instance.username
+        author.save()
+    except Author.DoesNotExist:
+        pass
+         
 class Entry(BaseModel):
     '''Used to represent entries inside of the application '''
     VISIBILITY_CHOICES = [
@@ -489,20 +478,10 @@ class FollowRequest(BaseModel):
          return super().save(*args,**kwargs)
     def __str__(self):
         return f"{self.requester.displayName} has requested to follow {self.requested_account.displayName}"  
+ 
 
-#derived from copilot: "[all users that are deleted should have corresponding deleted authors]", June, 2025
-@receiver(post_delete, sender=Author)
-def delete_related_user(sender, instance, **kwargs):
-    if instance.user:
-        instance.user.delete()       
-     
-'''  
-     IN PROGRESS
-@receiver(post_save, AuthorFollowing=AuthorFollowing)
-def friend_users(sender, instance, **kwargs):
 
-''' 
-            
+                
 class InboxItem(BaseModel):
     '''
     A general model for all of the different objects that can be pushed to the inbox 
