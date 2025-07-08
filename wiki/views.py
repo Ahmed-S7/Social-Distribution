@@ -317,7 +317,7 @@ def get_or_edit_author_api(request, author_serial):
         # CHANGED FOR TESTING
         
         serializer =AuthorSerializer(author)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     # PUT
     updated_author_serializer = AuthorSerializer(author, data=request.data, partial=True)

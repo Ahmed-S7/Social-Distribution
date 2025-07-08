@@ -85,8 +85,7 @@ class IdentityTestCase(TestCase):
 
     # Identity 1.3 As an author, I want a public page with my profile information, so that I can link people to it
     def test_public_profile_page(self):
-        self.client.logout()
-        url = f'{BASE_PATH}/{self.author.displayName}/profile/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["displayName"], self.author.displayName)
