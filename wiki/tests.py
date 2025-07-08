@@ -239,7 +239,7 @@ class FollowRequestTesting(TestCase):
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     def test_check_other_inbox(self):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
-        url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/follow_requests/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         
@@ -247,7 +247,7 @@ class FollowRequestTesting(TestCase):
      #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         
         #the right sending author
@@ -257,7 +257,7 @@ class FollowRequestTesting(TestCase):
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         
         self.assertContains(response, "state")
@@ -268,7 +268,7 @@ class FollowRequestTesting(TestCase):
     #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
     def test_check_own_follow_requests(self):
         "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         #print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
