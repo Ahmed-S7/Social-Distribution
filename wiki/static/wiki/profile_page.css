@@ -346,11 +346,10 @@ a{
     height: auto;
   }
 }
-
 .bar-title {
     font-family: 'Nunito', sans-serif;
-    font-weight: bold;
-    font-size: 2em;
+    font-weight: Normal;
+    font-size: 1em;
     color: #14213d;
     margin: 0;
     padding: 0 1em;

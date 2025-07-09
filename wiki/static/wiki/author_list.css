@@ -20,18 +20,22 @@ html, head {
 html, h1, h3{
     color:black;
 }
-
-p{
-    font-family: 'Nunito', sans-serif;
-}
-h2{ 
+.page_title{ 
     color:rgb(0, 26, 128);
+    padding-top: 3em;
+    font-family: 'Nunito', sans-serif;
     justify-content: center;
     align-items: center;
     text-align:center;
+    padding-bottom:2em;
 }
+p{
+    font-family: 'Nunito', sans-serif;
+}
+
 .author_list{
-    margin:3em;
+    margin-left:auto;
+    margin-right: auto;
     justify-content: center;
 }
 .author_profile{
