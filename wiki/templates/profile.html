@@ -116,7 +116,7 @@
             {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                 <ul class="entry_list">
-                    {% for entry in entries %}
+                    {% for entry, rendered in entries %}
                         <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                                 
                         <div class="post-card">
@@ -146,7 +146,7 @@
                                </div>
                             {% elif entry.contentType == "text/markdown" %}
                                <div class="post-content markdown-content">
-                                   {{ entry.content|safe }}  {# optionally render markdown to HTML in views if needed #}
+                                   {{ rendered|safe }}
                                </div>
                             {% else %}
                                <div class="post-content">

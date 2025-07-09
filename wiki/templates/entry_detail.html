@@ -35,7 +35,7 @@
           {% if entry.contentType|slice:":5" == "image" %}
             <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" style="max-width: 100%; height: auto;" />
           {% else %}
-            <p>{{ entry.content }}</p>
+            {{ rendered_content|safe }}
           {% endif %}
         </div>
 

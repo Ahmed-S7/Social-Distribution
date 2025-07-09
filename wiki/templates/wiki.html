@@ -34,7 +34,7 @@
     </div>
 
     {% if entries %}
-      {% for entry in entries %}
+      {% for entry, rendered in entries %}
       <div class="card mb-4 shadow-sm post-card">
         <div class="card-body">
           <a href="{% url 'wiki:entry_detail' entry.serial %}" style="text-decoration:none;color:inherit;">
@@ -63,7 +63,7 @@
                 </div>
             {% elif entry.contentType == "text/markdown" %}
                 <div class="post-content markdown-content">
-                    {{ entry.content|safe }}  {# consider rendering markdown to HTML safely #}
+                    {{ rendered|safe }}
                 </div>
             {% else %}
                 <div class="post-content">

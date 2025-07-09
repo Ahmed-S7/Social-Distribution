@@ -26,6 +26,8 @@ from urllib.parse import urlparse
 import requests
 import json
 import base64
+import markdown
+from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 # Create your views here.
 
@@ -94,8 +96,17 @@ def user_wiki(request, username):
             "serial": str(entry.serial)
         } for entry in entries]
         return Response(serialized_entries)
-    return render(request, 'wiki.html', {'entries': entries})
+    #return render(request, 'wiki.html', {'entries': entries})
+    rendered_entries = []
+    for entry in entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered))
 
+    return render(request, 'wiki.html', {'entries': rendered_entries})
 
 
 @require_POST
@@ -1078,19 +1089,26 @@ def profile_view(request, username):
     #print("Entries:", all_entries)
     #print("followers:", followers)
     #print("following:", following)
-    
+   
+    rendered_entries = []
+    for entry in all_entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered)) 
     
     
     return render(
         request, 'profile.html', 
         {
         'author': author,
-        'entries': all_entries,
+        'entries': rendered_entries,
         "followers": followers,
         "follower_count": len(followers),
         "following": following,
         "following_count": len(following),
-        "entries": all_entries,
         "entry_count": len(all_entries),
         "friend_count":friend_count,
         "friends":total_friends} 
@@ -1216,7 +1234,22 @@ def entry_detail(request, entry_serial):
         else:
             return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
-    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    if entry.contentType == "text/markdown":
+        rendered_content = mark_safe(markdown.markdown(entry.content))
+    else:
+        rendered_content = entry.content
+
+    return render(
+        request,
+        'entry_detail.html',
+        {
+            'entry': entry,
+            'rendered_content': rendered_content,
+            'is_owner': is_owner,
+            'comments': comments
+        }
+    )
 
 @login_required
 def edit_entry(request, entry_serial):
