@@ -26,7 +26,7 @@
 </head>
 <body>
   <div class="default_buttons d-flex justify-content-between align-items-center px-4">
-    <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
+    <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Go to Profile</a>
     <h2 class="bar-title">Welcome to SocialDistribution, {{ request.user.username }}!</h2>
     <a href="/s25-project-white/authors/" class="btn btn-primary">Browse Authors</a>
     <a href="{% url 'wiki:create_entry' %}" class="btn btn-primary">Create New Entry</a>
