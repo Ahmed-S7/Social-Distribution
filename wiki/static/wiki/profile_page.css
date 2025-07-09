@@ -117,6 +117,7 @@ h3{
     align-items: center;   
     text-align: center; 
     z-index: 25;
+    padding-bottom:2em;
 }
 
 /*Buttons on a logged in user page (excluding nav_button)*/
