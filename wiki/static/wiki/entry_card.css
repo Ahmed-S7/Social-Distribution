@@ -60,14 +60,15 @@ html, body, h1,h2,p{
 .like-btn, .comment-btn {
     background: none;
     border: none;
-    color: #007bff;
+    color: black;
     cursor: pointer;
-    font-weight: bold;
+    font-weight: normal;
     font-size: 1em;
     margin:0em;
     padding: 0em 0em;
-    display: inline-block;
+    display: inline-flex;
     line-height: 1;
+    gap:3em;
 }
 
 .like-btn-custom:hover {

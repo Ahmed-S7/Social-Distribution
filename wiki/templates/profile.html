@@ -110,10 +110,8 @@
             {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                 <ul class="entry_list">
-                    {% for entry, rendered in entries %}
-                        <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                                
-                        <div class="post-card">
+                    {% for entry, rendered in entries %}   
+                     <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
                         <a href="{% url 'wiki:entry_detail' entry.serial %}">
                             <div class="post-header">
@@ -153,11 +151,11 @@
                                         <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
                                             {% csrf_token %}
                                             <input type="hidden" name="liked_from_profile" value="true">
-                                            <button type="submit" class="like-btn">❤️{{ entry.likes.count}} </button>
+                                            <button type="submit" class="like-btn like-btn-custom border-0 bg-transparent">❤️{{ entry.likes.count}} </button>
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
+                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
                                 </div>
                             </div>
                     {% endfor %}
