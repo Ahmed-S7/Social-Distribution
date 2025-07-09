@@ -163,7 +163,8 @@
                     
                                 </div>
                             {% endif %} 
-                            <div class="post-content">{{ entry.content }}</div>
+                            <div class="post-content">{{ entry.get_formatted_content|safe }}
+                            </div>
                                 </a>
                                     <div class="post-footer">
                                         <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
