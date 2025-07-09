@@ -7,6 +7,8 @@ from django.db.models import Manager, QuerySet, Q, UniqueConstraint
 from django.dispatch import receiver
 from django.forms import DateTimeField
 from django.utils.timezone import make_aware
+from django.utils import timezone
+
 import pytz
 from datetime import datetime
 from django.utils.safestring import mark_safe
@@ -254,6 +256,7 @@ class Like(BaseModel):
     
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, )
 
     class Meta:
         constraints = [

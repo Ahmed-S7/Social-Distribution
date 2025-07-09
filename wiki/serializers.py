@@ -111,11 +111,34 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
     author = AuthorSummarySerializer(source='user')
-    published = serializers.DateTimeField(source='entry.created_at')
-    id = serializers.CharField()
-    object = serializers.CharField(source='entry.id')
+    published = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    object = serializers.SerializerMethodField()
+
     def get_type(self, obj):
         return 'like'
+
+    def get_published(self, obj):
+        dt = obj.created_at.strftime('%Y-%m-%dT%H:%M:%S%z')
+        return dt[:-2] + ':' + dt[-2:]  # format as ISO 8601 with colon in timezone
+
+    def get_id(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        # Assuming obj.user is an Author with an .id
+        author_id = str(obj.user.id).rstrip('/').split('/')[-1]
+        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+
+    def get_object(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        # Assuming obj.entry is the liked entry with a .serial or .id
+        entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
+        entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
+        return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
+
 
 class CommentLikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
