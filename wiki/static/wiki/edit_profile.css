@@ -15,7 +15,7 @@ html, body {
   padding: 0;
   background-color: #f9f9f9;
 }
-.default_buttons {
+/* .default_buttons {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -26,37 +26,11 @@ html, body {
     margin: 0;            
     height: 3rem;         
     box-sizing: border-box;
-}
-
-.default_buttons p{
-    display: flex;
-    padding: 0em;
-    position: relative;
-    font-family: 'Nunito', sans-serif;
-    text-decoration: none;
-    color: black;
-    font-size: 1.2em;
-    
-}
-.default_buttons button {
-  background: inherit;
-  border: none;
-  font-size: 1.2em;
-  font-family: 'Nunito', sans-serif;
-  font-weight: bold;
-  color: black;
-  cursor: pointer;
-  padding: 0.2em 0.5em;
-  transition: color 0.3s ease;
-}
-
-.default_buttons button:hover {
-  color: rgba(0, 14, 84, 0.771);
-}
+} */
 
 .author_profile_card{
   font-family: 'Nunito', sans-serif;
-  padding-top:5em;
+  padding-top:2em;
 }
 
 .post-header {
