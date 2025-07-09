@@ -15,7 +15,7 @@
 </style>
 
 <body>
-  <div class="default_buttons d-flex justify-content-between align-items-center px-4" style="background:#89c6e1; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; height: 4.5em; padding: 1em 2em;">
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4">
     <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
     {% if request.user.is_authenticated and request.user.username == author.displayName %}
       <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
