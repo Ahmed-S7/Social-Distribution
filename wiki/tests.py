@@ -1252,11 +1252,79 @@ class EntryUserStoriesTest(TestCase):
         # Part 3 - 5
         pass
 
-    # US 2.5: As an author, entries I make can be in CommonMark, so I can give my entries some basic formatting.
+    # US 2.5: As an author, entries I make can be in CommonMark (Markdown), so I can give my entries some basic formatting.
     def test_create_markdown_entry(self):
-        """User Story: As an author, entries I make can be in CommonMark (Markdown)."""
-        # Common Mark US
-        pass
+        """Test creating an entry with markdown formatting"""
+        markdown_content = """# My Markdown Entry
+
+This is **bold text** and this is *italic text*.
+
+Here's a list:
+
+- Item 1
+- Item 2
+- Item 3
+
+> This is a blockquote
+
+You can also use `code` inline."""
+
+        entry = Entry.objects.create(
+            title='Markdown Test Entry',
+            content=markdown_content,
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="text/markdown"
+        )
+        
+        # Test that the entry was created with markdown content type
+        self.assertEqual(entry.contentType, "text/markdown")
+        self.assertEqual(entry.content, markdown_content)
+        
+        # Test that get_formatted_content returns HTML
+        formatted_content = entry.get_formatted_content()
+        self.assertIn('<h1>', formatted_content)  # Should have h1 tag
+        self.assertIn('<strong>', formatted_content)  # Should have bold
+        self.assertIn('<em>', formatted_content)  # Should have italic
+        self.assertIn('<ul>', formatted_content)  # Should have list
+        self.assertIn('<blockquote>', formatted_content)  # Should have blockquote
+        self.assertIn('<code>', formatted_content)  # Should have code
+
+    # US 2.8: As an author, entries I create that are in CommonMark can link to images, so that I can illustrate my entries.
+    def test_markdown_entry_can_link_to_images(self):
+        """Test that markdown entries can include images"""
+        markdown_with_images = """# Entry with Images
+
+Here's a cute cat:
+![Cat](https://placekitten.com/400/300)
+
+And a landscape:
+![Landscape](https://picsum.photos/500/300)
+
+**Bold text** with images works too!"""
+
+        entry = Entry.objects.create(
+            title='Markdown Images Test',
+            content=markdown_with_images,
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="text/markdown"
+        )
+        
+        # Test that the entry was created with markdown content type
+        self.assertEqual(entry.contentType, "text/markdown")
+        
+        # Test that get_formatted_content includes image tags
+        formatted_content = entry.get_formatted_content()
+        self.assertIn('<img', formatted_content)  # Should have img tags
+        self.assertIn('src="https://placekitten.com/400/300"', formatted_content)
+        self.assertIn('src="https://picsum.photos/500/300"', formatted_content)
+        self.assertIn('alt="Cat"', formatted_content)
+        self.assertIn('alt="Landscape"', formatted_content)
+
+
 
     # US 2.6: As an author, entries I make can be in simple plain text, because I don't always want all the formatting features of CommonMark.
     def test_create_text_entry_again(self):
