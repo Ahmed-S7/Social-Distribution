@@ -109,7 +109,6 @@ h3{
     border-style:ridge;
 
 }
-
 /*entries*/
 .entry_list{
     display: flex;
@@ -164,6 +163,13 @@ h3{
     border-color:black;
 }
 
+/*entry image*/
+p img{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 90%; 
+    border-radius: 0.625em;
+}
 /*linked text*/
 a{
     text-decoration: none;
@@ -239,8 +245,9 @@ a{
 .post-header {
   display: flex;
   align-items: center;    
-  justify-content: center;
-  text-align: center;
+  justify-content: space-evenly;
+  text-align: left;
+  padding-bottom:2em;
 }
 
 .post-footer{

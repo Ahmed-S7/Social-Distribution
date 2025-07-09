@@ -30,6 +30,7 @@ html, body, h1,h2,p{
     max-width: 90%; 
     border-radius: 0.625em;
 }
+
 .post-header {
     display: flex;
     align-items: center;

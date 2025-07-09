@@ -487,19 +487,25 @@ def view_external_profile(request, author_serial):
         print("The current request is:", current_request_id) 
         print("List of User's Entries:", all_entries)
         '''
-       
+        rendered_entries = []
+        for entry in all_entries:
+         rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+         )
+         rendered_entries.append((entry, rendered)) 
         
         return render(request, "external_profile.html", 
                       {
                        'author': profile_viewing,
-                       'entries': all_entries, 
+                       'entries': rendered_entries,
                        "followers": followers,
                        "follower_count": len(followers),
                        "friend_count": len(total_friends),
                        "is_a_friend": is_a_friend,
                        "is_following": is_following,
                        "following_count": len(following),
-                       "entries": all_entries,
                        "entry_count": len(all_entries),
                        "is_a_friend": is_a_friend,
                        "is_currently_requesting":is_currently_requesting,
