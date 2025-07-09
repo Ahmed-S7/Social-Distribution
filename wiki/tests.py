@@ -502,6 +502,7 @@ class FollowRequestTesting(TestCase):
 class LikeEntryTesting(TestCase):
     # Liking An Entry Testing
     # Comments/Like User Story 1.2 Testing
+    # Comments/Likes 7.2 As an author, I want to like entries that I can access, so I can show my appreciation.
     def setUp(self):
         self.client = APIClient()
         
@@ -546,7 +547,7 @@ class LikeEntryTesting(TestCase):
             serial=uuid.uuid4(),
             visibility="PUBLIC"
         )
-
+    
     def test_like_entry_success(self):
         """Test successful like of an entry"""
         self.client.force_authenticate(user=self.user2)
@@ -564,6 +565,7 @@ class LikeEntryTesting(TestCase):
         self.assertIsNotNone(like)
         self.assertFalse(like.is_deleted)
 
+    
     def test_like_entry_already_liked(self):
         """Test that user cannot like the same entry twice"""
         self.client.force_authenticate(user=self.user2)
@@ -586,6 +588,7 @@ class LikeEntryTesting(TestCase):
 class CommentEntryTesting(TestCase):
     # Commenting On An Entry Testing
     # Comments User Story 1.1 Testing
+    # Comments/Likes 7.1 As an author, I want to comment on entries that I can access, so I can make a witty reply.
     def setUp(self):
         self.client = APIClient()
         
@@ -671,6 +674,7 @@ class CommentEntryTesting(TestCase):
 class LikeCommentTesting(TestCase):
     # Liking An Entry Testing
     # Comments/Like User Story 1.3 Testing
+    # Comments/Likes 7.3 As an author, I want to like comments that I can access, so I can show my appreciation.
     def setUp(self):
         self.client = APIClient()
         
@@ -744,6 +748,7 @@ class LikeCommentTesting(TestCase):
 class GetEntryLikesTesting(TestCase):
     # View Likes on Public Entry User Story Testing
     # User Story 1.4 testing
+    # Comments/Likes 7.4 As an author, when someone sends me a public entry I want to see the likes, so I can tell if it's good or not.
     def setUp(self):
         self.client = APIClient()
         
@@ -1130,7 +1135,14 @@ class VisibilityTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json().get("visibility"), "UNLISTED")
 
-    # Visibility 4.3 As an author, I want my friends to see my friends-only, unlisted, and public entries in their stream.
+    # Visibility 4.3 As an author, I want to be able to make my entries "friends-only," so that I don't have to worry about people I don't know seeing them.
+    def test_unlisted_entry_visibility(self):
+        url = f'{BASE_PATH}/entry/{self.friendEntry.serial}/'
+        response = self.client.get(url, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json().get("visibility"), "FRIENDS")
+
+    # Visibility 4.4 As an author, I want my friends to see my friends-only, unlisted, and public entries in their stream.
     def test_friends_only_visibility(self):
         self.client.force_authenticate(user=self.user2)
         AuthorFriend.objects.create(friending=self.author2, friended=self.author)
@@ -1142,7 +1154,7 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
     
-    # Visibility 4.4 As an author, I want anyone following me to see my unlisted and public entries in their stream.
+    # Visibility 4.5 As an author, I want anyone following me to see my unlisted and public entries in their stream.
     def test_following_visibility(self):
         self.client.force_authenticate(user=self.user2)
         AuthorFollowing.objects.create(follower=self.author2, following=self.author)
@@ -1152,7 +1164,7 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Public Entry", titles)
         self.assertIn("Unlisted Entry", titles)
 
-    # Visibility 4.5 As an author, I want everyone to see my public entries in their stream.
+    # Visibility 4.6 As an author, I want everyone to see my public entries in their stream.
     def test_public_entry_on_stream(self):
         self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
@@ -1160,7 +1172,7 @@ class VisibilityTestCase(TestCase):
         titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
 
-    # Visibility 4.6 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
+    # Visibility 4.7 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
         url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
         self.client.logout()
@@ -1174,7 +1186,7 @@ class VisibilityTestCase(TestCase):
         self.assertContains(response, self.publicEntry.title)
         self.assertContains(response, self.publicEntry.content)
 
-    # Visibility 4.7 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
+    # Visibility 4.8 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
     def test_friend_only_entry(self):
         self.client.force_authenticate(user=self.user2)
         friendship = AuthorFriend.objects.create(friending=self.author2, friended=self.author)
@@ -1187,7 +1199,7 @@ class VisibilityTestCase(TestCase):
         titles = [entry["title"] for entry in response.json()]
         self.assertNotIn("Friend Entry", titles)
 
-    # Visibility 4.8 As an author, I don't want anyone except the node admin to see my deleted entries.
+    # Visibility 4.9 As an author, I don't want anyone except the node admin to see my deleted entries.
     def test_deleted_entries_visibility(self):
         self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
@@ -1200,7 +1212,7 @@ class VisibilityTestCase(TestCase):
         titles = [entry["title"] for entry in response.json()]
         self.assertNotIn("Public Entry", titles)
 
-    # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
+    # Visibility 4.10 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
     def test_entry_always_visible_to_author(self):
         url = f'{BASE_PATH}/{self.author.displayName}/profile/'
         response = self.client.get(url)
@@ -1211,7 +1223,7 @@ class VisibilityTestCase(TestCase):
         self.assertIn("Friend Entry", titles)
 
 
-class EntryUserStoriesTest(TestCase):
+class EntryUserStoriesTest(TestCase):   # POSTING USER STORIES
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='author1', password='testpass')
