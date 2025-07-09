@@ -24,9 +24,17 @@
     {% if follow_requests %}
       {% for follow_request in follow_requests %}
 
-      <section class="request_info">
-            <section class='follow_request_text'>
-                <h4>{{ follow_request.requester }} has requested to follow you!</h4>
+
+  <section class="request_info">
+        <section class='follow_request_text'>
+            <h4>{{ follow_request.requester }} has requested to follow you!</h4>
+        </section>
+        <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
+            {% csrf_token %} 
+            <section class='confirmation_buttons'>
+                <button class="accept" name="action" value="accept" type="submit">Accept</button> 
+                <button class="reject" name="action" value="reject" type="submit">Reject</button> 
+
             </section>
             <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
                 {% csrf_token %} 

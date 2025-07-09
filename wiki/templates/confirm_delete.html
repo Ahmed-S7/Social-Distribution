@@ -1,6 +1,15 @@
+{%load static%}
+ <link rel="stylesheet" href="{% static 'wiki/entry_detail.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
+<section class="deletion-confirmation">
 <h2>Are you sure you want to delete "{{ entry.title }}"?</h2>
 <form method="post">
+  
   {% csrf_token %}
-  <button type="submit">Yes, delete</button>
-  <a href="{% url 'wiki:entry_detail' entry.serial %}"><button type="button">Cancel</button></a>
+  <section class="confirmation_buttons">
+
+    <button class="accept" type="submit">Yes, delete</button>
+    <a href="{% url 'wiki:entry_detail' entry.serial %}"><button class="reject" type="button">Cancel</button></a>
+  </section>
 </form>
+</section>

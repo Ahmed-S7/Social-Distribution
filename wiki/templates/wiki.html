@@ -33,7 +33,7 @@
   <div style="height:5.5em"></div>
   <div class="container mt-4">
     {% if entries %}
-      {% for entry in entries %}
+      {% for entry, rendered in entries %}
       <div class="card mb-4 shadow-sm post-card">
         <div class="card-body">
           <a href="{% url 'wiki:entry_detail' entry.serial %}" style="text-decoration:none;color:inherit;">
@@ -56,7 +56,20 @@
                 <img class='entry_image' src="{{ entry.image.url }}" alt="Post image"/>
               </div>
             {% endif %}
-            <div class="post-content">{{ entry.content }}</div>
+            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                <div class="post-content text-center">
+                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                </div>
+            {% elif entry.contentType == "text/markdown" %}
+                <div class="post-content markdown-content">
+                    {{ rendered|safe }}
+                </div>
+            {% else %}
+                <div class="post-content">
+                    {{ entry.content }}
+                </div>
+            {% endif %}
+
           </a>
           <div class="d-flex align-items-center gap-3 post-footer mt-2">
             <form method="post" action="{% url 'wiki:like-entry' entry.serial %}" class="m-0 p-0">

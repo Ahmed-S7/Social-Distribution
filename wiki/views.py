@@ -25,6 +25,9 @@ from .util import validUserName, saveNewAuthor
 from urllib.parse import urlparse
 import requests
 import json
+import base64
+import markdown
+from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 # Create your views here.
 
@@ -93,8 +96,17 @@ def user_wiki(request, username):
             "serial": str(entry.serial)
         } for entry in entries]
         return Response(serialized_entries)
-    return render(request, 'wiki.html', {'entries': entries})
+    #return render(request, 'wiki.html', {'entries': entries})
+    rendered_entries = []
+    for entry in entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered))
 
+    return render(request, 'wiki.html', {'entries': rendered_entries})
 
 
 @require_POST
@@ -179,6 +191,7 @@ def register(request):
 
 @api_view(['POST'])
 def register_api(request):
+    '''Allows users to register through POST requests'''
     username = request.data.get('username')
     password = request.data.get('password')
     confirm_password = request.data.get('confirm_password', "").strip()
@@ -309,6 +322,31 @@ def get_or_edit_author_api(request, author_serial):
                 }  
                 
         - returns error details if they arise     
+        
+        
+    Use: "PUT /api/authors/{author_serial}"
+    
+    Args: 
+    
+        - request: HTTP request information
+        
+        - author_serial: the serial id of the author in the get request
+        
+    This returns:
+    
+        - Json in the following format (given the author was found and the information was validated and updated): 
+   
+                {
+                    "type":"author",
+                    "id":"http://nodeaaaa/api/authors/{serial}",
+                    "host":"http://nodeaaaa/api/",
+                    "displayName":"Greg Johnson",
+                    "github": "http://github.com/gjohnson",
+                    "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
+                    "web": "http://nodeaaaa/authors/{SERIAL}"
+                }  
+                
+        - returns error details if they arise    
     
     """
     author = get_object_or_404(Author, serial=author_serial)
@@ -320,18 +358,24 @@ def get_or_edit_author_api(request, author_serial):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # PUT
-    updated_author_serializer = AuthorSerializer(author, data=request.data, partial=True)
-     
-    if updated_author_serializer.is_valid(raise_exception=True):
+    #If the user is local, make sure they're logged in 
+    if request.user.is_authenticated and author.user == request.user :
+  
+            updated_author_serializer = AuthorSerializer(author, data=request.data, partial=True)
+            
+            if updated_author_serializer.is_valid(raise_exception=True):
 
-        try:
-            updated_author_serializer.save()
-        except Exception as e:
-            return Response({"Failed to update author info": e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                try:
+                    updated_author_serializer.save()
+                except Exception as e:
+                    return Response({"Failed to update author info": e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                return Response(updated_author_serializer.data, status=status.HTTP_200_OK)
+            
+            return Response(updated_author_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        return Response(updated_author_serializer.data, status=status.HTTP_200_OK)
-    return Response(updated_author_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    else:
+        return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
 @login_required   
 @require_GET 
@@ -409,21 +453,33 @@ def view_external_profile(request, author_serial):
         
         #store existing follow request if it exists
         try:
-            
-            current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
-            current_request_id = current_request.id
+            if logged_in_author:
+                current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
+                current_request_id = current_request.id
+            else:
+                current_request_id = None
         
-        except FollowRequest.DoesNotExist:
+        except FollowRequest.DoesNotExist or not logged_in_author:
             current_request_id = None
         
-        #store existing following if it exists 
-        following_id = logged_in_author.get_following_id_with(profile_viewing)
-        
-        
+        print(current_request_id)
+        #for logged in users only:
+        if logged_in_author:
             
-        #store existing friendship if it exists 
-        friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
+            #store existing following if it exists 
+            following_id = logged_in_author.get_following_id_with(profile_viewing)
+            
+            
+                
+            #store existing friendship if it exists 
+            friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
         
+        else:
+            
+     
+            following_id,friendship_id = None, None
+            
+            
         #CHECK VALUES
         '''
         print("Following ID is:",following_id)
@@ -449,7 +505,7 @@ def view_external_profile(request, author_serial):
                        "is_currently_requesting":is_currently_requesting,
                        "request_id": current_request_id,
                        "follow_id": following_id,
-                       "friendship_id":friendship_id,
+                       "friendship_id":friendship_id ,
                        }
                       )
     else:
@@ -889,14 +945,12 @@ def add_local_follower(request, author_serial, new_follower_serial):
 @login_required
 @api_view(['GET'])
 def get_local_followers(request, author_serial):   
-     
-    if request.method =='GET':
-        """
+    """
         Get a specific author's followers list requests in the application
         
-        Use: "GET /api/authors/{author_serial}/followers/"
+        Use: "GET /s25-project-white/api/authors/{author_serial}/followers/"
 
-        returns Json in the following format: 
+        returns Json in the following format upon a successful request: 
             
                     {
                         "type": "followers",      
@@ -919,15 +973,25 @@ def get_local_followers(request, author_serial):
                         ]
                     } 
                     
-        """
+        - a successful request will yield a status 200 HTTP response
+        - a failed response will yield:
+        
+            - 404 Not found for a non existing author
+            - 500 Internal Server Error if there was an internal failure in retrieving the followers for the given author
+    """
+    if request.method =='GET':
+       
         
         
         #If the user is local, make sure they're logged in 
         if not request.user.is_authenticated:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-        
-        current_author = get_object_or_404(Author, serial=author_serial)       
-    
+        try:
+            current_author = Author.objects.get(serial=author_serial)  
+        except Exception as e:
+             return Response({"Error" : f"We were unable to locate this account: {e}"}, status=status.HTTP_404_NOT_FOUND )    
+       
+            
         #get and serialize all of the authors followers 
         followers_list=[]
                 
@@ -952,12 +1016,12 @@ def get_local_followers(request, author_serial):
 
 
 @login_required
-@api_view(['GET'])
+@api_view(['GET','POST'])
 def get_local_follow_requests(request, author_serial):   
     """
     Get a specific author's follow requests in the application
     
-    Use: "GET /api/authors/{author_serial}/inbox/"
+    Use: "GET /api/authors/{author_serial}/follow_requests/"
 
     returns Json in the following format: 
          
@@ -984,7 +1048,7 @@ def get_local_follow_requests(request, author_serial):
         return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
     
     #If the user is local, make sure they're logged in 
-    if request.user: 
+    if request.user.is_authenticated: 
         
         if requested_author == current_author:
   
@@ -999,19 +1063,6 @@ def get_local_follow_requests(request, author_serial):
                     return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-    else:   
-        #for now, all external hosts can make get requests
-        all_follow_requests = current_author.get_follow_requests_recieved()
-        
-        if all_follow_requests:  
-            try:
-                serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
-                response = serialized_follow_requests.data
-                return Response(response, status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({"Error" : f" We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
-        
-        return Response({"type": "follow", "follows":{}}, status=status.HTTP_200_OK)
     
     
 
@@ -1038,19 +1089,26 @@ def profile_view(request, username):
     #print("Entries:", all_entries)
     #print("followers:", followers)
     #print("following:", following)
-    
+   
+    rendered_entries = []
+    for entry in all_entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered)) 
     
     
     return render(
         request, 'profile.html', 
         {
         'author': author,
-        'entries': all_entries,
+        'entries': rendered_entries,
         "followers": followers,
         "follower_count": len(followers),
         "following": following,
         "following_count": len(following),
-        "entries": all_entries,
         "entry_count": len(all_entries),
         "friend_count":friend_count,
         "friends":total_friends} 
@@ -1108,20 +1166,48 @@ def create_entry(request):
     Create a new wiki entry.
     """
     if request.method == 'POST':
-        # Example: get data from POST and save your entry
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        text_content = request.POST.get('content', '').strip()
+        content_type_input = request.POST.get('contentType', '').strip()
+        description = request.POST.get('description', '').strip()
         image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
 
-        if title and content:
-            author = get_object_or_404(Author, user=request.user)
-            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility)
+        if not title:
+            return HttpResponse("Title is required.")
 
-            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        author = get_object_or_404(Author, user=request.user)
+
+        # Determine content type
+        if image:
+            image_data = image.read()
+            encoded = base64.b64encode(image_data).decode('utf-8')
+            if image.content_type == 'image/png':
+                content_type = 'image/png;base64'
+            elif image.content_type == 'image/jpeg':
+                content_type = 'image/jpeg;base64'
+            else:
+                content_type = 'application/base64'  # fallback for unsupported images
+            content = encoded
+        elif text_content:
+            content = text_content
+            # Use the dropdown or text input to choose between plain or markdown
+            content_type = content_type_input if content_type_input in ['text/plain', 'text/markdown'] else 'text/plain'
         else:
-            return HttpResponse("Both title and content are required.")
-    # GET: Show form to create entry
+            return HttpResponse("Either an image or text content must be provided.")
+
+        # entry save
+        entry = Entry.objects.create(
+            author=author,
+            title=title,
+            content=content,
+            contentType=content_type,
+            description=description,
+            visibility=visibility
+        )
+
+        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+
     return render(request, 'create_entry.html')
 
 def entry_detail(request, entry_serial):
@@ -1148,7 +1234,22 @@ def entry_detail(request, entry_serial):
         else:
             return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
-    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    if entry.contentType == "text/markdown":
+        rendered_content = mark_safe(markdown.markdown(entry.content))
+    else:
+        rendered_content = entry.content
+
+    return render(
+        request,
+        'entry_detail.html',
+        {
+            'entry': entry,
+            'rendered_content': rendered_content,
+            'is_owner': is_owner,
+            'comments': comments
+        }
+    )
 
 @login_required
 def edit_entry(request, entry_serial):

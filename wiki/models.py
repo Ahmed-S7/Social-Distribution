@@ -211,19 +211,28 @@ class Entry(BaseModel):
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
-    web = models.URLField(blank=True, null=True, default=None)
+    web = models.URLField(blank=True, null=False, default=None)
     
     def get_entry_url(self):
         return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
     
     def get_web_url(self):
         return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
-    
+      
+
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = self.get_entry_url()
         if not self.web:
             self.web = self.get_web_url()
+        if self.image and not self.contentType.startswith("image/"):
+            filename = self.image.name.lower()
+            if filename.endswith(".png"):
+               self.contentType = "image/png;base64"
+            elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
+               self.contentType = "image/jpeg;base64"
+            else:
+               self.contentType = "application/base64"
         return super().save(*args, **kwargs)
 
     def __str__(self):

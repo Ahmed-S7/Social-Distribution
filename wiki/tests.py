@@ -17,15 +17,15 @@ class IdentityTestCase(TestCase):
         self.client = APIClient()
         # Create user and authenticate properly
         self.user = User.objects.create_user(
-            username='test_user',
+            username='test_author',
             password='test_password',
         )
         self.user2 = User.objects.create_user(
-            username='test_user2',
+            username='test_author2',
             password='test_password2'
         )
         # Proper authentication for Django views
-        self.client.login(username='test_user', password='test_password')
+        self.client.login(username='test_author', password='test_password')
         
         self.author = Author.objects.create(
             id=1,
@@ -103,10 +103,9 @@ class IdentityTestCase(TestCase):
     # Identity 1.6 As an author, I want to be able to edit my profile: name, description, picture, and GitHub.
     # Identiy 1.7 As an author, I want to be able to use my web browser to manage my profile, so I don't have to use a clunky API.
     def test_edit_profile(self):
+        self.client.force_authenticate(user=self.user)
         url = f'{BASE_PATH}/authors/{self.author.serial}/'
         response = self.client.get(url)
-       
-    
         self.assertEqual(response.data["displayName"], self.author.displayName)
         self.assertEqual(response.data["description"], self.author.description)
         self.assertEqual(response.data["github"], self.author.github)
@@ -239,7 +238,7 @@ class FollowRequestTesting(TestCase):
     #Following/Friends 6.4 As an author, I want to know if I have "follow requests," so I can approve them.
     def test_check_other_inbox(self):
         "should return 400 because only authenticated LOCAL users should be able to check their own inbox (not the requesting author)"
-        url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.requesting_author1.serial}/follow_requests/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
         
@@ -247,7 +246,7 @@ class FollowRequestTesting(TestCase):
      #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.
     def test_check_correct_sending_author(self):
         "the author should be the correct sending author"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         
         #the right sending author
@@ -257,7 +256,7 @@ class FollowRequestTesting(TestCase):
     #Following/Friends 6.8 As an author, my node will know about my followers, who I am following, and my friends, so that I don't have to keep track of it myself.    
     def test_check_correct_initial_state(self):
         "state should be requesting when initially sent"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         
         self.assertContains(response, "state")
@@ -268,7 +267,7 @@ class FollowRequestTesting(TestCase):
     #Friends/Following 6.3 As an author, I want to be able to approve or deny other authors following me, so that I don't get followed by people I don't like.
     def test_check_own_follow_requests(self):
         "should return 200 because only authenticated users should be able to check their own inbox (receiving author)"
-        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/inbox/'
+        url = f'{BASE_PATH}/authors/{self.receiving_author.serial}/follow_requests/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         #print("PASS: LOCAL AUTHORS RECEIVE THE RIGHT RESPONSE WHEN CHECKING INBOX")
@@ -413,7 +412,7 @@ class FollowRequestTesting(TestCase):
         #check if the that the unfollowing account is not in the JSON response of the list of followers 
         self.assertNotContains(response,"outlandish_name")
         
-        #print("PASS: UNFOLLOWING ACCOUNTS WORKS PROPERLY IN DB AND API")
+        # print("PASS: UNFOLLOWING ACCOUNTS WORKS PROPERLY IN DB AND API")
         
     def test_friend_user(self):
         #Go through logic of creating a friendship, then unfriend and test
@@ -485,9 +484,7 @@ class FollowRequestTesting(TestCase):
         
     def tearDown(self):
         self.client.logout()    
-'''
 
-'''
 class LikeEntryTesting(TestCase):
     # Liking An Entry Testing
     # Comments/Like User Story 1.2 Testing
@@ -943,11 +940,11 @@ class ReadingTestCase(TestCase):
 
         # Create user and authenticate properly
         self.user = User.objects.create_user(
-            username='test_user',
+            username='test_author',
             password='test_password',
         )
         self.user2 = User.objects.create_user(
-            username='test_user2',
+            username='test_author2',
             password='test_password2'
         )
 
@@ -1007,10 +1004,10 @@ class ReadingTestCase(TestCase):
         # As an author, I want my stream page to show me the most recent version of an entry if it has been edited.
         # As an author, I want my stream page to not show me entries that have been deleted
     def test_public_entries_in_stream(self):
+        self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
         # author2 follows author for unlisted entries
         AuthorFollowing.objects.create(follower=self.author2, following=self.author)
@@ -1025,16 +1022,16 @@ class ReadingTestCase(TestCase):
 
     # Reading 3.2 As an author, I want my "stream" page to be sorted with the most recent entries first.
     def test_most_recent_entry(self):
-        new_entry = Entry.objects.create(
+        Entry.objects.create(
         title='New Entry',
         content='This should appear first.',
         author=self.author,
         serial=uuid.uuid4(),
         visibility="PUBLIC"
         )
+        self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
-        response = self.client.get(url, HTTP_ACCEPT='application/json')
-        self.assertEqual(response.status_code, 200)
+        response = self.client.get(url)
         titles = [entry["title"] for entry in response.json()]
         self.assertEqual(titles[0], "New Entry")
 
@@ -1047,11 +1044,11 @@ class VisibilityTestCase(TestCase):
 
         # Create user and authenticate properly
         self.user = User.objects.create_user(
-            username='test_user',
+            username='test_author',
             password='test_password',
         )
         self.user2 = User.objects.create_user(
-            username='test_user2',
+            username='test_author2',
             password='test_password2'
         )
 
@@ -1125,32 +1122,27 @@ class VisibilityTestCase(TestCase):
         AuthorFollowing.objects.create(follower=self.author2, following=self.author)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
         self.assertIn("Unlisted Entry", titles)
         self.assertIn("Friend Entry", titles)
     
     # Visibility 4.4 As an author, I want anyone following me to see my unlisted and public entries in their stream.
     def test_following_visibility(self):
-        self.client.logout()
-        self.client.login(username='test_author2', password='test_password2')
+        self.client.force_authenticate(user=self.user2)
         AuthorFollowing.objects.create(follower=self.author2, following=self.author)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
         self.assertIn("Unlisted Entry", titles)
 
     # Visibility 4.5 As an author, I want everyone to see my public entries in their stream.
     def test_public_entry_on_stream(self):
-        self.client.logout()
-        self.client.login(username='test_author2', password='test_password2')
+        self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
 
     # Visibility 4.6 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
@@ -1173,13 +1165,11 @@ class VisibilityTestCase(TestCase):
         friendship = AuthorFriend.objects.create(friending=self.author2, friended=self.author)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Friend Entry", titles)
         friendship.delete()    
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertNotIn("Friend Entry", titles)
 
     # Visibility 4.8 As an author, I don't want anyone except the node admin to see my deleted entries.
@@ -1187,27 +1177,23 @@ class VisibilityTestCase(TestCase):
         self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
         self.publicEntry.visibility = "DELETED"
         self.publicEntry.save()
         response = self.client.get(url)
-        data = response.json()
-        titles = [entry["title"] for entry in data]
+        titles = [entry["title"] for entry in response.json()]
         self.assertNotIn("Public Entry", titles)
 
-    # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
-    def test_entry_always_visible_to_author(self):
-        url = f'{BASE_PATH}/{self.author.displayName}/profile/'
-        response = self.client.get(url)
-        entries = response.json().get("entries", [])
-        titles = [entry["title"] for entry in entries]
-        self.assertIn("Public Entry", titles)
-        self.assertIn("Unlisted Entry", titles)
-        self.assertIn("Friend Entry", titles)
-'''
-'''
+    # # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
+    # def test_entry_always_visible_to_author(self):
+    #     url = f'{BASE_PATH}/{self.author.displayName}/profile/'
+    #     response = self.client.get(url)
+    #     titles = [entry["title"] for entry in response.json()]
+    #     self.assertIn("Public Entry", titles)
+    #     self.assertIn("Unlisted Entry", titles)
+    #     self.assertIn("Friend Entry", titles)
+
 class EntryUserStoriesTest(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1318,21 +1304,24 @@ class EntryUserStoriesTest(TestCase):
         })
         entry.refresh_from_db()
         self.assertNotEqual(entry.title, 'Hacked')
-'''
-'''
+
 class SharingTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
 
         # Create user and authenticate properly
         self.user = User.objects.create_user(
-            username='test_user',
+            username='test_author',
             password='test_password',
         )
         self.user2 = User.objects.create_user(
-            username='test_user2',
+            username='test_author2',
             password='test_password2'
         )
+        self.user2.is_active = True
+        self.user2.save()
+        self.user.is_active = True
+        self.user.save()
         self.author2 = Author.objects.create(
             id=2,
             user=self.user2,
@@ -1374,24 +1363,19 @@ class SharingTestCase(TestCase):
         self.assertContains(response, self.unlistedEntry.title)
         self.assertContains(response, self.unlistedEntry.content)
 
-    # # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
-    # def test_push_images_to_other_nodes(self):
-    #     pass
+    # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
+    def test_push_images_to_other_nodes(self):
+        pass
 
     #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
         # Note: this should include all local public entries and all public entries received in any inbox.
     def test_browse_public_entries(self):
-        pass
-
-
         self.client.force_authenticate(user=self.user2)
         url = f'{BASE_PATH}/test_author2/wiki/'
         response = self.client.get(url)
-        entries = response.json() 
-        titles = [entry["title"] for entry in entries]
+        titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
-'''
-'''
+
 class NodeManagementTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
