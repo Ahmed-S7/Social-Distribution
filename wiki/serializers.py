@@ -119,25 +119,46 @@ class LikeSummarySerializer(serializers.Serializer):
 
 class CommentLikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
-    author = AuthorSummarySerializer()
-    published = serializers.DateTimeField(source='comment.created_at')
+    author = AuthorSummarySerializer(source='user')
+    published = serializers.SerializerMethodField()
     id = serializers.CharField()
     object = serializers.CharField(source='comment.id')
+    
     def get_type(self, obj):
         return 'like'
+    
+    def get_published(self, obj):
+        dt = obj.created_at.strftime('%Y-%m-%dT%H:%M:%S%z')
+        # Insert colon into the timezone offset to match ISO 8601: +0000 → +00:00
+        return dt[:-2] + ':' + dt[-2:]
 
 class CommentSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
     author = AuthorSummarySerializer()
     comment = serializers.CharField(source='content')
-    contentType = serializers.CharField(source='entry.contentType')
-    published = serializers.DateTimeField(source='created_at')
-    id = serializers.CharField()
+    contentType = serializers.CharField()
+    published = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
     entry = serializers.CharField(source='entry.id')
-    web = serializers.CharField(source='entry.web')
     likes = serializers.SerializerMethodField()
+    
     def get_type(self, obj):
         return 'comment'
+    
+    def get_published(self, obj):
+        dt = obj.created_at.strftime('%Y-%m-%dT%H:%M:%S%z')
+        # Insert colon into the timezone offset to match ISO 8601: +0000 → +00:00
+        return dt[:-2] + ':' + dt[-2:]
+    
+    def get_id(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        # Extract author UUID (or last segment of URL)
+        author_id = str(obj.author.id).rstrip('/').split('/')[-1]
+
+        return f"{host}/api/authors/{author_id}/commented/{obj.id}"
+    
     def get_likes(self, obj):
         # Return likes for this comment
         likes = obj.likes.filter(is_deleted=False)
@@ -200,3 +221,4 @@ class EntrySerializer(serializers.ModelSerializer):
             'count': total_likes,
             'src': [LikeSummarySerializer(like).data for like in likes]
         }
+    

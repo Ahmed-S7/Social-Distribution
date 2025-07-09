@@ -12,6 +12,8 @@ from django.db.models.signals import post_save
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
 BASE_URL_PATH = '/s25-project-white/'
+from .serializers import CommentSummarySerializer, CommentLikeSummarySerializer
+
 class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
