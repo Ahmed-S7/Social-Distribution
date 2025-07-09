@@ -15,9 +15,9 @@
     <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
   </div>
-
+ <h2 class='page_title'>Authors</h2>
   <div class="author_list">
-    <h2 class='page_title'>Authors</h2>
+
     <link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
     <section class="authors_list">
       <ul class="author_list">
