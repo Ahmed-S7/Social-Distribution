@@ -631,11 +631,11 @@ class CommentEntryTesting(TestCase):
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'comment_added')
-        self.assertEqual(response.data['message'], 'Comment added successfully')
-        self.assertEqual(response.data['content'], 'This is a witty reply!')
-        self.assertEqual(response.data['author'], 'test_author2')
-        self.assertEqual(response.data['comments_count'], 1)
+        # Check that we get a properly formatted comment object
+        self.assertEqual(response.data['type'], 'comment')
+        self.assertEqual(response.data['comment'], 'This is a witty reply!')
+        self.assertEqual(response.data['author']['displayName'], 'test_author2')
+        self.assertEqual(response.data['contentType'], 'text/plain')
         
         # Verify comment was created in database
         comment = Comment.objects.filter(entry=self.entry, author=self.author2).first()
@@ -722,9 +722,9 @@ class LikeCommentTesting(TestCase):
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'liked')
-        self.assertEqual(response.data['message'], 'Comment liked successfully')
-        self.assertEqual(response.data['likes_count'], 1)
+        # Check that we get a properly formatted like object
+        self.assertEqual(response.data['type'], 'like')
+        self.assertEqual(response.data['author']['displayName'], 'test_author2')
         
         # Verify like was created in database
         like = CommentLike.objects.filter(comment=self.comment, user=self.author2).first()
@@ -920,12 +920,12 @@ class FriendsOnlyCommentsTesting(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['entry_visibility'], 'FRIENDS')
-        self.assertEqual(response.data['total_comments'], 1)  # Only friend's comment visible
+        # The API now returns an array of comment objects directly
+        self.assertEqual(len(response.data), 1)  # Only friend's comment visible
         
         # Verify only friend's comment is visible
-        comment = response.data['comments'][0]
-        self.assertEqual(comment['content'], 'This is a comment from a friend.')
+        comment = response.data[0]
+        self.assertEqual(comment['comment'], 'This is a comment from a friend.')
         self.assertEqual(comment['author']['displayName'], 'test_author2')
 
     def test_non_friend_cannot_view(self):
