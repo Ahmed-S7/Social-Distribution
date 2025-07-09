@@ -30,9 +30,9 @@
         </section>
         <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
             {% csrf_token %} 
-            <section class='follow_request_buttons'>
-                <button class="accept_follow" name="action" value="accept" type="submit">Accept</button> 
-                <button class="reject_follow" name="action" value="reject" type="submit">Reject</button> 
+            <section class='confirmation_buttons'>
+                <button class="accept" name="action" value="accept" type="submit">Accept</button> 
+                <button class="reject" name="action" value="reject" type="submit">Reject</button> 
             </section>
         </form>
 

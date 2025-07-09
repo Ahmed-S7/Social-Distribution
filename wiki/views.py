@@ -180,6 +180,7 @@ def register(request):
 
 @api_view(['POST'])
 def register_api(request):
+    '''Allows users to register through POST requests'''
     username = request.data.get('username')
     password = request.data.get('password')
     confirm_password = request.data.get('confirm_password', "").strip()
@@ -281,13 +282,13 @@ def get_authors(request):
 
 
 @login_required
-@api_view(['GET'])
-def get_author(request, author_serial):
+@api_view(['GET', "PUT"])
+def get_or_edit_author_api(request, author_serial):
     """
     Get a specific author in the application
     
 
-    Use: "GET /api/author/{author_serial}"
+    Use: "GET /api/authors/{author_serial}"
     
     Args: 
     
@@ -310,13 +311,60 @@ def get_author(request, author_serial):
                 }  
                 
         - returns error details if they arise     
+        
+        
+    Use: "PUT /api/authors/{author_serial}"
+    
+    Args: 
+    
+        - request: HTTP request information
+        
+        - author_serial: the serial id of the author in the get request
+        
+    This returns:
+    
+        - Json in the following format (given the author was found and the information was validated and updated): 
+   
+                {
+                    "type":"author",
+                    "id":"http://nodeaaaa/api/authors/{serial}",
+                    "host":"http://nodeaaaa/api/",
+                    "displayName":"Greg Johnson",
+                    "github": "http://github.com/gjohnson",
+                    "profileImage": "https://i.imgur.com/k7XVwpB.jpeg",
+                    "web": "http://nodeaaaa/authors/{SERIAL}"
+                }  
+                
+        - returns error details if they arise    
     
     """
-    # CHANGED FOR TESTING
     author = get_object_or_404(Author, serial=author_serial)
-    serializer =AuthorSerializer(author)
-    return Response(serializer.data)
+    
+    if request.method=="GET":
+        # CHANGED FOR TESTING
+        
+        serializer =AuthorSerializer(author)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
+    # PUT
+    #If the user is local, make sure they're logged in 
+    if request.user.is_authenticated and author.user == request.user :
+  
+            updated_author_serializer = AuthorSerializer(author, data=request.data, partial=True)
+            
+            if updated_author_serializer.is_valid(raise_exception=True):
+
+                try:
+                    updated_author_serializer.save()
+                except Exception as e:
+                    return Response({"Failed to update author info": e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                return Response(updated_author_serializer.data, status=status.HTTP_200_OK)
+            
+            return Response(updated_author_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    else:
+        return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
 @login_required   
 @require_GET 
@@ -349,8 +397,8 @@ def view_external_profile(request, author_serial):
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
         is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)if logged_in_author else False
         is_a_friend = logged_in_author.is_friends_with(profile_viewing)if logged_in_author else False
-        friends_a = logged_in_author.friend_a.all()if logged_in_author else Author.objects.none()
-        friends_b = logged_in_author.friend_b.all()if logged_in_author else Author.objects.none()
+        friends_a = profile_viewing.friend_a.all()if logged_in_author else Author.objects.none()
+        friends_b = profile_viewing.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
 
         
@@ -358,26 +406,29 @@ def view_external_profile(request, author_serial):
         '''
         print("Entries:", all_entries or None)
         print("followers:", followers or None)
+        print("follower count:", len(followers) or None)
         print("following:", following or None)
-        print("Is friends with this account:", is_a_friend)
-        print("Is following this account:", is_following)
+        print(f"Accounts {profile_viewing} is following:", len(following) or None)
+        print(f"{logged_in_author} is friends with this account:", is_a_friend)
+        print(f"{logged_in_author} is following this account:", is_following)
+        print(f"{profile_viewing} friend count:", len(total_friends) or None)
         '''
         
         # Followed
         followed_ids = AuthorFollowing.objects.filter(
-            follower=logged_in_author
-        ).values_list('following', flat=True)
+            following=profile_viewing
+        ).values_list('follower', flat=True)
         
         # Friends
         friend_pairs = AuthorFriend.objects.filter(
-            Q(friending=logged_in_author) | Q(friended=logged_in_author)
+            Q(friending=profile_viewing) | Q(friended=profile_viewing)
         ).values_list('friending', 'friended')
 
         friend_ids = set()
         for friending_id, friended_id in friend_pairs:
-            if friending_id != logged_in_author.id:
+            if friending_id != profile_viewing.id:
                 friend_ids.add(friending_id)
-            if friended_id != logged_in_author.id:
+            if friended_id != profile_viewing.id:
                 friend_ids.add(friended_id)
                 
         #Entries the current user is permitted to view
@@ -387,30 +438,42 @@ def view_external_profile(request, author_serial):
             Q(visibility='PUBLIC') |
             Q(visibility='FRIENDS', author__in=friend_ids) |
             Q(visibility='UNLISTED', author__id__in=followed_ids)
-        )
-        
+        ).order_by('-created_at')
         
         #store existing follow request if it exists
         try:
-            
-            current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
-            current_request_id = current_request.id
+            if logged_in_author:
+                current_request = FollowRequest.objects.get(requester=logged_in_author.id, requested_account=profile_viewing.id)
+                current_request_id = current_request.id
+            else:
+                current_request_id = None
         
-        except FollowRequest.DoesNotExist:
+        except FollowRequest.DoesNotExist or not logged_in_author:
             current_request_id = None
         
-        #store existing following if it exists 
-        following_id = logged_in_author.get_following_id_with(profile_viewing)
-        
-        
+        print(current_request_id)
+        #for logged in users only:
+        if logged_in_author:
             
-        #store existing friendship if it exists 
-        friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
+            #store existing following if it exists 
+            following_id = logged_in_author.get_following_id_with(profile_viewing)
+            
+            
+                
+            #store existing friendship if it exists 
+            friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
         
-        '''#CHECK VALUES
+        else:
+            
+     
+            following_id,friendship_id = None, None
+            
+            
+        #CHECK VALUES
+        '''
         print("Following ID is:",following_id)
         print("Friendship ID is:",friendship_id)
-        print("The current request is:", current_request) 
+        print("The current request is:", current_request_id) 
         print("List of User's Entries:", all_entries)
         '''
        
@@ -431,7 +494,7 @@ def view_external_profile(request, author_serial):
                        "is_currently_requesting":is_currently_requesting,
                        "request_id": current_request_id,
                        "follow_id": following_id,
-                       "friendship_id":friendship_id,
+                       "friendship_id":friendship_id ,
                        }
                       )
     else:
@@ -871,14 +934,12 @@ def add_local_follower(request, author_serial, new_follower_serial):
 @login_required
 @api_view(['GET'])
 def get_local_followers(request, author_serial):   
-     
-    if request.method =='GET':
-        """
+    """
         Get a specific author's followers list requests in the application
         
-        Use: "GET /api/authors/{author_serial}/followers/"
+        Use: "GET /s25-project-white/api/authors/{author_serial}/followers/"
 
-        returns Json in the following format: 
+        returns Json in the following format upon a successful request: 
             
                     {
                         "type": "followers",      
@@ -901,15 +962,25 @@ def get_local_followers(request, author_serial):
                         ]
                     } 
                     
-        """
+        - a successful request will yield a status 200 HTTP response
+        - a failed response will yield:
+        
+            - 404 Not found for a non existing author
+            - 500 Internal Server Error if there was an internal failure in retrieving the followers for the given author
+    """
+    if request.method =='GET':
+       
         
         
         #If the user is local, make sure they're logged in 
         if not request.user.is_authenticated:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-        
-        current_author = get_object_or_404(Author, serial=author_serial)       
-    
+        try:
+            current_author = Author.objects.get(serial=author_serial)  
+        except Exception as e:
+             return Response({"Error" : f"We were unable to locate this account: {e}"}, status=status.HTTP_404_NOT_FOUND )    
+       
+            
         #get and serialize all of the authors followers 
         followers_list=[]
                 
@@ -934,12 +1005,12 @@ def get_local_followers(request, author_serial):
 
 
 @login_required
-@api_view(['GET'])
+@api_view(['GET','POST'])
 def get_local_follow_requests(request, author_serial):   
     """
     Get a specific author's follow requests in the application
     
-    Use: "GET /api/authors/{author_serial}/inbox/"
+    Use: "GET /api/authors/{author_serial}/follow_requests/"
 
     returns Json in the following format: 
          
@@ -966,7 +1037,7 @@ def get_local_follow_requests(request, author_serial):
         return Response({"Error":"User Not Located Within Our System"}, status=status.HTTP_404_NOT_FOUND )
     
     #If the user is local, make sure they're logged in 
-    if request.user: 
+    if request.user.is_authenticated: 
         
         if requested_author == current_author:
   
@@ -981,19 +1052,6 @@ def get_local_follow_requests(request, author_serial):
                     return Response({"Error" : f"We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )            
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-    else:   
-        #for now, all external hosts can make get requests
-        all_follow_requests = current_author.get_follow_requests_recieved()
-        
-        if all_follow_requests:  
-            try:
-                serialized_follow_requests = FollowRequestSerializer( all_follow_requests, many=True)
-                response = serialized_follow_requests.data
-                return Response(response, status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({"Error" : f" We were unable to authenticate the follow requests for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )   
-        
-        return Response({"type": "follow", "follows":{}}, status=status.HTTP_200_OK)
     
     
 
@@ -1081,40 +1139,6 @@ def edit_profile(request, username):
         return redirect('wiki:profile', username=new_username)
 
     return render(request, 'edit_profile.html', {'author': author})
-
-
-
-
-
-#THIS NEEDS TO BE ON THE SAME API ENDPOINT AS GET AUTHORS (VIEW SPECS)
-@api_view(['PUT', 'GET']) 
-def edit_profile_api(request, username):
-    """
-    GET /api/profile/edit/{username}/
-    View the author's profile.
-
-    PUT /api/profile/edit/{username}/
-    Edits the author's profile.
-    """
-    try:
-        author = Author.objects.get(user__username=username)
-    except Author.DoesNotExist:
-        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    if request.method == 'GET':
-        author_data = AuthorSerializer(author).data
-        entries = Entry.objects.filter(author=author).order_by('-created_at')
-        entry_data = EntrySerializer(entries, many=True).data
-        author_data['entries'] = entry_data
-        return Response(author_data, status=status.HTTP_200_OK)
-
-    # PUT
-    serializer = AuthorSerializer(author, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
