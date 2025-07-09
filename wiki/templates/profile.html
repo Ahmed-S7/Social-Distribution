@@ -14,28 +14,22 @@
   .btn-bottom-warning:hover, .btn-bottom-warning:focus { background-color: #e0a800; color: #001a80; }
 </style>
 
+<body>
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4">
+    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
+    {% if request.user.is_authenticated and request.user.username == author.displayName %}
+      <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
+        {% csrf_token %}
+        <button class="btn btn-logout-outline ms-2">Logout</button>
+      </form>
+    {% endif %}
+  </div>
+  <div style="height:5.5em"></div>
+  <div class="container mt-4">
 
-    
 <section class="author_profile_with_entries">
-                 
-
     <section class="author_profile_with_description">
-
-        <!-- Default buttons, as per necessary tags -->
-        <div class="default_buttons d-flex justify-content-between align-items-center p-2" style="background:#89c6e1;">
-          <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
-          {% if request.user.is_authenticated %}
-            {% if request.user.username == author.displayName %}
-              <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
-                {% csrf_token %}
-                <button class="btn btn-logout-outline ms-2">Logout</button>
-              </form>
-            {% endif %}
-          {% endif %}
-        </div>
-
-    
-            <section class="pic_name_followers_entries">
+        <section class="pic_name_followers_entries">
 
                     
                     <section class="profile_pic_and_name">
