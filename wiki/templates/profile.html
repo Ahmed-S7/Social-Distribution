@@ -140,7 +140,20 @@
                     
                                 </div>
                             {% endif %} 
-                            <div class="post-content">{{ entry.content }}</div>
+                            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                               <div class="post-content text-center">
+                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                               </div>
+                            {% elif entry.contentType == "text/markdown" %}
+                               <div class="post-content markdown-content">
+                                   {{ entry.content|safe }}  {# optionally render markdown to HTML in views if needed #}
+                               </div>
+                            {% else %}
+                               <div class="post-content">
+                                   {{ entry.content }}
+                               </div>
+                            {% endif %}
+
                             </a>
                                 <div class="post-footer">
                                         <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">

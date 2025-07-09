@@ -29,7 +29,14 @@
         {% if entry.image %}
           <img class="entry-image" src="{{ entry.image.url }}" alt="Post image">
         {% endif %}
-        <p class="entry_content text-center">{{ entry.content }}</p>
+        <div class="entry_content text-center">
+          {% if entry.contentType|slice:":5" == "image" %}
+            <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" style="max-width: 100%; height: auto;" />
+          {% else %}
+            <p>{{ entry.content }}</p>
+          {% endif %}
+        </div>
+
         <p class="entry_author text-center"><em>By {{ entry.author.displayName }}</em></p>
         <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
           <form method="post" action="{% url 'wiki:like-entry' entry.serial %}" class="m-0 p-0">

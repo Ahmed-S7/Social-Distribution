@@ -25,6 +25,7 @@ from .util import validUserName, saveNewAuthor
 from urllib.parse import urlparse
 import requests
 import json
+import base64
 from django.middleware.csrf import get_token
 # Create your views here.
 
@@ -1123,20 +1124,48 @@ def create_entry(request):
     Create a new wiki entry.
     """
     if request.method == 'POST':
-        # Example: get data from POST and save your entry
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        text_content = request.POST.get('content', '').strip()
+        content_type_input = request.POST.get('contentType', '').strip()
+        description = request.POST.get('description', '').strip()
         image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
 
-        if title and content:
-            author = get_object_or_404(Author, user=request.user)
-            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility)
+        if not title:
+            return HttpResponse("Title is required.")
 
-            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        author = get_object_or_404(Author, user=request.user)
+
+        # Determine content type
+        if image:
+            image_data = image.read()
+            encoded = base64.b64encode(image_data).decode('utf-8')
+            if image.content_type == 'image/png':
+                content_type = 'image/png;base64'
+            elif image.content_type == 'image/jpeg':
+                content_type = 'image/jpeg;base64'
+            else:
+                content_type = 'application/base64'  # fallback for unsupported images
+            content = encoded
+        elif text_content:
+            content = text_content
+            # Use the dropdown or text input to choose between plain or markdown
+            content_type = content_type_input if content_type_input in ['text/plain', 'text/markdown'] else 'text/plain'
         else:
-            return HttpResponse("Both title and content are required.")
-    # GET: Show form to create entry
+            return HttpResponse("Either an image or text content must be provided.")
+
+        # entry save
+        entry = Entry.objects.create(
+            author=author,
+            title=title,
+            content=content,
+            contentType=content_type,
+            description=description,
+            visibility=visibility
+        )
+
+        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+
     return render(request, 'create_entry.html')
 
 def entry_detail(request, entry_serial):

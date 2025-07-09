@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Page, Like, RemotePost, Author, AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry, Comment, CommentLike
 from django.contrib.auth.models import User
 from django.utils.timezone import localtime
+import base64
 
 class PageSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField()
@@ -152,6 +153,15 @@ class EntrySerializer(serializers.ModelSerializer):
 
     def get_type(self, obj):
         return 'entry'
+
+    content = serializers.SerializerMethodField()
+
+    def get_content(self, obj):
+        if obj.contentType.startswith("image/") and obj.image:
+            with obj.image.open('rb') as img_file:
+                encoded = base64.b64encode(img_file.read()).decode('utf-8')
+                return encoded
+        return obj.content
 
     def get_comments(self, obj):
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]

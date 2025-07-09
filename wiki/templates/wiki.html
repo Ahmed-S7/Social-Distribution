@@ -57,7 +57,20 @@
                 <img class='entry_image' src="{{ entry.image.url }}" alt="Post image"/>
               </div>
             {% endif %}
-            <div class="post-content">{{ entry.content }}</div>
+            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                <div class="post-content text-center">
+                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                </div>
+            {% elif entry.contentType == "text/markdown" %}
+                <div class="post-content markdown-content">
+                    {{ entry.content|safe }}  {# consider rendering markdown to HTML safely #}
+                </div>
+            {% else %}
+                <div class="post-content">
+                    {{ entry.content }}
+                </div>
+            {% endif %}
+
           </a>
           <div class="d-flex align-items-center gap-3 post-footer mt-2">
             <form method="post" action="{% url 'wiki:like-entry' entry.serial %}" class="m-0 p-0">
