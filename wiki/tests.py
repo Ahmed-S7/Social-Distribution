@@ -12,6 +12,8 @@ from django.db.models.signals import post_save
 from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
 BASE_URL_PATH = '/s25-project-white/'
+
+
 class IdentityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -94,12 +96,24 @@ class IdentityTestCase(TestCase):
 
     # Identity 1.4 As an author, I want my profile page to show my public entries (most recent first), so they can decide if they want to follow me.
     def test_profile_public_entries(self):
-        pass
+        Entry.objects.create(
+            title='Test Entry 2',
+            content='This is a test entry 2.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        url = f'{BASE_PATH}/{self.author.displayName}/profile/'
+        response = self.client.get(url)
+        entries = response.data.get('entries', [])
+        self.assertEqual(len(entries), 2)
+        self.assertEqual(entries[0]['title'], "Test Entry 2")  
+        self.assertEqual(entries[1]['title'], "Test Entry")
 
     # Identity 1.5 As an author, I want to my (new, public) GitHub activity to be automatically turned into public entries, so everyone can see my GitHub activity too.
     def test_github_activity(self):
         pass
-    
+
     # Identity 1.6 As an author, I want to be able to edit my profile: name, description, picture, and GitHub.
     # Identiy 1.7 As an author, I want to be able to use my web browser to manage my profile, so I don't have to use a clunky API.
     def test_edit_profile(self):
@@ -1038,6 +1052,7 @@ class ReadingTestCase(TestCase):
     def tearDown(self):
         self.client.logout()
 
+        
 class VisibilityTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1185,14 +1200,16 @@ class VisibilityTestCase(TestCase):
         titles = [entry["title"] for entry in response.json()]
         self.assertNotIn("Public Entry", titles)
 
-    # # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
-    # def test_entry_always_visible_to_author(self):
-    #     url = f'{BASE_PATH}/{self.author.displayName}/profile/'
-    #     response = self.client.get(url)
-    #     titles = [entry["title"] for entry in response.json()]
-    #     self.assertIn("Public Entry", titles)
-    #     self.assertIn("Unlisted Entry", titles)
-    #     self.assertIn("Friend Entry", titles)
+    # Visibility 4.9 As an author, entries I create should always be visible to me until they are deleted, so I can find them to edit them or review them or get the link or whatever I want to do with them.
+    def test_entry_always_visible_to_author(self):
+        url = f'{BASE_PATH}/{self.author.displayName}/profile/'
+        response = self.client.get(url)
+        entries = response.json().get('entries', [])
+        titles = [entry["title"] for entry in entries]
+        self.assertIn("Public Entry", titles)
+        self.assertIn("Unlisted Entry", titles)
+        self.assertIn("Friend Entry", titles)
+
 
 class EntryUserStoriesTest(TestCase):
     def setUp(self):

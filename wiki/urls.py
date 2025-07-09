@@ -33,7 +33,7 @@ urlpatterns = [
     # Profile related API
     path('api/register/', register_api, name='register_api'),
     path('api/login/', login_api, name='login_api'),
-    path('api/profile/edit/<str:username>/', get_profile_api, name='get_profile_api'),
+    path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
 
     # Entry Related URLs
     path('entry/<uuid:entry_serial>/', entry_detail, name='entry_detail'),

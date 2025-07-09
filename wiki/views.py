@@ -1087,10 +1087,11 @@ def profile_view(request, username):
     """
     View the profile of the currently logged in user.
     """
-    try:
-        author = Author.objects.get(user__username=username)
-    except Author.DoesNotExist:
-        return HttpResponse("Author profile does not exist.")
+    author = Author.objects.get(user__username=username)
+    if not request.user.is_authenticated or request.user.username != username:
+        if not author:
+            return HttpResponse("Author profile does not exist.")
+        return redirect('wiki:view_external_profile', author_serial=author.serial)
     # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
     followers = author.followers.all()#stores all of the followers a given author has
