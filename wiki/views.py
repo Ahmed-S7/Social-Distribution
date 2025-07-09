@@ -1152,10 +1152,13 @@ def create_entry(request):
         content = request.POST.get('content')
         image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
+        use_markdown = request.POST.get('use_markdown') == 'on'
+        content_type = "text/markdown" if use_markdown else "text/plain"
+
 
         if title and content:
             author = get_object_or_404(Author, user=request.user)
-            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility)
+            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility, contentType=content_type)
 
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:

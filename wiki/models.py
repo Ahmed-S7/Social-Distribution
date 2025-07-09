@@ -9,6 +9,8 @@ from django.forms import DateTimeField
 from django.utils.timezone import make_aware
 import pytz
 from datetime import datetime
+from django.utils.safestring import mark_safe
+import markdown
 
 # Create your models here.
 
@@ -228,6 +230,14 @@ class Entry(BaseModel):
 
     def __str__(self):
         return self.title
+
+    def get_formatted_content(self):
+        """Return content with markdown processing if contentType is markdown"""
+        if self.contentType == "text/markdown":
+            return mark_safe(markdown.markdown(self.content))
+        else:
+            # For plain text, preserves line breaks
+            return self.content.replace('\n', '<br>')
 
 class Page(BaseModel):
     objects = AppManager()
