@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 
-from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -1770,3 +1770,102 @@ def get_author_image_api(request, author_serial, entry_serial):
         image_data = image_file.read()
         response = HttpResponse(image_data, content_type=mime_type)
         return response
+    
+
+@api_view(['GET'])
+def get_author_likes_api(request, author_serial):
+    """
+    GET /api/authors/{author_serial}/liked
+    Get all things liked by a specific author.
+
+    WHEN
+    - View what an author has liked
+    - See an author's activity and preferences
+   
+    HOW
+    1. Send a GET request to /api/authors/{author_serial}/liked/
+
+    WHY
+    - Understand what content an author appreciates
+    - Social discovery and engagement
+
+    WHY NOT
+    - Don't use if the author doesn't exist
+    - May have privacy implications
+
+    Response Fields:
+        Returns a likes object with all likes by the author
+    """
+    author = get_object_or_404(Author, serial=author_serial)
+    
+    # Get all likes by this author (both entry likes and comment likes)
+    entry_likes = Like.objects.filter(user=author, is_deleted=False)
+    comment_likes = CommentLike.objects.filter(user=author, is_deleted=False)
+    
+    # Serialize the likes
+    likes_data = []
+    
+    # Add entry likes
+    for like in entry_likes:
+        likes_data.append(LikeSummarySerializer(like, context={'request': request}).data)
+    
+    # Add comment likes
+    for like in comment_likes:
+        likes_data.append(CommentLikeSummarySerializer(like, context={'request': request}).data)
+    
+    # Sort by creation date (most recent first)
+    likes_data.sort(key=lambda x: x.get('published', ''), reverse=True)
+    
+    return Response({
+        "type": "likes",
+        "web": f"{author.web}/liked",
+        "id": f"{author.id}/liked",
+        "page_number": 1,
+        "size": 50,
+        "count": len(likes_data),
+        "src": likes_data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_single_like_api(request, author_serial, like_serial):
+    """
+    GET /api/authors/{author_serial}/liked/{like_serial}
+    Get a single like by its serial number.
+
+    WHEN
+    - View details of a specific like
+    - Get information about who liked what and when
+   
+    HOW
+    1. Send a GET request to /api/authors/{author_serial}/liked/{like_serial}/
+
+    WHY
+    - Get detailed information about a specific like
+    - Verify like existence and details
+
+    WHY NOT
+    - Don't use if the like doesn't exist
+    - May have privacy implications
+
+    Response Fields:
+        Returns a single like object with author, published, id, and object fields
+    """
+    author = get_object_or_404(Author, serial=author_serial)
+    
+    # Try to find the like in both entry likes and comment likes
+    entry_like = Like.objects.filter(user=author, id=like_serial, is_deleted=False).first()
+    comment_like = CommentLike.objects.filter(user=author, id=like_serial, is_deleted=False).first()
+    
+    if entry_like:
+        # Return entry like
+        return Response(LikeSummarySerializer(entry_like, context={'request': request}).data, status=status.HTTP_200_OK)
+    elif comment_like:
+        # Return comment like
+        return Response(CommentLikeSummarySerializer(comment_like, context={'request': request}).data, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            "error": "Like not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+
