@@ -179,6 +179,7 @@ class CommentSummarySerializer(serializers.Serializer):
     published = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
     entry = serializers.CharField(source='entry.id')
+    web = serializers.CharField()
     likes = serializers.SerializerMethodField()
     
     def get_type(self, obj):
