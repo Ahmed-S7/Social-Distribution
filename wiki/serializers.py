@@ -130,7 +130,8 @@ class LikeSummarySerializer(serializers.Serializer):
 
         # Extract author UUID from the user's id URL
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+        # fixed this
+        return f"{host}/s25-project-white/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
         request = self.context.get('request')
@@ -139,7 +140,7 @@ class LikeSummarySerializer(serializers.Serializer):
         # Extract author UUID from the entry's author id URL
         entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
         entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
-        return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
+        return f"{host}/s25-project-white/api/authors/{entry_author_id}/entries/{entry_id}"
 
 
 class CommentLikeSummarySerializer(serializers.Serializer):
@@ -161,14 +162,14 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+        return f"{host}/s25-project-white/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
         request = self.context.get('request')
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{comment_author_id}/commented/{obj.comment.id}"
+        return f"{host}/s25-project-white/api/authors/{comment_author_id}/commented/{obj.comment.id}"
 
 
 class CommentSummarySerializer(serializers.Serializer):
