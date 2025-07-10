@@ -146,7 +146,9 @@ class Author(BaseModel):
       
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
-        return AuthorFollowing.objects.filter(follower=self, following=other_author).exists()
+        if AuthorFollowing.objects.filter(follower=self, following=other_author).exists():
+            return True
+        return False
         
     def is_friends_with(self, other_author):
         '''checks if an author is friends with another author'''

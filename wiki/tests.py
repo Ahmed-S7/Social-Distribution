@@ -810,9 +810,17 @@ class GetEntryLikesTesting(TestCase):
             visibility="PUBLIC"
         )
         
-        self.private_entry = Entry.objects.create(
-            title='Private Test Entry',
-            content='This is a private test entry.',
+        self.friends_only_entry = Entry.objects.create(
+            title='Friends Only Entry',
+            content='This is a Friends Only test entry.',
+            author=self.author1,
+            serial=uuid.uuid4(),
+            visibility="FRIENDS"
+        )
+        
+        self.unlisted_entry = Entry.objects.create(
+            title='Unlisted Entry',
+            content='This is an Unlisted test entry.',
             author=self.author1,
             serial=uuid.uuid4(),
             visibility="FRIENDS"
@@ -820,6 +828,9 @@ class GetEntryLikesTesting(TestCase):
 
     def test_get_entry_likes_success(self):
         """Test successful retrieval of likes for a public entry"""
+        
+        self.client.logout()
+        self.client.login(username='test_user1', password='test_password1')
         # Create some likes first
         Like.objects.create(entry=self.public_entry, user=self.author2)
         Like.objects.create(entry=self.public_entry, user=self.author3)
@@ -828,28 +839,41 @@ class GetEntryLikesTesting(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(str(response.data['entry_id']), str(self.public_entry.serial))
-        self.assertEqual(response.data['entry_title'], 'Public Test Entry')
-        self.assertEqual(response.data['total_likes'], 2)
-        self.assertEqual(len(response.data['likes']), 2)
+        self.assertEqual(str(response.data['type']), "likes")
+        self.assertEqual(response.data['web'], self.public_entry.web)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
         
         # Verify like data structure
-        like = response.data['likes'][0]
+        like = response.data['src'][0]
         self.assertIn('id', like)
         self.assertIn('author', like)
         self.assertIn('id', like['author'])
         self.assertIn('displayName', like['author'])
 
-    def test_get_entry_likes_private_entry(self):
+    def test_get_entry_likes_unauthorized_friends(self):
         """Test that non-public entries return 403 error"""
         self.client.logout()
-        self.client.force_authenticate(self.user2)
+        self.client.login(username='test_user3', password='test_password3')
         
          #http://127.0.0.1:8000/s25-project-white/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80/entries/c62fadbb-2f40-4df6-8cf7-0830460a396e/likes/
-        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.private_entry.serial}/likes/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_only_entry.serial}/likes/'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 403)
+        
+    def test_get_entry_likes_unauthorized_unlisted(self):
+        """Test that non-public entries return 403 error"""
+        self.client.logout()
+        self.client.login(username='test_user3', password='test_password3')
+        
+         #http://127.0.0.1:8000/s25-project-white/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80/entries/c62fadbb-2f40-4df6-8cf7-0830460a396e/likes/
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.unlisted_entry.serial}/likes/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 403)
+        
+   
 
 
 
@@ -1363,11 +1387,6 @@ And a landscape:
         # Image US
         pass
 
-    # US 2.8: As an author, entries I create that are in CommonMark can link to images, so that I can illustrate my entries.
-    def test_markdown_entry_can_link_to_images(self):
-        """User Story: As an author, entries I create that are in CommonMark can link to images."""
-        # Common Mark US
-        pass
     # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
     def test_delete_entry(self):
         """User Story: As an author, I want to delete my own entries locally."""

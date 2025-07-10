@@ -464,7 +464,7 @@ def view_external_profile(request, author_serial):
         except FollowRequest.DoesNotExist or not logged_in_author:
             current_request_id = None
         
-        print(current_request_id)
+    
         #for logged in users only:
         if logged_in_author:
             
@@ -672,7 +672,6 @@ def follow_profile(request, author_serial):
     
     
     if requesting_account.is_following(requested_account):
-        print("You are only following him")
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
@@ -1625,7 +1624,7 @@ def get_entry_likes_api(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     serialized_entry = EntrySerializer(entry)
     current_author = get_object_or_404(Author, user=request.user)
-    author_in_request = Author.objects.filter(serial=author_serial)[0].user
+    author_in_request = get_object_or_404(Author, serial=author_serial)
     
     #checks if the current author isn't the one getting the likes information, if so there will be visibility restrictions
     if current_author!= author_in_request:
