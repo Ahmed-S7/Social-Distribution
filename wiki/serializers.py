@@ -144,16 +144,30 @@ class CommentLikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
     author = AuthorSummarySerializer(source='user')
     published = serializers.SerializerMethodField()
-    id = serializers.CharField()
-    object = serializers.CharField(source='comment.id')
-    
+    id = serializers.SerializerMethodField()
+    object = serializers.SerializerMethodField()
+
     def get_type(self, obj):
         return 'like'
-    
+
     def get_published(self, obj):
         dt = obj.created_at.strftime('%Y-%m-%dT%H:%M:%S%z')
-        # Insert colon into the timezone offset to match ISO 8601: +0000 → +00:00
-        return dt[:-2] + ':' + dt[-2:]
+        return dt[:-2] + ':' + dt[-2:]  # ISO 8601 with colon in timezone
+
+    def get_id(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        author_id = str(obj.user.id).rstrip('/').split('/')[-1]
+        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+
+    def get_object(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
+        return f"{host}/api/authors/{comment_author_id}/commented/{obj.comment.id}"
+
 
 class CommentSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
@@ -183,17 +197,23 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/api/authors/{author_id}/commented/{obj.id}"
     
     def get_likes(self, obj):
-        # Return likes for this comment
+        request = self.context.get('request')
+        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+
+        author_id = str(obj.author.id).rstrip('/').split('/')[-1]
+        comment_id = obj.id
+
         likes = obj.likes.filter(is_deleted=False)
         return {
-            'type': 'likes',
-            'id': f"{obj.id}/likes",
-            'web': f"{obj.entry.web}/comments/{obj.id}/likes",
-            'page_number': 1,
-            'size': 50,
-            'count': likes.count(),
-            'src': [CommentLikeSummarySerializer(like).data for like in likes[:50]]
+            "type": "likes",
+            "id": f"{host}/api/authors/{author_id}/commented/{comment_id}/likes",
+            "web": f"{host}/authors/{obj.author.displayName}/comments/{comment_id}/likes",
+            "page_number": 1,
+            "size": 50,
+            "count": likes.count(),
+            "src": [CommentLikeSummarySerializer(like, context=self.context).data for like in likes[:50]]
         }
+
 
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
