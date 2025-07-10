@@ -435,23 +435,24 @@ def view_external_profile(request, author_serial):
         
         # Friends
         friend_pairs = AuthorFriend.objects.filter(
-            Q(friending=profile_viewing) | Q(friended=profile_viewing)
+            Q(friending=logged_in_author) | Q(friended=logged_in_author)
         ).values_list('friending', 'friended')
 
         friend_ids = set()
         for friending_id, friended_id in friend_pairs:
-            if friending_id != profile_viewing.id:
+            if friending_id != logged_in_author.id:
                 friend_ids.add(friending_id)
-            if friended_id != profile_viewing.id:
+            if friended_id != logged_in_author.id:
                 friend_ids.add(friended_id)
-                
+     
+                 
         #Entries the current user is permitted to view
         all_entries = Entry.objects.filter(
         author=profile_viewing
         ).filter(
             Q(visibility='PUBLIC') |
-            Q(visibility='FRIENDS', author__in=friend_ids) |
-            Q(visibility='UNLISTED', author__id__in=followed_ids)
+            (Q(visibility='FRIENDS') & Q(author__id__in=friend_ids)) |
+            (Q(visibility='UNLISTED') & Q(author__id__in=followed_ids))
         ).order_by('-created_at')
         
         #store existing follow request if it exists
@@ -787,7 +788,6 @@ def process_follow_request(request, author_serial, request_id):
     requestedAuthor = Author.objects.get(serial=author_serial)
     
     choice = request.POST.get("action")
-    
     if choice.lower() == "accept":
         
         #if follow request gets accepted, 
@@ -1277,7 +1277,7 @@ def entry_detail(request, entry_serial):
             'rendered_content': rendered_content,
             'is_owner': is_owner,
             'comments': comments
-        }
+        }, status=status.HTTP_200_OK
     )
 
 @login_required
@@ -1297,7 +1297,6 @@ def edit_entry(request, entry_serial):
                 entry.content = content
             if image:
                 entry.image = image
-                print(image)
             if request.POST.get('remove_image'):
                entry.image.delete(save=False)
                entry.image = None
@@ -1321,6 +1320,7 @@ def delete_entry(request, entry_serial):
     
     return render(request, 'confirm_delete.html', {'entry': entry})
 
+@login_required
 @api_view(['GET', 'PUT'])
 def entry_detail_api(request, entry_serial, author_serial):
     """
@@ -1328,15 +1328,32 @@ def entry_detail_api(request, entry_serial, author_serial):
     
     PUT /api/authors/<author_serial>/entries/<entry_serial>/ — Update a single entry (only by the author)
     """
-   
-    author = get_object_or_404(Author, serial=author_serial)
     entry = get_object_or_404(Entry, serial=entry_serial)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_in_request = get_object_or_404(Author, serial=author_serial)
+    
+   #checks if the current author isn't the one getting the entry information, if so there will be visibility restrictions
+    if current_author!= author_in_request:
+        
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(author_in_request):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+   
 
     if request.method == 'GET':
         serializer = EntrySerializer(entry)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    #PUT
+    #PUT      
     serializer = EntrySerializer(entry, data=request.data, partial=True)
     if serializer and serializer.is_valid():
         serializer.save()
@@ -1440,9 +1457,26 @@ def like_entry_api(request, entry_serial):
         }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
-    author = get_object_or_404(Author, user=request.user)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_in_request = get_object_or_404(Author, id=entry.author.id)
     
-    like, created = Like.objects.get_or_create(entry=entry, user=author)
+   #checks if the current author isn't the one getting the entry information, if so there will be visibility restrictions
+    if current_author!= author_in_request:
+        
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(author_in_request):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+    
+    like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
         return Response({

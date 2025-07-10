@@ -15,8 +15,9 @@ html, body{
 }
 
 
-h1,h2{
+h1,h2,h3{
     color:rgb(0, 26, 128);
+     font-family: 'Nunito', sans-serif;
 }
 
 
@@ -28,10 +29,12 @@ h3{
 .display_name{
     font-size: 1.3em;
     padding: none;
-    max-width:10.8em;
+    max-width:9em;
     text-overflow: ellipsis;
     overflow: hidden;
     text-align: center;
+    padding-bottom: 1em;
+    font-family:  'Nunito', sans-serif;
 }
 
 
@@ -70,6 +73,7 @@ h3{
     flex-direction: column;
     align-items: center;
     padding-top: 1em;
+    padding-bottom: 2em;
     top:0;
     left:0;  
     gap: 1.5em;

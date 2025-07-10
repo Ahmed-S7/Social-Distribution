@@ -65,12 +65,12 @@ urlpatterns = [
     path('api/authors/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
    
    
-   #Follow Requests/Followers URLS
+   #Follow Requests/Followers URLS 
+    path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
     path('authors/<str:username>/follow_requests/', check_follow_requests, name='check_follow_requests' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
     path('authors/<str:author_serial>/<str:request_id>/cancel_request', cancel_follow_request, name='cancel_follow_request' ),
     path('authors/<str:author_serial>/<str:following_id>/unfollow', unfollow_profile, name='unfollow_profile'),
-    path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
-    
-    
+   
+   
 ]
