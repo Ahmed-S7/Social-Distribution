@@ -56,6 +56,52 @@ class RemotePostReceiver(APIView):
 
 
 @api_view(['GET'])
+def user_wiki_api(request, username):
+    if request.user.username != username or request.user.is_superuser:
+        raise PermissionDenied("You are not allowed to view this page.")
+    current_author = get_object_or_404(Author, user=request.user)
+
+    # Followed
+    followed_ids = AuthorFollowing.objects.filter(
+        follower=current_author
+    ).values_list('following', flat=True)
+
+    # Friends
+    friend_pairs = AuthorFriend.objects.filter(
+        Q(friending=current_author) | Q(friended=current_author)
+    ).values_list('friending', 'friended')
+
+    friend_ids = set()
+    for friending_id, friended_id in friend_pairs:
+        if friending_id != current_author.id:
+            friend_ids.add(friending_id)
+        if friended_id != current_author.id:
+            friend_ids.add(friended_id)
+
+    entries = Entry.objects.filter(
+        ~Q(visibility='DELETED') & (
+            Q(visibility='PUBLIC') |
+            Q(author=current_author) |
+            Q(visibility='FRIENDS', author__id__in=friend_ids) |
+            Q(visibility='UNLISTED', author__id__in=followed_ids)
+        )
+    ).order_by('-created_at')
+    serialized_entries = []
+    for entry in entries:
+        entry_data = {
+            "title": entry.title,
+            "content": entry.content,
+            "author": entry.author.displayName,
+            "visibility": entry.visibility,
+            "created_at": entry.created_at.isoformat(),  # Use ISO 8601 format for timestamp
+            "serial": str(entry.serial),
+            "contentType": entry.contentType,
+        }
+        serialized_entries.append(entry_data)
+
+    # Return the entries as a JSON response
+    return Response(serialized_entries)
+    
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
@@ -89,16 +135,6 @@ def user_wiki(request, username):
             Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
-    if request.accepted_renderer.format == 'json':
-        serialized_entries = [{
-            "title": entry.title,
-            "content": entry.content,
-            "author": entry.author.displayName,
-            "visibility": entry.visibility,
-            "created_at": entry.created_at.isoformat(),
-            "serial": str(entry.serial)
-        } for entry in entries]
-        return Response(serialized_entries)
     #return render(request, 'wiki.html', {'entries': entries})
     rendered_entries = []
     for entry in entries:

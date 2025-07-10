@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, entry_detail_api, profile_view, get_profile_api, view_external_profile, get_or_edit_author_api
 from .views import MyLoginView, user_wiki, register,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
-from .views import get_entry_comments_api, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api
+from .views import get_entry_comments_api, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -20,7 +20,8 @@ urlpatterns = [
     path('<str:username>/wiki/', user_wiki, name='user-wiki'),
     path('<str:username>/profile/', profile_view, name='profile'),
     path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
-    path('api/<str:username>/wiki/', user_wiki, name='user-wiki'),
+    
+    path('api/<str:username>/wiki/', user_wiki_api, name='user_wiki_api'),
     
     # Author URLS
     path('authors/', view_authors, name='view_authors'),
