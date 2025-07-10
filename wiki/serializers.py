@@ -111,7 +111,7 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
 
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
-    author = AuthorSummarySerializer(source='user')
+    author = AuthorSerializer(source='user')
     published = serializers.DateTimeField(source='entry.created_at')
     id = serializers.CharField()
     object = serializers.CharField(source='entry.id')
@@ -199,8 +199,9 @@ class EntrySerializer(serializers.ModelSerializer):
         }
 
     def get_likes(self, obj):
-        likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
-        total_likes = obj.likes.filter(is_deleted=False).count()
+    
+        likes = obj.likes.order_by('-id')[:50]
+        total_likes = obj.likes.count()
         return {
             'type': 'likes',
             'web': obj.web,
@@ -208,5 +209,5 @@ class EntrySerializer(serializers.ModelSerializer):
             'page_number': 1,
             'size': 50,
             'count': total_likes,
-            'src': [LikeSummarySerializer(like).data for like in likes]
+            'src': [LikeSummarySerializer(like).data for like in likes],
         }

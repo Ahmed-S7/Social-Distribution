@@ -71,7 +71,7 @@ class IdentityTestCase(TestCase):
         self.assertEqual(response.data["displayName"], "test_author")
 
     def test_consistent_identity_entry(self):
-        url = f'{BASE_PATH}/entry/{self.entry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.entry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["title"], "Test Entry")
@@ -551,7 +551,6 @@ class LikeEntryTesting(TestCase):
     def test_like_entry_success(self):
         """Test successful like of an entry"""
         self.client.force_authenticate(user=self.user2)
-        
         url = f'{BASE_PATH}/entry/{self.entry.serial}/like/'
         response = self.client.post(url)
         
@@ -841,11 +840,14 @@ class GetEntryLikesTesting(TestCase):
 
     def test_get_entry_likes_private_entry(self):
         """Test that non-public entries return 403 error"""
-        url = f'{BASE_PATH}/entry/{self.private_entry.serial}/likes/'
+        self.client.logout()
+        self.client.force_authenticate(self.user2)
+        
+         #http://127.0.0.1:8000/s25-project-white/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80/entries/c62fadbb-2f40-4df6-8cf7-0830460a396e/likes/
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.private_entry.serial}/likes/'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.data['error'], 'Entry is not public')
 
 
 
@@ -1123,21 +1125,21 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.1 As an author, I want to be able to make my entries "public", so that everyone can see them.
     def test_public_entry_visibility(self):
-        url = f'{BASE_PATH}/entry/{self.publicEntry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.publicEntry.serial}/'
         response = self.client.get(url, HTTP_ACCEPT='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json().get("visibility"), "PUBLIC")
     
     # Visibility 4.2 As an author, I want to be able to make my entries "unlisted," so that my followers see them, and anyone with the link can also see them.
     def test_unlisted_entry_visibility(self):
-        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.unlistedEntry.serial}/'
         response = self.client.get(url, HTTP_ACCEPT='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json().get("visibility"), "UNLISTED")
 
     # Visibility 4.3 As an author, I want to be able to make my entries "friends-only," so that I don't have to worry about people I don't know seeing them.
-    def test_unlisted_entry_visibility(self):
-        url = f'{BASE_PATH}/entry/{self.friendEntry.serial}/'
+    def test_friends_only_entry_visibility(self):
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.friendEntry.serial}/'
         response = self.client.get(url, HTTP_ACCEPT='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json().get("visibility"), "FRIENDS")
@@ -1174,13 +1176,13 @@ class VisibilityTestCase(TestCase):
 
     # Visibility 4.7 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
-        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.unlistedEntry.serial}/'
         self.client.logout()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.unlistedEntry.title)
         self.assertContains(response, self.unlistedEntry.content)
-        url = f'{BASE_PATH}/entry/{self.publicEntry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.publicEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.publicEntry.title)
@@ -1385,7 +1387,7 @@ class SharingTestCase(TestCase):
         )
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
     def test_public_unlisted_link(self):
-        url = f'{BASE_PATH}/entry/{self.unlistedEntry.serial}/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.unlistedEntry.serial}/'
         self.client.logout()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)

@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
+from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -1313,12 +1313,13 @@ def delete_entry(request, entry_serial):
     return render(request, 'confirm_delete.html', {'entry': entry})
 
 @api_view(['GET', 'PUT'])
-def entry_detail_api(request, entry_serial):
+def entry_detail_api(request, entry_serial, author_serial):
     """
-    GET /api/entries/<entry_serial>/ — View a single entry
-    PUT /api/entries/<entry_serial>/edit/ — Update a single entry (only by the author)
+    GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    PUT /api/authors/<author_serial>/entries/<entry_serial>/ — Update a single entry (only by the author)
     """
-    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
 
     if request.method == 'GET':
         serializer = EntrySerializer(entry)
@@ -1641,9 +1642,8 @@ def like_comment_api(request, comment_id):
             "likes_count": comment.likes.count()
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['GET'])
-def get_entry_likes_api(request, entry_serial):
+def get_entry_likes_api(request, author_serial, entry_serial):
     """
     GET /api/entry/{entry_serial}/likes/
     User Story 1.4 in Comments/Likes
@@ -1715,33 +1715,32 @@ def get_entry_likes_api(request, entry_serial):
         }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
+    serialized_entry = EntrySerializer(entry)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_in_request = Author.objects.filter(serial=author_serial)[0].user
     
-    # Check if entry is public
-    if entry.visibility != "PUBLIC":
-        return Response({
-            "error": "Entry is not public"
-        }, status=status.HTTP_403_FORBIDDEN)
+    #checks if the current author isn't the one getting the likes information, if so there will be visibility restrictions
+    if current_author!= author_in_request:
+        
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(author_in_request):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)  
     
-    # Get all likes for the entry
-    likes = entry.likes.filter(is_deleted=False)
+    # Get all likes for the entry and serialize them
+    likes_serialized = serialized_entry.get_likes(entry)
     
-    # Serialize the likes
-    like_data = []
-    for like in likes:
-        like_data.append({
-            "id": like.id,
-            "author": {
-                "id": like.user.id,
-                "displayName": like.user.displayName
-            }
-        })
-    
-    return Response({
-        "entry_id": entry.serial,
-        "entry_title": entry.title,
-        "total_likes": likes.count(),
-        "likes": like_data
-    }, status=status.HTTP_200_OK)
+    return Response(
+        likes_serialized 
+    , status=status.HTTP_200_OK)
 
 
 

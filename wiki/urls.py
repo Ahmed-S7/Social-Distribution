@@ -46,10 +46,9 @@ urlpatterns = [
     path('entry/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
 
     # Entry Related API
-    path('api/entry/<uuid:entry_serial>/edit/', entry_detail_api, name='entry_detail_api'),
-    path('api/entry/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
+    path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
     path('api/entry/<uuid:entry_serial>/like/', like_entry_api, name='like_entry_api'),
-    path('api/entry/<uuid:entry_serial>/likes/', get_entry_likes_api, name='get_entry_likes_api'),
+    path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/likes/', get_entry_likes_api, name='get_entry_likes_api'),
     path('api/entry/<uuid:entry_serial>/comments/', add_comment_api, name='add_comment_api'),
     path('api/entry/<uuid:entry_serial>/comments/view/', get_entry_comments_api, name='get_entry_comments_api'),
     path('api/comment/<int:comment_id>/like/', like_comment_api, name='like_comment_api'),

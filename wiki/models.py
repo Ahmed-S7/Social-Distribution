@@ -56,7 +56,7 @@ class VisibilityOptions(models.TextChoices):
     '''Visibility Options For Entries Made In The Application'''
     PUBLIC = "public", "Public"
     UNLISTED = "unlisted", "Unlisted"
-    FRIENDS_ONLY = "friends_only", "Friends_only"
+    FRIENDS_ONLY = "", "Friends_only"
     DELETED = "deleted", "Deleted"    
 
 
