@@ -641,8 +641,13 @@ class CommentEntryTesting(TestCase):
         """Test successful comment addition to an entry"""
         self.client.force_authenticate(user=self.user2)
         
-        url = f'{BASE_PATH}/entry/{self.entry.serial}/comments/'
-        data = {'content': 'This is a witty reply!'}
+        url = f'{BASE_PATH}/authors/{self.author2.serial}/commented/'
+        data = {
+            'type': 'comment',
+            'comment': 'This is a witty reply!',
+            'contentType': 'text/plain',
+            'entry': self.entry.serial
+        }
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, 201)
@@ -663,8 +668,13 @@ class CommentEntryTesting(TestCase):
         self.client.force_authenticate(user=self.user2)
         
         fake_serial = uuid.uuid4()
-        url = f'{BASE_PATH}/entry/{fake_serial}/comments/'
-        data = {'content': 'This should fail'}
+        url = f'{BASE_PATH}/authors/{self.author2.serial}/commented/'
+        data = {
+            'type': 'comment',
+            'comment': 'This should fail',
+            'contentType': 'text/plain',
+            'entry': fake_serial
+        }
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, 404)

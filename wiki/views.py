@@ -1350,11 +1350,12 @@ def entry_detail_api(request, entry_serial, author_serial):
    
 
     if request.method == 'GET':
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
-    #PUT      
-    serializer = EntrySerializer(entry, data=request.data, partial=True)
+    #PUT
+    serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
     if serializer and serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1491,58 +1492,6 @@ def like_entry_api(request, entry_serial):
             "likes_count": entry.likes.count()
         }, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-
-@api_view(['POST'])
-def add_comment_api(request, entry_serial):
-    """
-    POST /api/entry/{entry_serial}/comments/
-    Add a comment to an entry via API.
-
-    WHEN
-    - Add thoughts or feedback to an entry
-    - User Story 1.1 in Comments/Likes
-   
-    HOW
-    1. Send a POST request to /api/entry/{entry_serial}/comments/
-    2. Include comment content in the request body
-
-    WHY
-    - Authors can interact with entries and other Authors
-
-    WHY NOT
-    - Don't use if the entry doesn't exist
-    - Don't use with empty or whitespace-only content
-
-    Request Fields:
-        content (string): The comment text content
-            - Example: "Great post! Thanks for sharing."
-            - Purpose: The actual comment text to be displayed
-
-    Response Fields:
-        Returns the complete comment object in the required format
-    """
-    entry = get_object_or_404(Entry, serial=entry_serial)
-    author = get_object_or_404(Author, user=request.user)
-    
-    content = request.data.get('content', '').strip()
-    
-    if not content:
-        return Response({
-            "error": "Comment content is required"
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    comment = Comment.objects.create(
-        entry=entry,
-        author=author,
-        content=content
-    )
-    
-    # Return the properly formatted comment object
-    serializer = CommentSummarySerializer(comment)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -1690,32 +1639,10 @@ Response:
 
 
 
-
-
 @api_view(['GET'])
-def get_entry_comments_api(request, entry_serial):
-    """
-    GET /api/entry/{entry_serial}/comments/view/
-    Get comments for an entry via API with visibility control.
-
-    WHEN
-    - View comments on an entry
-    - User Story 1.5 in Comments/Likes
-   
-    HOW
-    1. Send a GET request to /api/entry/{entry_serial}/comments/view/
-
-    WHY
-    - Obtain comments from entries
-
-    WHY NOT
-    - Don't use for entries you don't have permission to view
-
-    Response Fields:
-        Returns an array of properly formatted comment objects
-    """
+def get_entry_comments_api(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
-    
+
     # Get the requesting user's author object if authenticated
     requesting_author = None
     if request.user.is_authenticated:
@@ -1723,63 +1650,204 @@ def get_entry_comments_api(request, entry_serial):
             requesting_author = Author.objects.get(user=request.user)
         except Author.DoesNotExist:
             pass
-    
-    # Check visibility permissions
-    if entry.visibility == "PUBLIC":
-        # Public entries - anyone can view comments
-        pass
-    elif entry.visibility == "FRIENDS":
-        # Friends-only entries - only friends and comment authors can view
+
+    # Visibility check
+    if entry.visibility == "FRIENDS":
         if not requesting_author:
             return Response({
                 "error": "Authentication required to view friends-only entry comments"
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Check if they are friends
+
         is_friend = AuthorFriend.objects.filter(
             Q(friending=entry.author, friended=requesting_author) |
             Q(friending=requesting_author, friended=entry.author),
             is_deleted=False
         ).exists()
-        
-        if not is_friend:
+
+        if not is_friend and entry.author != requesting_author:
             return Response({
                 "error": "Only friends can view comments on friends-only entries"
             }, status=status.HTTP_403_FORBIDDEN)
-    
-    # Get all comments for the entry
-    comments = entry.comments.filter(is_deleted=False).order_by('created_at')
-    
-    # Filter comments based on visibility and friendship
-    visible_comments = []
-    for comment in comments:
-        # Always show comment to its author
-        if requesting_author and comment.author == requesting_author:
-            visible_comments.append(comment)
-            continue
+
+    # Pagination logic
+    PAGE_SIZE = 5
+    page_number = int(request.GET.get('page', 1))
+    offset = (page_number - 1) * PAGE_SIZE
+    limit = offset + PAGE_SIZE
+
+    all_comments = entry.comments.filter(is_deleted=False).order_by('-created_at')
+    paginated_comments = all_comments[offset:limit]
+
+    serialized_comments = [
+        CommentSummarySerializer(comment, context={'request': request}).data
+        for comment in paginated_comments
+    ]
+
+    response_data = {
+        "type": "comments",
+        "web": entry.web,
+        "id": f"{entry.web}/comments",
+        "page_number": page_number,
+        "size": PAGE_SIZE,
+        "count": all_comments.count(),
+        "src": serialized_comments
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST'])
+def get_author_comments_api(request, author_serial):
+
+    if request.method == 'POST':
+        # Get the authenticated user's author object
+        authenticated_author = get_object_or_404(Author, user=request.user)
         
-        # For friends-only entries, only show comments to friends
+        # Validate that the request contains a comment object
+        if not isinstance(request.data, dict):
+            return Response({
+                "error": "Request must contain a comment object"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if the object type is "comment"
+        if request.data.get('type') != 'comment':
+            return Response({
+                "error": "Object type must be 'comment'"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get comment content
+        content = request.data.get('comment', '').strip()
+        if not content:
+            return Response({
+                "error": "Comment content is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get content type (default to text/plain if not provided)
+        content_type = request.data.get('contentType', 'text/plain')
+        
+        # Get the entry ID from the request body
+        entry_id = request.data.get('entry')
+        if not entry_id:
+            return Response({
+                "error": "Entry ID is required in the comment object"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Find the entry
+        try:
+            entry = Entry.objects.get(serial=entry_id)
+        except Entry.DoesNotExist:
+            return Response({
+                "error": "Entry not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if the authenticated user can comment on this entry
         if entry.visibility == "FRIENDS":
-            if requesting_author and requesting_author == entry.author:
-                # Entry author can see all comments
+            is_friend = AuthorFriend.objects.filter(
+                Q(friending=entry.author, friended=authenticated_author) |
+                Q(friending=authenticated_author, friended=entry.author),
+                is_deleted=False
+            ).exists()
+            if not is_friend and entry.author != authenticated_author:
+                return Response({
+                    "error": "You can only comment on friends-only entries if you are friends with the author"
+                }, status=status.HTTP_403_FORBIDDEN)
+        elif entry.visibility == "UNLISTED":
+            is_following = AuthorFollowing.objects.filter(
+                follower=authenticated_author,
+                following=entry.author,
+                is_deleted=False
+            ).exists()
+            if not is_following and entry.author != authenticated_author:
+                return Response({
+                    "error": "You can only comment on unlisted entries if you are following the author"
+                }, status=status.HTTP_403_FORBIDDEN)
+        
+        comment = Comment.objects.create(
+            entry=entry,
+            author=authenticated_author,
+            content=content,
+            contentType=content_type
+        )
+        
+        # Return the properly formatted comment object
+        serializer = CommentSummarySerializer(comment, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    if request.method == 'GET':
+        author = get_object_or_404(Author, serial=author_serial)
+        
+        # Get the requesting user's author object if authenticated
+        requesting_author = None
+        if request.user.is_authenticated:
+            try:
+                requesting_author = Author.objects.get(user=request.user)
+            except Author.DoesNotExist:
+                pass
+        
+        # Get all comments by this author
+        all_comments = Comment.objects.filter(author=author, is_deleted=False)
+        
+        # Filter comments based on entry visibility
+        visible_comments = []
+        for comment in all_comments:
+            entry = comment.entry
+            
+            # Skip deleted entries
+            if entry.is_deleted:
+                continue
+                
+            # Check visibility permissions
+            if entry.visibility == "PUBLIC":
                 visible_comments.append(comment)
-            elif requesting_author:
-                # Check if comment author is a friend
-                is_friend = AuthorFriend.objects.filter(
-                    Q(friending=entry.author, friended=comment.author) |
-                    Q(friending=comment.author, friended=entry.author),
-                    is_deleted=False
-                ).exists()
-                if is_friend:
+            elif entry.visibility == "FRIENDS":
+                if requesting_author and (entry.author == requesting_author or 
+                    AuthorFriend.objects.filter(
+                        Q(friending=entry.author, friended=requesting_author) |
+                        Q(friending=requesting_author, friended=entry.author),
+                        is_deleted=False
+                    ).exists()):
                     visible_comments.append(comment)
-        else:
-            # For public entries, show all comments
-            visible_comments.append(comment)
-    
-    # Serialize the comments using the proper serializer
-    comment_data = [CommentSummarySerializer(comment).data for comment in visible_comments]
-    
-    return Response(comment_data, status=status.HTTP_200_OK)
+            elif entry.visibility == "UNLISTED":
+                if requesting_author and (entry.author == requesting_author or 
+                    AuthorFollowing.objects.filter(
+                        follower=requesting_author, 
+                        following=entry.author,
+                        is_deleted=False
+                    ).exists()):
+                    visible_comments.append(comment)
+        
+        # Sort comments by creation date (newest first)
+        visible_comments.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Pagination logic
+        PAGE_SIZE = 5
+        page_number = int(request.GET.get('page', 1))
+        offset = (page_number - 1) * PAGE_SIZE
+        limit = offset + PAGE_SIZE
+        
+        paginated_comments = visible_comments[offset:limit]
+        
+        # Serialize comments
+        serialized_comments = [
+            CommentSummarySerializer(comment, context={'request': request}).data
+            for comment in paginated_comments
+        ]
+        
+        # Build response
+        request_host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost:8000'
+        
+        response_data = {
+            "type": "comments",
+            "web": f"{request_host}/s25-project-white/authors/{author_serial}/commented",
+            "id": f"{request_host}/s25-project-white/api/authors/{author_serial}/commented",
+            "page_number": page_number,
+            "size": PAGE_SIZE,
+            "count": len(visible_comments),
+            "src": serialized_comments
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
 def get_entry_image_api(request, entry_serial):
@@ -1904,4 +1972,3 @@ def get_single_like_api(request, author_serial, like_serial):
             "error": "Like not found"
         }, status=status.HTTP_404_NOT_FOUND)
     
-

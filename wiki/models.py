@@ -285,16 +285,12 @@ class Comment(BaseModel):
     content = models.TextField()
     created_at = models.DateTimeField(default=get_mst_time)
     contentType = models.CharField(max_length=50, default="text/plain")
+    web = models.URLField(blank=True, null=True, default=None)
     
-    def get_comment_url(self):
-        # Extract numeric author ID from the author's URL
-        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
-        author_id = self.author.id.split('/')[-1]  # Get the last part of the URL
-        return f"http://s25-project-white/api/authors/{author_id}/commented/{self.pk}"
     
-    @property
-    def id(self):
-        return self.get_comment_url()
+    def get_web_url(self):
+        return f"http://s25-project-white/api/authors/{self.author.serial}/entries/{self.serial}"
+    
     
     def __str__(self):
         return f"Comment by {self.author.displayName} on {self.entry.title}"
