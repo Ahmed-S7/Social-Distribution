@@ -198,7 +198,7 @@ class CommentSummarySerializer(serializers.Serializer):
         # Extract author UUID (or last segment of URL)
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
 
-        return f"{host}/api/authors/{author_id}/commented/{obj.id}"
+        return f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}"
     
     def get_likes(self, obj):
         request = self.context.get('request')
