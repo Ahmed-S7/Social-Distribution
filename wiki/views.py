@@ -781,7 +781,7 @@ def get_profile_api(request, username):
     if request.method == 'GET':
         author_data = AuthorSerializer(author).data
         entries = Entry.objects.filter(author=author).order_by('-created_at')
-        entry_data = EntrySerializer(entries, many=True).data
+        entry_data = EntrySerializer(entries, many=True, context={'request': request}).data
         author_data['entries'] = entry_data
         return Response(author_data, status=status.HTTP_200_OK)
         
@@ -1888,7 +1888,7 @@ def get_author_comments_api(request, author_serial):
 @api_view(['GET'])
 def get_entry_image_api(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
-    if not entry.image:
+    if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
     image_path = entry.image.path
     mime_type, _ = mimetypes.guess_type(image_path) # check what type of image it is

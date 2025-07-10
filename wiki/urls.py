@@ -20,7 +20,7 @@ urlpatterns = [
     path('<str:username>/wiki/', user_wiki, name='user-wiki'),
     path('<str:username>/profile/', profile_view, name='profile'),
     path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
-    
+
     path('api/<str:username>/wiki/', user_wiki_api, name='user_wiki_api'),
     
     # Author URLS
@@ -50,6 +50,7 @@ urlpatterns = [
     path('entry/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
 
     # Entry Related API
+    path('api/entry/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
     path('api/entry/<uuid:entry_serial>/like/', like_entry_api, name='like_entry_api'),
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/likes/', get_entry_likes_api, name='get_entry_likes_api'),
