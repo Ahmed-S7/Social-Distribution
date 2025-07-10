@@ -130,7 +130,8 @@ class LikeSummarySerializer(serializers.Serializer):
 
         # Extract author UUID from the user's id URL
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+        # fixed this
+        return f"{host}/s25-project-white/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
         request = self.context.get('request')
@@ -139,7 +140,7 @@ class LikeSummarySerializer(serializers.Serializer):
         # Extract author UUID from the entry's author id URL
         entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
         entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
-        return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
+        return f"{host}/s25-project-white/api/authors/{entry_author_id}/entries/{entry_id}"
 
 
 class CommentLikeSummarySerializer(serializers.Serializer):
@@ -161,14 +162,14 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+        return f"{host}/s25-project-white/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
         request = self.context.get('request')
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{comment_author_id}/commented/{obj.comment.id}"
+        return f"{host}/s25-project-white/api/authors/{comment_author_id}/commented/{obj.comment.id}"
 
 
 class CommentSummarySerializer(serializers.Serializer):
@@ -197,7 +198,7 @@ class CommentSummarySerializer(serializers.Serializer):
         # Extract author UUID (or last segment of URL)
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
 
-        return f"{host}/api/authors/{author_id}/commented/{obj.id}"
+        return f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}"
     
     def get_likes(self, obj):
         request = self.context.get('request')
@@ -225,7 +226,7 @@ VISIBILITY_CHOICES = [
     ]
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
-    id = serializers.CharField(required=True, max_length=150)
+    id = serializers.SerializerMethodField()
     web = serializers.SerializerMethodField()
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
@@ -243,6 +244,12 @@ class EntrySerializer(serializers.ModelSerializer):
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
             'author', 'comments', 'likes', 'published', 'visibility'
         ]
+    def get_id(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return None
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.serial}"
 
     def get_type(self, obj):
         return 'entry'
@@ -264,14 +271,14 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
 
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]
         total_comments = obj.comments.filter(is_deleted=False).count()
 
         return {
             "type": "comments",
-            "web": f"{host}/authors/{author_id}/entries/{entry_id}",
+            "web": f"{host}/entry/{entry_id}/",
             "id": f"{host}/api/authors/{author_id}/entries/{entry_id}/comments",
             "page_number": 1,
             "size": 5,
@@ -284,7 +291,7 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
 
         likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
         total_likes = obj.likes.filter(is_deleted=False).count()

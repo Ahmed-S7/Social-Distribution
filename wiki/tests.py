@@ -1,3 +1,4 @@
+import base64
 from django.test import TestCase
 from rest_framework.test import APIClient
 from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like, Comment, CommentLike
@@ -968,27 +969,23 @@ class FriendsOnlyCommentsTesting(TestCase):
     def test_friends_can_view(self):
         """Test that friends can view comments on friends-only entries"""
         self.client.force_authenticate(user=self.user2)  # Friend
-        
-        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comments/'
         response = self.client.get(url)
-        
         self.assertEqual(response.status_code, 200)
-        # The API now returns an array of comment objects directly
-        self.assertEqual(len(response.data), 1)  # Only friend's comment visible
-        
+        # The API returns a dict with 'src' key for comments
+        self.assertEqual(len(response.data['src']), 1)  # Only friend's comment visible
         # Verify only friend's comment is visible
-        comment = response.data[0]
+        comment = response.data['src'][0]
         self.assertEqual(comment['comment'], 'This is a comment from a friend.')
         self.assertEqual(comment['author']['displayName'], 'test_author2')
 
     def test_non_friend_cannot_view(self):
         """Test that non-friends cannot view comments on friends-only entries"""
         self.client.force_authenticate(user=self.user3)  # Non-friend
-        
-        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comments/'
         response = self.client.get(url)
-        
         self.assertEqual(response.status_code, 403)
+        self.assertIn('error', response.data)
         self.assertEqual(response.data['error'], 'Only friends can view comments on friends-only entries')
 
 
@@ -1392,7 +1389,52 @@ And a landscape:
     def test_create_image_entry(self):
         """User Story: As an author, entries I create can be images."""
         # Image US
-        pass
+        image_path = 'wiki/static/images/dog.jpg'
+        with open(image_path, 'rb') as image_file:
+            uploaded_image = SimpleUploadedFile(
+                name="dog.jpg",  
+                content=image_file.read(), 
+                content_type="image/jpeg"  
+            )
+        entry = Entry.objects.create(
+            title='Dog Image Entry',
+            content="This is a test entry with an image.",
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="image/jpeg",  
+        )
+        entry.image.save(uploaded_image.name, uploaded_image, save=True)
+        url = f'{BASE_PATH}/entry/{entry.serial}/image/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/jpeg')
+
+    # US 2.7: As an author, entries I create can be images, so that I can share pictures and drawings.
+    # Same test but with the author and entry api endpoint
+    def test_create_image_author(self):
+        """User Story: As an author, entries I create can be images."""
+        # Image US
+        image_path = 'wiki/static/images/dog.jpg'
+        with open(image_path, 'rb') as image_file:
+            uploaded_image = SimpleUploadedFile(
+                name="dog.jpg",  
+                content=image_file.read(), 
+                content_type="image/jpeg"  
+            )
+        entry = Entry.objects.create(
+            title='Dog Image Entry',
+            content="This is a test entry with an image.",
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="image/jpeg",  
+        )
+        entry.image.save(uploaded_image.name, uploaded_image, save=True)
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entry/{entry.serial}/image/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/jpeg')
 
     # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
     def test_delete_entry(self):

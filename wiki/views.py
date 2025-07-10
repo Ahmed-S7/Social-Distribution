@@ -56,6 +56,52 @@ class RemotePostReceiver(APIView):
 
 
 @api_view(['GET'])
+def user_wiki_api(request, username):
+    if request.user.username != username or request.user.is_superuser:
+        raise PermissionDenied("You are not allowed to view this page.")
+    current_author = get_object_or_404(Author, user=request.user)
+
+    # Followed
+    followed_ids = AuthorFollowing.objects.filter(
+        follower=current_author
+    ).values_list('following', flat=True)
+
+    # Friends
+    friend_pairs = AuthorFriend.objects.filter(
+        Q(friending=current_author) | Q(friended=current_author)
+    ).values_list('friending', 'friended')
+
+    friend_ids = set()
+    for friending_id, friended_id in friend_pairs:
+        if friending_id != current_author.id:
+            friend_ids.add(friending_id)
+        if friended_id != current_author.id:
+            friend_ids.add(friended_id)
+
+    entries = Entry.objects.filter(
+        ~Q(visibility='DELETED') & (
+            Q(visibility='PUBLIC') |
+            Q(author=current_author) |
+            Q(visibility='FRIENDS', author__id__in=friend_ids) |
+            Q(visibility='UNLISTED', author__id__in=followed_ids)
+        )
+    ).order_by('-created_at')
+    serialized_entries = []
+    for entry in entries:
+        entry_data = {
+            "title": entry.title,
+            "content": entry.content,
+            "author": entry.author.displayName,
+            "visibility": entry.visibility,
+            "created_at": entry.created_at.isoformat(),  # Use ISO 8601 format for timestamp
+            "serial": str(entry.serial),
+            "contentType": entry.contentType,
+        }
+        serialized_entries.append(entry_data)
+
+    # Return the entries as a JSON response
+    return Response(serialized_entries)
+    
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
@@ -89,16 +135,6 @@ def user_wiki(request, username):
             Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
-    if request.accepted_renderer.format == 'json':
-        serialized_entries = [{
-            "title": entry.title,
-            "content": entry.content,
-            "author": entry.author.displayName,
-            "visibility": entry.visibility,
-            "created_at": entry.created_at.isoformat(),
-            "serial": str(entry.serial)
-        } for entry in entries]
-        return Response(serialized_entries)
     #return render(request, 'wiki.html', {'entries': entries})
     rendered_entries = []
     for entry in entries:
@@ -352,6 +388,8 @@ def get_or_edit_author_api(request, author_serial):
         - returns error details if they arise    
     
     """
+    if 'http' in author_serial:
+        author_serial = author_serial.split('/')[-1]
     author = get_object_or_404(Author, serial=author_serial)
     
     if request.method=="GET":
@@ -745,7 +783,7 @@ def get_profile_api(request, username):
     if request.method == 'GET':
         author_data = AuthorSerializer(author).data
         entries = Entry.objects.filter(author=author).order_by('-created_at')
-        entry_data = EntrySerializer(entries, many=True).data
+        entry_data = EntrySerializer(entries, many=True, context={'request': request}).data
         author_data['entries'] = entry_data
         return Response(author_data, status=status.HTTP_200_OK)
         
@@ -1866,9 +1904,13 @@ def get_author_comments_api(request, author_serial):
 
 
 @api_view(['GET'])
-def get_entry_image_api(request, entry_serial):
+def get_entry_image_api(request, entry_fqid):
+    if 'http' in entry_fqid:
+        entry_serial = entry_fqid.split('/')[-1]
+    else:
+        entry_serial = entry_fqid
     entry = get_object_or_404(Entry, serial=entry_serial)
-    if not entry.image:
+    if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
     image_path = entry.image.path
     mime_type, _ = mimetypes.guess_type(image_path) # check what type of image it is
@@ -1894,28 +1936,6 @@ def get_author_image_api(request, author_serial, entry_serial):
 
 @api_view(['GET'])
 def get_author_likes_api(request, author_serial):
-    """
-    GET /api/authors/{author_serial}/liked
-    Get all things liked by a specific author.
-
-    WHEN
-    - View what an author has liked
-    - See an author's activity and preferences
-   
-    HOW
-    1. Send a GET request to /api/authors/{author_serial}/liked/
-
-    WHY
-    - Understand what content an author appreciates
-    - Social discovery and engagement
-
-    WHY NOT
-    - Don't use if the author doesn't exist
-    - May have privacy implications
-
-    Response Fields:
-        Returns a likes object with all likes by the author
-    """
     author = get_object_or_404(Author, serial=author_serial)
     
     # Get all likes by this author (both entry likes and comment likes)
@@ -1938,7 +1958,7 @@ def get_author_likes_api(request, author_serial):
     
     return Response({
         "type": "likes",
-        "web": f"{author.web}/liked",
+        "web": f"{author.web}",
         "id": f"{author.id}/liked",
         "page_number": 1,
         "size": 50,
@@ -1949,28 +1969,6 @@ def get_author_likes_api(request, author_serial):
 
 @api_view(['GET'])
 def get_single_like_api(request, author_serial, like_serial):
-    """
-    GET /api/authors/{author_serial}/liked/{like_serial}
-    Get a single like by its serial number.
-
-    WHEN
-    - View details of a specific like
-    - Get information about who liked what and when
-   
-    HOW
-    1. Send a GET request to /api/authors/{author_serial}/liked/{like_serial}/
-
-    WHY
-    - Get detailed information about a specific like
-    - Verify like existence and details
-
-    WHY NOT
-    - Don't use if the like doesn't exist
-    - May have privacy implications
-
-    Response Fields:
-        Returns a single like object with author, published, id, and object fields
-    """
     author = get_object_or_404(Author, serial=author_serial)
     
     # Try to find the like in both entry likes and comment likes
