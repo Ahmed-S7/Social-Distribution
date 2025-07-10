@@ -1401,6 +1401,7 @@ And a landscape:
         response = self.client.post(reverse('wiki:delete_entry', args=[entry.serial]))
         entry.refresh_from_db()
         self.assertTrue(entry.is_deleted)
+        
 
     # US 2.10: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to, so I know remote users don't keep seeing my deleted entries forever.
     def test_resend_deleted_entry_to_remote(self):
