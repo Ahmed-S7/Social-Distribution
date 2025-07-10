@@ -1914,28 +1914,6 @@ def get_author_image_api(request, author_serial, entry_serial):
 
 @api_view(['GET'])
 def get_author_likes_api(request, author_serial):
-    """
-    GET /api/authors/{author_serial}/liked
-    Get all things liked by a specific author.
-
-    WHEN
-    - View what an author has liked
-    - See an author's activity and preferences
-   
-    HOW
-    1. Send a GET request to /api/authors/{author_serial}/liked/
-
-    WHY
-    - Understand what content an author appreciates
-    - Social discovery and engagement
-
-    WHY NOT
-    - Don't use if the author doesn't exist
-    - May have privacy implications
-
-    Response Fields:
-        Returns a likes object with all likes by the author
-    """
     author = get_object_or_404(Author, serial=author_serial)
     
     # Get all likes by this author (both entry likes and comment likes)
@@ -1958,7 +1936,7 @@ def get_author_likes_api(request, author_serial):
     
     return Response({
         "type": "likes",
-        "web": f"{author.web}/liked",
+        "web": f"{author.web}",
         "id": f"{author.id}/liked",
         "page_number": 1,
         "size": 50,
@@ -1969,28 +1947,6 @@ def get_author_likes_api(request, author_serial):
 
 @api_view(['GET'])
 def get_single_like_api(request, author_serial, like_serial):
-    """
-    GET /api/authors/{author_serial}/liked/{like_serial}
-    Get a single like by its serial number.
-
-    WHEN
-    - View details of a specific like
-    - Get information about who liked what and when
-   
-    HOW
-    1. Send a GET request to /api/authors/{author_serial}/liked/{like_serial}/
-
-    WHY
-    - Get detailed information about a specific like
-    - Verify like existence and details
-
-    WHY NOT
-    - Don't use if the like doesn't exist
-    - May have privacy implications
-
-    Response Fields:
-        Returns a single like object with author, published, id, and object fields
-    """
     author = get_object_or_404(Author, serial=author_serial)
     
     # Try to find the like in both entry likes and comment likes
