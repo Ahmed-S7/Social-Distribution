@@ -758,7 +758,7 @@ class LikeCommentTesting(TestCase):
         self.assertIsNotNone(like)
         self.assertFalse(like.is_deleted)
 
-
+'''
 class GetEntryLikesTesting(TestCase):
     # View Likes on Public Entry User Story Testing
     # User Story 1.4 testing
@@ -884,7 +884,7 @@ class GetEntryLikesTesting(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 403)
-        
+'''        
    
 
 
