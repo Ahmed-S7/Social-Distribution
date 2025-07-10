@@ -98,7 +98,7 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
     host = serializers.CharField()
     displayName = serializers.CharField()
     web = serializers.CharField()
-    github = serializers.CharField()
+    github = serializers.SerializerMethodField()
     profileImage = serializers.SerializerMethodField()
 
     def get_type(self, obj):
@@ -108,7 +108,8 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
         if obj.profileImage:
             return obj.profileImage.url if hasattr(obj.profileImage, 'url') else obj.profileImage
         return None
-
+    def get_github(self,obj):
+        return obj.github or None
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
 
@@ -222,7 +223,7 @@ class EntrySerializer(serializers.ModelSerializer):
     id = serializers.CharField()
     web = serializers.CharField()
     title = serializers.CharField()
-    description = serializers.CharField()
+    description = serializers.SerializerMethodField()
     contentType = serializers.CharField()
     content = serializers.CharField()
     author = AuthorSummarySerializer()
@@ -241,6 +242,9 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_type(self, obj):
         return 'entry'
 
+    def get_description(self,obj):
+        return f"entry by {obj.author}, titled: '{obj.title}"
+    
     content = serializers.SerializerMethodField()
 
     def get_content(self, obj):
@@ -277,4 +281,13 @@ class EntrySerializer(serializers.ModelSerializer):
             'src': [LikeSummarySerializer(like).data for like in likes]
         }
     
+    def update(self, instance, validated_data):
+        validated_data.pop('author', None)
 
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+        
+        

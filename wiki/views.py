@@ -1291,18 +1291,20 @@ def edit_entry(request, entry_serial):
         visibility = request.POST.get('visibility')
         if visibility in dict(Entry.VISIBILITY_CHOICES):
             entry.visibility = visibility
-        if title and content:
+        if title:
             entry.title = title
-            entry.content = content
+            if content:
+                entry.content = content
             if image:
                 entry.image = image
             if request.POST.get('remove_image'):
                entry.image.delete(save=False)
                entry.image = None
             entry.save()
+            print(entry.serial)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
-            return HttpResponse("Both title and content are required.")
+            return HttpResponse("Title required.")
         
     return render(request, 'edit_entry.html', {'entry': entry})
 
@@ -1324,21 +1326,21 @@ def entry_detail_api(request, entry_serial, author_serial):
     GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
     PUT /api/authors/<author_serial>/entries/<entry_serial>/ — Update a single entry (only by the author)
     """
+   
     author = get_object_or_404(Author, serial=author_serial)
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
+    entry = get_object_or_404(Entry, serial=entry_serial)
 
     if request.method == 'GET':
         serializer = EntrySerializer(entry)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    #PUT
     serializer = EntrySerializer(entry, data=request.data, partial=True)
-    if serializer.is_valid():
+    if serializer and serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 @require_POST
 @login_required
