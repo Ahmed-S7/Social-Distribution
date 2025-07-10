@@ -225,7 +225,7 @@ VISIBILITY_CHOICES = [
     ]
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
-    id = serializers.CharField(required=True, max_length=150)
+    id = serializers.SerializerMethodField()
     web = serializers.SerializerMethodField()
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
@@ -243,6 +243,12 @@ class EntrySerializer(serializers.ModelSerializer):
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
             'author', 'comments', 'likes', 'published', 'visibility'
         ]
+    def get_id(self, obj):
+        request = self.context.get('request')
+        if request is None:
+            return None
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.serial}"
 
     def get_type(self, obj):
         return 'entry'
@@ -264,14 +270,14 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
 
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]
         total_comments = obj.comments.filter(is_deleted=False).count()
 
         return {
             "type": "comments",
-            "web": f"{host}/authors/{author_id}/entries/{entry_id}",
+            "web": f"{host}/entry/{entry_id}/",
             "id": f"{host}/api/authors/{author_id}/entries/{entry_id}/comments",
             "page_number": 1,
             "size": 5,
@@ -284,7 +290,7 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
 
         likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
         total_likes = obj.likes.filter(is_deleted=False).count()
