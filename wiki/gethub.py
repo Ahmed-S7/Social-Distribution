@@ -1,6 +1,8 @@
 import requests
 from .models import Entry, Author
 def create_entries(author: Author):
+    if author.github is None or author.github == '':
+        return
     github_url = author.github
     #Parse url to get username
     if github_url[-1] == '/':
