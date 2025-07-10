@@ -32,6 +32,7 @@ import base64
 import markdown
 from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
+from .gethub import create_entries
 # Create your views here.
 
 
@@ -63,6 +64,9 @@ def user_wiki(request, username):
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
+
+    #Add Github Entries to feed
+    create_entries(current_author)
 
     # Followed
     followed_ids = AuthorFollowing.objects.filter(
