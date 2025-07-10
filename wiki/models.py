@@ -217,7 +217,7 @@ class Entry(BaseModel):
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
-    web = models.URLField(blank=True, null=False, default=None)
+    web = models.URLField(blank=True, null=True, default=None)
     
     def get_entry_url(self):
         return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"

@@ -225,7 +225,7 @@ VISIBILITY_CHOICES = [
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     id = serializers.CharField(required=True, max_length=150)
-    web = serializers.CharField(required=True,max_length=150)
+    web = serializers.CharField(max_length=150)
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
     contentType = serializers.CharField( default="text/plain")
