@@ -225,7 +225,7 @@ VISIBILITY_CHOICES = [
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     id = serializers.CharField(required=True, max_length=150)
-    web = serializers.CharField(max_length=150)
+    web = serializers.SerializerMethodField()
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
     contentType = serializers.CharField( default="text/plain")
@@ -245,7 +245,8 @@ class EntrySerializer(serializers.ModelSerializer):
 
     def get_type(self, obj):
         return 'entry'
-
+    def get_web(self,obj):
+        return obj.author.web
     def get_description(self,obj):
         return f"entry by {obj.author}, titled: '{obj.title}"
     

@@ -1325,6 +1325,7 @@ def delete_entry(request, entry_serial):
 def entry_detail_api(request, entry_serial, author_serial):
     """
     GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    
     PUT /api/authors/<author_serial>/entries/<entry_serial>/ — Update a single entry (only by the author)
     """
    
