@@ -1610,55 +1610,55 @@ def get_entry_likes_api(request, author_serial, entry_serial):
     Request Fields:
         None
 
-    Response Fields:
-        entry_id (string): UUID of the entry
-            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
-            - Purpose: Identify the entry being queried
-        entry_title (string): Title of the entry
-            - Example: "My Amazing Post"
-            - Purpose: Display context for the likes
-        total_likes (integer): Total number of likes on the entry
-            - Example: 5
-            - Purpose: Quick summary of engagement
-        likes[] (array): Array of like objects
-            - Example: [{"id": 1, "author": {...}}]
-            - Purpose: list with detaild of who liked the entry
-
     Example Usage:
 
         # Example 1: Getting likes for a public entry
-        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
+        GET 'api/authors/{author_serial}/entry/<uuid:entry_serial>/likes/
 
-        Response:
+Response:
+{
+ 
+    "type": "likes",
+    "web": "http://s25-project-white/authors/201fc5b1-38f8-451d-8807-fbe326fd0f5e/entries/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b",
+    "id": "http://s25-project-white/entry/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b/likes",
+    "page_number": 1,
+    "size": 50,
+    "count": 4,
+    "src": [
         {
-            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
-            "entry_title": "title",
-            "total_likes": 2,
-            "likes": [
-                {
-                    "id": 1,
-                    "author": {
-                        "id": "http://s25-project-white/api/authors/test1",
-                        "displayName": "test_author1"
-                    }
-                },
-                {
-                    "id": 2,
-                    "author": {
-                        "id": "http://s25-project-white/api/authors/test2",
-                        "displayName": "test_author2"
-                    }
-                }
-            ]
-        }
-
-        # Example 2: Getting likes for a friends-only entry
-        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/likes/
-
-        Response:
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
+                "host": "http://s25-project-white/api/",
+                "displayName": "AB",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
+                "github": null,
+                "profileImage": "/media/profile_images/90s_background_e8A8ndq.jpg"
+            },
+            "published": "2025-07-10T11:56:34+00:00",
+            "id": "http://localhost/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80/liked/43",
+            "object": "http://localhost/api/authors/201fc5b1-38f8-451d-8807-fbe326fd0f5e/entries/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b"
+        },
         {
-            "error": "Entry is not public"
+            "type": "like",
+            "author": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/e025f287-059d-47ae-8201-e6be03082102",
+                "host": "http://s25-project-white/api/",
+                "displayName": "author_2",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/e025f287-059d-47ae-8201-e6be03082102",
+                "github": null,
+                "profileImage": "/media/profile_images/90s_background.jpg"
+            },
+            "published": "2025-07-10T05:15:36+00:00",
+            "id": "http://localhost/api/authors/e025f287-059d-47ae-8201-e6be03082102/liked/33",
+            "object": "http://localhost/api/authors/201fc5b1-38f8-451d-8807-fbe326fd0f5e/entries/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b"
         }
+       }
+     ]
+    }
+
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     serialized_entry = EntrySerializer(entry)
