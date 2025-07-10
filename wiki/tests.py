@@ -1530,3 +1530,233 @@ class NodeManagementTestCase(TestCase):
         response = self.client.post(self.login_api_url, login_data, format='json')
         self.assertEqual(response.status_code, 200)
 
+
+class SingleLikeAPITesting(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create users and authors
+        self.user = User.objects.create_user(
+            username='test_author',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_author2',
+            password='test_password2'
+        )
+        
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage='https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        
+        # Create an entry
+        self.entry = Entry.objects.create(
+            title='Test Entry',
+            content='This is a test entry.',
+            author=self.author2,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        # Create a comment
+        self.comment = Comment.objects.create(
+            content='Test comment',
+            author=self.author2,
+            entry=self.entry,
+            contentType='text/plain'
+        )
+        
+        # Create likes
+        self.entry_like = Like.objects.create(
+            user=self.author,
+            entry=self.entry
+        )
+        
+        self.comment_like = CommentLike.objects.create(
+            user=self.author,
+            comment=self.comment
+        )
+
+    def test_get_single_entry_like(self):
+        """Test getting a single entry like by its serial"""
+        url = f'{BASE_PATH}/authors/{self.author.serial}/liked/{self.entry_like.id}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'like')
+        self.assertEqual(response.data['author']['displayName'], 'test_author')
+        self.assertIn('published', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('object', response.data)
+
+    def test_get_single_comment_like(self):
+        """Test getting a single comment like by its serial"""
+        url = f'{BASE_PATH}/authors/{self.author.serial}/liked/{self.comment_like.id}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'like')
+        self.assertEqual(response.data['author']['displayName'], 'test_author')
+        self.assertIn('published', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('object', response.data)
+
+    def test_get_nonexistent_like(self):
+        """Test getting a like that doesn't exist"""
+        url = f'{BASE_PATH}/authors/{self.author.serial}/liked/99999/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('error', response.data)
+
+    def test_get_like_wrong_author(self):
+        """Test getting a like with wrong author serial"""
+        url = f'{BASE_PATH}/authors/{self.author2.serial}/liked/{self.entry_like.id}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 404)
+        self.assertIn('error', response.data)
+
+
+class AuthorLikesAPITesting(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create users and authors
+        self.user = User.objects.create_user(
+            username='test_author',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_author2',
+            password='test_password2'
+        )
+        
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage='https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        
+        # Create entries
+        self.entry1 = Entry.objects.create(
+            title='Test Entry 1',
+            content='This is test entry 1.',
+            author=self.author2,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        self.entry2 = Entry.objects.create(
+            title='Test Entry 2',
+            content='This is test entry 2.',
+            author=self.author2,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        # Create comments
+        self.comment1 = Comment.objects.create(
+            content='Test comment 1',
+            author=self.author2,
+            entry=self.entry1,
+            contentType='text/plain'
+        )
+        
+        self.comment2 = Comment.objects.create(
+            content='Test comment 2',
+            author=self.author2,
+            entry=self.entry2,
+            contentType='text/plain'
+        )
+        
+        # Create likes by the first author
+        self.entry_like1 = Like.objects.create(
+            user=self.author,
+            entry=self.entry1
+        )
+        
+        self.entry_like2 = Like.objects.create(
+            user=self.author,
+            entry=self.entry2
+        )
+        
+        self.comment_like1 = CommentLike.objects.create(
+            user=self.author,
+            comment=self.comment1
+        )
+        
+        self.comment_like2 = CommentLike.objects.create(
+            user=self.author,
+            comment=self.comment2
+        )
+
+    def test_get_author_likes_success(self):
+        """Test getting all likes by an author"""
+        url = f'{BASE_PATH}/authors/{self.author.serial}/liked/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'likes')
+        self.assertIn('web', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('page_number', response.data)
+        self.assertIn('size', response.data)
+        self.assertIn('count', response.data)
+        self.assertIn('src', response.data)
+        
+        # Should have 4 likes total (2 entry likes + 2 comment likes)
+        self.assertEqual(response.data['count'], 4)
+        self.assertEqual(len(response.data['src']), 4)
+        
+        # Check that all likes have the correct format
+        for like in response.data['src']:
+            self.assertEqual(like['type'], 'like')
+            self.assertIn('author', like)
+            self.assertIn('published', like)
+            self.assertIn('id', like)
+            self.assertIn('object', like)
+            self.assertEqual(like['author']['displayName'], 'test_author')
+
+    def test_get_author_likes_empty(self):
+        """Test getting likes for an author with no likes"""
+        url = f'{BASE_PATH}/authors/{self.author2.serial}/liked/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'likes')
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(len(response.data['src']), 0)
+

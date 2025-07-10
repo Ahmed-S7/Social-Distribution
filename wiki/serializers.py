@@ -112,11 +112,10 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
         return obj.github or None
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
-
-    author = AuthorSerializer(source='user')
-    published = serializers.DateTimeField(source='entry.created_at')
-    id = serializers.CharField()
-    object = serializers.CharField(source='entry.id')
+    author = AuthorSummarySerializer(source='user')
+    published = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    object = serializers.SerializerMethodField()
 
     def get_type(self, obj):
         return 'like'
@@ -129,7 +128,7 @@ class LikeSummarySerializer(serializers.Serializer):
         request = self.context.get('request')
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
-        # Assuming obj.user is an Author with an .id
+        # Extract author UUID from the user's id URL
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
         return f"{host}/api/authors/{author_id}/liked/{obj.id}"
 
@@ -137,7 +136,7 @@ class LikeSummarySerializer(serializers.Serializer):
         request = self.context.get('request')
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
-        # Assuming obj.entry is the liked entry with a .serial or .id
+        # Extract author UUID from the entry's author id URL
         entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
         entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
         return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
