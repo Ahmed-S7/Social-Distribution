@@ -261,31 +261,45 @@ class EntrySerializer(serializers.ModelSerializer):
         return obj.content
 
     def get_comments(self, obj):
+        author_id = obj.author.serial
+        entry_id = obj.serial
+        request = self.context.get("request")
+        host = request.build_absolute_uri("/").rstrip("/")
+
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]
         total_comments = obj.comments.filter(is_deleted=False).count()
+
         return {
-            'type': 'comments',
-            'web': obj.web,
-            'id': f"{obj.id}/comments",
-            'page_number': 1,
-            'size': 5,
-            'count': total_comments,
-            'src': [CommentSummarySerializer(comment).data for comment in comments]
+            "type": "comments",
+            "web": f"{host}/authors/{author_id}/entries/{entry_id}",
+            "id": f"{host}/api/authors/{author_id}/entries/{entry_id}/comments",
+            "page_number": 1,
+            "size": 5,
+            "count": total_comments,
+            "src": [CommentSummarySerializer(comment).data for comment in comments]
         }
 
+
     def get_likes(self, obj):
-    
-        likes = obj.likes.order_by('-id')[:50]
-        total_likes = obj.likes.count()
+        author_id = obj.author.serial
+        entry_id = obj.serial
+        request = self.context.get("request")
+        host = request.build_absolute_uri("/").rstrip("/")
+
+        likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
+        total_likes = obj.likes.filter(is_deleted=False).count()
+
         return {
-            'type': 'likes',
-            'web': obj.web,
-            'id': f"{obj.id}/likes",
-            'page_number': 1,
-            'size': 50,
-            'count': total_likes,
-            'src': [LikeSummarySerializer(like).data for like in likes]
+            "type": "likes",
+            "web": f"{host}/authors/{author_id}/entries/{entry_id}",
+            "id": f"{host}/api/authors/{author_id}/entries/{entry_id}/likes",
+            "page_number": 1,
+            "size": 50,
+            "count": total_likes,
+            "src": [LikeSummarySerializer(like, context=self.context).data for like in likes]
         }
+
+
     
     def update(self, instance, validated_data):
         validated_data.pop('author', None)

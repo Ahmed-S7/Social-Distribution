@@ -1350,11 +1350,12 @@ def entry_detail_api(request, entry_serial, author_serial):
    
 
     if request.method == 'GET':
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
-    #PUT      
-    serializer = EntrySerializer(entry, data=request.data, partial=True)
+    #PUT
+    serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
     if serializer and serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
