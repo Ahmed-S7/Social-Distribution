@@ -532,7 +532,7 @@ def cancel_follow_request(request, author_serial, request_id):
     '''
     
     requested_author_serial = author_serial
-    print(request_id)
+    #print(request_id)
     try:
         #retrieve the current follow request
         active_request = FollowRequest.objects.get(id=request_id)
@@ -925,8 +925,8 @@ def add_local_follower(request, author_serial, new_follower_serial):
                     
                 #check if the new follower has an existing follow with the current author
                 for follower in followers_list:
-                    print(follower.serial)
-                    print(new_follower_serial)
+                    #print(follower.serial)
+                    #print(new_follower_serial)
                     if str(follower.serial) == new_follower_serial:
                         return Response({"Error": f"{pending_follower} already follows {current_author}"}, status=status.HTTP_400_BAD_REQUEST)
                 
