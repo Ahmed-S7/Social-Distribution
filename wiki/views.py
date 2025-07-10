@@ -1888,11 +1888,7 @@ def get_author_comments_api(request, author_serial):
 
 
 @api_view(['GET'])
-def get_entry_image_api(request, entry_fqid):
-    if 'http' in entry_fqid:
-        entry_serial = entry_fqid.split('/')[-1]
-    else:
-        entry_serial = entry_fqid
+def get_entry_image_api(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
