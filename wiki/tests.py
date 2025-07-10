@@ -968,27 +968,23 @@ class FriendsOnlyCommentsTesting(TestCase):
     def test_friends_can_view(self):
         """Test that friends can view comments on friends-only entries"""
         self.client.force_authenticate(user=self.user2)  # Friend
-        
-        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comments/'
         response = self.client.get(url)
-        
         self.assertEqual(response.status_code, 200)
-        # The API now returns an array of comment objects directly
-        self.assertEqual(len(response.data), 1)  # Only friend's comment visible
-        
+        # The API returns a dict with 'src' key for comments
+        self.assertEqual(len(response.data['src']), 1)  # Only friend's comment visible
         # Verify only friend's comment is visible
-        comment = response.data[0]
+        comment = response.data['src'][0]
         self.assertEqual(comment['comment'], 'This is a comment from a friend.')
         self.assertEqual(comment['author']['displayName'], 'test_author2')
 
     def test_non_friend_cannot_view(self):
         """Test that non-friends cannot view comments on friends-only entries"""
         self.client.force_authenticate(user=self.user3)  # Non-friend
-        
-        url = f'{BASE_PATH}/entry/{self.friends_entry.serial}/comments/view/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comments/'
         response = self.client.get(url)
-        
         self.assertEqual(response.status_code, 403)
+        self.assertIn('error', response.data)
         self.assertEqual(response.data['error'], 'Only friends can view comments on friends-only entries')
 
 
