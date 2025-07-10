@@ -579,7 +579,7 @@ def unfollow_profile(request, author_serial, following_id):
         current_author = Author.objects.get(user=request.user)
         #print("The request being changed is:", active_request)
     except Author.DoesNotExist:
-        print(f"{following_id} is not a valid existing following id")
+        #print(f"{following_id} is not a valid existing following id")
         return redirect(reverse("wiki:view_authors"))
 
     
@@ -1291,20 +1291,21 @@ def edit_entry(request, entry_serial):
         visibility = request.POST.get('visibility')
         if visibility in dict(Entry.VISIBILITY_CHOICES):
             entry.visibility = visibility
-        if title:
+        if (title and content) or (title and image):
             entry.title = title
             if content:
                 entry.content = content
             if image:
                 entry.image = image
+                print(image)
             if request.POST.get('remove_image'):
                entry.image.delete(save=False)
                entry.image = None
             entry.save()
-            print(entry.serial)
+            #print(entry.serial)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
-            return HttpResponse("Title required.")
+            return HttpResponse("Title and content required.")
         
     return render(request, 'edit_entry.html', {'entry': entry})
 

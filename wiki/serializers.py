@@ -217,20 +217,25 @@ class CommentSummarySerializer(serializers.Serializer):
             "src": [CommentLikeSummarySerializer(like, context=self.context).data for like in likes[:50]]
         }
 
-
+VISIBILITY_CHOICES = [
+        ('PUBLIC', 'Public'),
+        ('FRIENDS', 'Friends Only'),
+        ('UNLISTED', 'Unlisted'),
+        ('DELETED', 'Deleted'),
+    ]
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
-    id = serializers.CharField()
-    web = serializers.CharField()
-    title = serializers.CharField()
+    id = serializers.CharField(required=True, max_length=150)
+    web = serializers.CharField(required=True,max_length=150)
+    title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
-    contentType = serializers.CharField()
-    content = serializers.CharField()
+    contentType = serializers.CharField( default="text/plain")
+    content = serializers.CharField(required=True)
     author = AuthorSummarySerializer()
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     published = serializers.DateTimeField(source='created_at')
-    visibility = serializers.CharField()
+    visibility = serializers.ChoiceField(required=True, choices=VISIBILITY_CHOICES)
 
     class Meta:
         model = Entry
@@ -283,7 +288,6 @@ class EntrySerializer(serializers.ModelSerializer):
     
     def update(self, instance, validated_data):
         validated_data.pop('author', None)
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
