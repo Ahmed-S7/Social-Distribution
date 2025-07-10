@@ -822,7 +822,7 @@ class GetEntryLikesTesting(TestCase):
         Like.objects.create(entry=self.public_entry, user=self.author2)
         Like.objects.create(entry=self.public_entry, user=self.author3)
         
-        url = f'{BASE_PATH}/entry/{self.public_entry.serial}/likes/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.public_entry.serial}/likes/'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)

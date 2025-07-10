@@ -1641,7 +1641,8 @@ def like_comment_api(request, comment_id):
             "message": "You have already liked this comment",
             "likes_count": comment.likes.count()
         }, status=status.HTTP_400_BAD_REQUEST)
-
+        
+@login_required
 @api_view(['GET'])
 def get_entry_likes_api(request, author_serial, entry_serial):
     """
