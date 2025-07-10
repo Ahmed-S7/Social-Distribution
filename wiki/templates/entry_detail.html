@@ -6,6 +6,7 @@
     <title>Entry Details</title>
     <link rel="stylesheet" href="{% static 'wiki/entry_detail.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <style>
       .top-nav-btns .btn { margin-left: 0.5em; }
       .card-entry-detail { max-width: 36em; margin: 2em auto; box-shadow: 0 0.125em 0.375em rgba(0,0,0,0.12); }
@@ -24,23 +25,31 @@
     </style>
 </head>
 <body>
+  {% if request.user.is_authenticated%}
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4">
+    <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
+  </div>     
+  {%endif%}
+  <div style="height:3.5em"></div>
   <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div></div>
-      {% if request.user.is_authenticated%}
-      <div class="top-nav-btns">
-        <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-outline-primary">Back to Profile</a>
-        <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-secondary">Back to Stream</a>
-      </div>
-      {%endif%}
-    </div>
+
+
     <div class="card card-entry-detail">
       <div class="card-body">
         <h2 class="entry_title text-center mb-3">{{ entry.title }}</h2>
         {% if entry.image %}
           <img class="entry-image" src="{{ entry.image.url }}" alt="Post image">
         {% endif %}
-        <div class="entry_content text-center">{{ entry.get_formatted_content|safe }}</div>
+
+
+        <div class="entry_content text-center">
+          {% if entry.contentType|slice:":5" == "image" %}
+            <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" style="max-width: 100%; height: auto;" />
+          {% else %}
+            {{ rendered_content|safe }}
+          {% endif %}
+        </div>
         <p class="entry_author text-center"><em>By {{ entry.author.displayName }}</em></p>
         <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
           <form method="post" action="{% url 'wiki:like-entry' entry.serial %}" class="m-0 p-0">

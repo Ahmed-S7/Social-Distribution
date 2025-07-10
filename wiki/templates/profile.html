@@ -25,28 +25,22 @@
   
 </style>
 
+<body>
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4">
+    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
+    {% if request.user.is_authenticated and request.user.username == author.displayName %}
+      <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
+        {% csrf_token %}
+        <button class="btn btn-logout-outline ms-2">Logout</button>
+      </form>
+    {% endif %}
+  </div>
+  <div style="height:5.5em"></div>
+  <div class="container mt-4">
 
-    
 <section class="author_profile_with_entries">
-                 
-
     <section class="author_profile_with_description">
-
-        <!-- Default buttons, as per necessary tags -->
-        <div class="default_buttons d-flex justify-content-between align-items-center p-2" style="background:#89c6e1;">
-          <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
-          {% if request.user.is_authenticated %}
-            {% if request.user.username == author.displayName %}
-              <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
-                {% csrf_token %}
-                <button class="btn btn-logout-outline ms-2">Logout</button>
-              </form>
-            {% endif %}
-          {% endif %}
-        </div>
-
-    
-            <section class="pic_name_followers_entries">
+        <section class="pic_name_followers_entries">
 
                     
                     <section class="profile_pic_and_name">
@@ -127,10 +121,8 @@
             {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                 <ul class="entry_list">
-                    {% for entry in entries %}
-                        <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                                
-                        <div class="post-card">
+                    {% for entry, rendered in entries %}   
+                     <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
                         <a href="{% url 'wiki:entry_detail' entry.serial %}">
                             <div class="post-header">
@@ -151,17 +143,32 @@
                     
                                 </div>
                             {% endif %} 
-                            <div class="post-content">{{ entry.get_formatted_content|safe }}</div>
+
+                            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                               <div class="post-content text-center">
+                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                               </div>
+                            {% elif entry.contentType == "text/markdown" %}
+                               <div class="post-content markdown-content">
+                                   {{ rendered|safe }}
+                               </div>
+                            {% else %}
+                               <div class="post-content">
+                                   {{ entry.content }}
+                               </div>
+                            {% endif %}
+
+
                             </a>
                                 <div class="post-footer">
                                         <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
                                             {% csrf_token %}
                                             <input type="hidden" name="liked_from_profile" value="true">
-                                            <button type="submit" class="like-btn">❤️{{ entry.likes.count}} </button>
+                                            <button type="submit" class="like-btn like-btn-custom border-0 bg-transparent">❤️{{ entry.likes.count}} </button>
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="comment-btn">💬 Comment ({{ entry.comments.count }})</a>
+                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
                                 </div>
                             </div>
                     {% endfor %}
@@ -180,7 +187,7 @@
                <div class="profile_buttons d-flex justify-content-between align-items-center p-2" style="background:#89c6e1; position:fixed; bottom:0; left:0; width:100%; z-index:1000;">
                         <a href="{% url 'wiki:check_follow_requests' request.user.username %}" class="btn btn-bottom-primary flex-fill mx-1">Check Follow Requests</a>
                         <a href="{% url 'wiki:view_authors' %}" class="btn btn-bottom-primary flex-fill mx-1">Browse Authors</a>
-                        <a href="{% url 'wiki:create_entry' %}" class="btn btn-bottom-primary flex-fill mx-1">Add Entry</a>
+                        <a href="{% url 'wiki:create_entry' %}" class="btn btn-bottom-primary flex-fill mx-1">Create New Entry</a>
                         <a href="{% url 'wiki:edit_profile' user.username %}" class="btn btn-bottom-primary flex-fill mx-1">Edit Profile</a>
                 </div>
         {% endif %}

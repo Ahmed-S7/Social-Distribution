@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Page, Like, RemotePost, Author, AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry, Comment, CommentLike
 from django.contrib.auth.models import User
 from django.utils.timezone import localtime
+import base64
 
 class PageSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField()
@@ -110,10 +111,11 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
 
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
-    author = AuthorSummarySerializer(source='user')
-    published = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
-    object = serializers.SerializerMethodField()
+
+    author = AuthorSerializer(source='user')
+    published = serializers.DateTimeField(source='entry.created_at')
+    id = serializers.CharField()
+    object = serializers.CharField(source='entry.id')
 
     def get_type(self, obj):
         return 'like'
@@ -239,6 +241,15 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_type(self, obj):
         return 'entry'
 
+    content = serializers.SerializerMethodField()
+
+    def get_content(self, obj):
+        if obj.contentType.startswith("image/") and obj.image:
+            with obj.image.open('rb') as img_file:
+                encoded = base64.b64encode(img_file.read()).decode('utf-8')
+                return encoded
+        return obj.content
+
     def get_comments(self, obj):
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]
         total_comments = obj.comments.filter(is_deleted=False).count()
@@ -253,8 +264,9 @@ class EntrySerializer(serializers.ModelSerializer):
         }
 
     def get_likes(self, obj):
-        likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
-        total_likes = obj.likes.filter(is_deleted=False).count()
+    
+        likes = obj.likes.order_by('-id')[:50]
+        total_likes = obj.likes.count()
         return {
             'type': 'likes',
             'web': obj.web,
@@ -265,3 +277,4 @@ class EntrySerializer(serializers.ModelSerializer):
             'src': [LikeSummarySerializer(like).data for like in likes]
         }
     
+

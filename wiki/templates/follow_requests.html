@@ -10,19 +10,20 @@
   }
 </style>
 
-<!--THESE ARE THE DEFAULT BUTTONS THAT EVERY PAGE THAT ISNT A MAIN PAGE SHOULD HAVE-->
-<div class="default_buttons d-flex justify-content-between align-items-center px-3">
-    <a href="{% url 'wiki:profile' request.user.username%}" class="btn btn-primary">Back to Profile</a>
-    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
-</div>
- <h1 class='heading'>Incoming Follow Requests For {{author.displayName}}:</h1> 
-
-
 <body>
-<section class="follow_requests">
-<link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
-{% if follow_requests %}
-  {% for follow_request in follow_requests %}
+  <div class="default_buttons d-flex justify-content-between align-items-center px-4">
+    <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
+    <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
+  </div>
+  <div style="height:5.5em"></div>
+  <div class="container mt-4">
+    <h1 class='heading'>Incoming Follow Requests For {{author.displayName}}:</h1> 
+
+    <section class="follow_requests">
+    <link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
+    {% if follow_requests %}
+      {% for follow_request in follow_requests %}
+
 
   <section class="request_info">
         <section class='follow_request_text'>
@@ -33,16 +34,16 @@
             <section class='confirmation_buttons'>
                 <button class="accept" name="action" value="accept" type="submit">Accept</button> 
                 <button class="reject" name="action" value="reject" type="submit">Reject</button> 
-            </section>
-        </form>
+            </form>
 
-  </section>
-  
-  {% endfor %}
-{% else %}
-  <h5 class="heading">NO FOLLOW REQUESTS FOUND</h5>
-{% endif %}
+      </section>
+      </section>
+      
+      {% endfor %}
+    {% else %}
+      <h5 class="heading">No Follow requests found</h5>
+    {% endif %}
 
-</section>
-
+    </section>
+  </div>
 </body>

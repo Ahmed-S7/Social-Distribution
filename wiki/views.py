@@ -2,7 +2,9 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
+
 from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -25,6 +27,9 @@ from .util import validUserName, saveNewAuthor
 from urllib.parse import urlparse
 import requests
 import json
+import base64
+import markdown
+from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 # Create your views here.
 
@@ -93,8 +98,17 @@ def user_wiki(request, username):
             "serial": str(entry.serial)
         } for entry in entries]
         return Response(serialized_entries)
-    return render(request, 'wiki.html', {'entries': entries})
+    #return render(request, 'wiki.html', {'entries': entries})
+    rendered_entries = []
+    for entry in entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered))
 
+    return render(request, 'wiki.html', {'entries': rendered_entries})
 
 
 @require_POST
@@ -475,19 +489,25 @@ def view_external_profile(request, author_serial):
         print("The current request is:", current_request_id) 
         print("List of User's Entries:", all_entries)
         '''
-       
+        rendered_entries = []
+        for entry in all_entries:
+         rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+         )
+         rendered_entries.append((entry, rendered)) 
         
         return render(request, "external_profile.html", 
                       {
                        'author': profile_viewing,
-                       'entries': all_entries, 
+                       'entries': rendered_entries,
                        "followers": followers,
                        "follower_count": len(followers),
                        "friend_count": len(total_friends),
                        "is_a_friend": is_a_friend,
                        "is_following": is_following,
                        "following_count": len(following),
-                       "entries": all_entries,
                        "entry_count": len(all_entries),
                        "is_a_friend": is_a_friend,
                        "is_currently_requesting":is_currently_requesting,
@@ -514,7 +534,7 @@ def cancel_follow_request(request, author_serial, request_id):
     '''
     
     requested_author_serial = author_serial
-    print(request_id)
+    #print(request_id)
     try:
         #retrieve the current follow request
         active_request = FollowRequest.objects.get(id=request_id)
@@ -710,7 +730,23 @@ def follow_profile(request, author_serial):
         messages.error(request,f"The author you request to follow might not exist :(")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
         
+@api_view(['GET']) 
+def get_profile_api(request, username):
+    """
+    GET /api/profile/edit/{username}/
+    View the author's profile.
+    """
+    try:
+        author = Author.objects.get(user__username=username)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    if request.method == 'GET':
+        author_data = AuthorSerializer(author).data
+        entries = Entry.objects.filter(author=author).order_by('-created_at')
+        entry_data = EntrySerializer(entries, many=True).data
+        author_data['entries'] = entry_data
+        return Response(author_data, status=status.HTTP_200_OK)
         
 
 @login_required
@@ -891,8 +927,8 @@ def add_local_follower(request, author_serial, new_follower_serial):
                     
                 #check if the new follower has an existing follow with the current author
                 for follower in followers_list:
-                    print(follower.serial)
-                    print(new_follower_serial)
+                    #print(follower.serial)
+                    #print(new_follower_serial)
                     if str(follower.serial) == new_follower_serial:
                         return Response({"Error": f"{pending_follower} already follows {current_author}"}, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -1059,10 +1095,11 @@ def profile_view(request, username):
     """
     View the profile of the currently logged in user.
     """
-    try:
-        author = Author.objects.get(user__username=username)
-    except Author.DoesNotExist:
-        return HttpResponse("Author profile does not exist.")
+    author = Author.objects.get(user__username=username)
+    if not request.user.is_authenticated or request.user.username != username:
+        if not author:
+            return HttpResponse("Author profile does not exist.")
+        return redirect('wiki:view_external_profile', author_serial=author.serial)
     # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
     followers = author.followers.all()#stores all of the followers a given author has
@@ -1077,19 +1114,26 @@ def profile_view(request, username):
     #print("Entries:", all_entries)
     #print("followers:", followers)
     #print("following:", following)
-    
+   
+    rendered_entries = []
+    for entry in all_entries:
+        rendered = (
+            mark_safe(markdown.markdown(entry.content))
+            if entry.contentType == "text/markdown"
+            else entry.content
+        )
+        rendered_entries.append((entry, rendered)) 
     
     
     return render(
         request, 'profile.html', 
         {
         'author': author,
-        'entries': all_entries,
+        'entries': rendered_entries,
         "followers": followers,
         "follower_count": len(followers),
         "following": following,
         "following_count": len(following),
-        "entries": all_entries,
         "entry_count": len(all_entries),
         "friend_count":friend_count,
         "friends":total_friends} 
@@ -1147,23 +1191,52 @@ def create_entry(request):
     Create a new wiki entry.
     """
     if request.method == 'POST':
-        # Example: get data from POST and save your entry
         title = request.POST.get('title')
-        content = request.POST.get('content')
+        text_content = request.POST.get('content', '').strip()
+        content_type_input = request.POST.get('contentType', '').strip()
+        description = request.POST.get('description', '').strip()
         image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
         use_markdown = request.POST.get('use_markdown') == 'on'
         content_type = "text/markdown" if use_markdown else "text/plain"
 
 
-        if title and content:
-            author = get_object_or_404(Author, user=request.user)
-            entry = Entry.objects.create(author=author, title=title, content=content, image=image if image else None, visibility=visibility, contentType=content_type)
+        if not title:
+            return HttpResponse("Title is required.")
 
-            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+
+        author = get_object_or_404(Author, user=request.user)
+
+        # Determine content type
+        if image:
+            image_data = image.read()
+            encoded = base64.b64encode(image_data).decode('utf-8')
+            if image.content_type == 'image/png':
+                content_type = 'image/png;base64'
+            elif image.content_type == 'image/jpeg':
+                content_type = 'image/jpeg;base64'
+            else:
+                content_type = 'application/base64'  # fallback for unsupported images
+            content = encoded
+        elif text_content:
+            content = text_content
+            # Use the dropdown or text input to choose between plain or markdown
+            content_type = content_type_input if content_type_input in ['text/plain', 'text/markdown'] else 'text/plain'
         else:
-            return HttpResponse("Both title and content are required.")
-    # GET: Show form to create entry
+            return HttpResponse("Either an image or text content must be provided.")
+
+        # entry save
+        entry = Entry.objects.create(
+            author=author,
+            title=title,
+            content=content,
+            contentType=content_type,
+            description=description,
+            visibility=visibility
+        )
+
+        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+
     return render(request, 'create_entry.html')
 
 def entry_detail(request, entry_serial):
@@ -1190,7 +1263,22 @@ def entry_detail(request, entry_serial):
         else:
             return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
-    return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
+    if entry.contentType == "text/markdown":
+        rendered_content = mark_safe(markdown.markdown(entry.content))
+    else:
+        rendered_content = entry.content
+
+    return render(
+        request,
+        'entry_detail.html',
+        {
+            'entry': entry,
+            'rendered_content': rendered_content,
+            'is_owner': is_owner,
+            'comments': comments
+        }
+    )
 
 @login_required
 def edit_entry(request, entry_serial):
@@ -1231,12 +1319,13 @@ def delete_entry(request, entry_serial):
     return render(request, 'confirm_delete.html', {'entry': entry})
 
 @api_view(['GET', 'PUT'])
-def entry_detail_api(request, entry_serial):
+def entry_detail_api(request, entry_serial, author_serial):
     """
-    GET /api/entries/<entry_serial>/ — View a single entry
-    PUT /api/entries/<entry_serial>/edit/ — Update a single entry (only by the author)
+    GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    PUT /api/authors/<author_serial>/entries/<entry_serial>/ — Update a single entry (only by the author)
     """
-    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
 
     if request.method == 'GET':
         serializer = EntrySerializer(entry)
@@ -1459,10 +1548,10 @@ def like_comment_api(request, comment_id):
         return Response({
             "error": "Comment already liked"
         }, status=status.HTTP_400_BAD_REQUEST)
-
-
+        
+@login_required
 @api_view(['GET'])
-def get_entry_likes_api(request, entry_serial):
+def get_entry_likes_api(request, author_serial, entry_serial):
     """
     GET /api/entry/{entry_serial}/likes/
     User Story 1.4 in Comments/Likes
@@ -1534,33 +1623,32 @@ def get_entry_likes_api(request, entry_serial):
         }
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
+    serialized_entry = EntrySerializer(entry)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_in_request = Author.objects.filter(serial=author_serial)[0].user
     
-    # Check if entry is public
-    if entry.visibility != "PUBLIC":
-        return Response({
-            "error": "Entry is not public"
-        }, status=status.HTTP_403_FORBIDDEN)
+    #checks if the current author isn't the one getting the likes information, if so there will be visibility restrictions
+    if current_author!= author_in_request:
+        
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(author_in_request):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)  
     
-    # Get all likes for the entry
-    likes = entry.likes.filter(is_deleted=False)
+    # Get all likes for the entry and serialize them
+    likes_serialized = serialized_entry.get_likes(entry)
     
-    # Serialize the likes
-    like_data = []
-    for like in likes:
-        like_data.append({
-            "id": like.id,
-            "author": {
-                "id": like.user.id,
-                "displayName": like.user.displayName
-            }
-        })
-    
-    return Response({
-        "entry_id": entry.serial,
-        "entry_title": entry.title,
-        "total_likes": likes.count(),
-        "likes": like_data
-    }, status=status.HTTP_200_OK)
+    return Response(
+        likes_serialized 
+    , status=status.HTTP_200_OK)
 
 
 
