@@ -13,6 +13,8 @@ from rest_framework import status
 BASE_PATH = "/s25-project-white/api"
 BASE_URL_PATH = '/s25-project-white/'
 
+from .serializers import CommentSummarySerializer, CommentLikeSummarySerializer
+
 
 class IdentityTestCase(TestCase):
     def setUp(self):
@@ -642,11 +644,11 @@ class CommentEntryTesting(TestCase):
         response = self.client.post(url, data, format='json')
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'comment_added')
-        self.assertEqual(response.data['message'], 'Comment added successfully')
-        self.assertEqual(response.data['content'], 'This is a witty reply!')
-        self.assertEqual(response.data['author'], 'test_author2')
-        self.assertEqual(response.data['comments_count'], 1)
+        # Check that we get a properly formatted comment object
+        self.assertEqual(response.data['type'], 'comment')
+        self.assertEqual(response.data['comment'], 'This is a witty reply!')
+        self.assertEqual(response.data['author']['displayName'], 'test_author2')
+        self.assertEqual(response.data['contentType'], 'text/plain')
         
         # Verify comment was created in database
         comment = Comment.objects.filter(entry=self.entry, author=self.author2).first()
@@ -734,9 +736,9 @@ class LikeCommentTesting(TestCase):
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'liked')
-        self.assertEqual(response.data['message'], 'Comment liked successfully')
-        self.assertEqual(response.data['likes_count'], 1)
+        # Check that we get a properly formatted like object
+        self.assertEqual(response.data['type'], 'like')
+        self.assertEqual(response.data['author']['displayName'], 'test_author2')
         
         # Verify like was created in database
         like = CommentLike.objects.filter(comment=self.comment, user=self.author2).first()
@@ -936,12 +938,12 @@ class FriendsOnlyCommentsTesting(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['entry_visibility'], 'FRIENDS')
-        self.assertEqual(response.data['total_comments'], 1)  # Only friend's comment visible
+        # The API now returns an array of comment objects directly
+        self.assertEqual(len(response.data), 1)  # Only friend's comment visible
         
         # Verify only friend's comment is visible
-        comment = response.data['comments'][0]
-        self.assertEqual(comment['content'], 'This is a comment from a friend.')
+        comment = response.data[0]
+        self.assertEqual(comment['comment'], 'This is a comment from a friend.')
         self.assertEqual(comment['author']['displayName'], 'test_author2')
 
     def test_non_friend_cannot_view(self):
@@ -1269,11 +1271,79 @@ class EntryUserStoriesTest(TestCase):   # POSTING USER STORIES
         # Part 3 - 5
         pass
 
-    # US 2.5: As an author, entries I make can be in CommonMark, so I can give my entries some basic formatting.
+    # US 2.5: As an author, entries I make can be in CommonMark (Markdown), so I can give my entries some basic formatting.
     def test_create_markdown_entry(self):
-        """User Story: As an author, entries I make can be in CommonMark (Markdown)."""
-        # Common Mark US
-        pass
+        """Test creating an entry with markdown formatting"""
+        markdown_content = """# My Markdown Entry
+
+This is **bold text** and this is *italic text*.
+
+Here's a list:
+
+- Item 1
+- Item 2
+- Item 3
+
+> This is a blockquote
+
+You can also use `code` inline."""
+
+        entry = Entry.objects.create(
+            title='Markdown Test Entry',
+            content=markdown_content,
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="text/markdown"
+        )
+        
+        # Test that the entry was created with markdown content type
+        self.assertEqual(entry.contentType, "text/markdown")
+        self.assertEqual(entry.content, markdown_content)
+        
+        # Test that get_formatted_content returns HTML
+        formatted_content = entry.get_formatted_content()
+        self.assertIn('<h1>', formatted_content)  # Should have h1 tag
+        self.assertIn('<strong>', formatted_content)  # Should have bold
+        self.assertIn('<em>', formatted_content)  # Should have italic
+        self.assertIn('<ul>', formatted_content)  # Should have list
+        self.assertIn('<blockquote>', formatted_content)  # Should have blockquote
+        self.assertIn('<code>', formatted_content)  # Should have code
+
+    # US 2.8: As an author, entries I create that are in CommonMark can link to images, so that I can illustrate my entries.
+    def test_markdown_entry_can_link_to_images(self):
+        """Test that markdown entries can include images"""
+        markdown_with_images = """# Entry with Images
+
+Here's a cute cat:
+![Cat](https://placekitten.com/400/300)
+
+And a landscape:
+![Landscape](https://picsum.photos/500/300)
+
+**Bold text** with images works too!"""
+
+        entry = Entry.objects.create(
+            title='Markdown Images Test',
+            content=markdown_with_images,
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            contentType="text/markdown"
+        )
+        
+        # Test that the entry was created with markdown content type
+        self.assertEqual(entry.contentType, "text/markdown")
+        
+        # Test that get_formatted_content includes image tags
+        formatted_content = entry.get_formatted_content()
+        self.assertIn('<img', formatted_content)  # Should have img tags
+        self.assertIn('src="https://placekitten.com/400/300"', formatted_content)
+        self.assertIn('src="https://picsum.photos/500/300"', formatted_content)
+        self.assertIn('alt="Cat"', formatted_content)
+        self.assertIn('alt="Landscape"', formatted_content)
+
+
 
     # US 2.6: As an author, entries I make can be in simple plain text, because I don't always want all the formatting features of CommonMark.
     def test_create_text_entry_again(self):

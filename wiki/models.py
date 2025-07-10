@@ -7,8 +7,12 @@ from django.db.models import Manager, QuerySet, Q, UniqueConstraint
 from django.dispatch import receiver
 from django.forms import DateTimeField
 from django.utils.timezone import make_aware
+from django.utils import timezone
+
 import pytz
 from datetime import datetime
+from django.utils.safestring import mark_safe
+import markdown
 
 # Create your models here.
 
@@ -238,6 +242,14 @@ class Entry(BaseModel):
     def __str__(self):
         return self.title
 
+    def get_formatted_content(self):
+        """Return content with markdown processing if contentType is markdown"""
+        if self.contentType == "text/markdown":
+            return mark_safe(markdown.markdown(self.content))
+        else:
+            # For plain text, preserves line breaks
+            return self.content.replace('\n', '<br>')
+
 class Page(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
@@ -253,6 +265,7 @@ class Like(BaseModel):
     
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, )
 
     class Meta:
         constraints = [
@@ -269,11 +282,36 @@ class Comment(BaseModel):
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(default=get_mst_time)
+    contentType = models.CharField(max_length=50, default="text/plain")
+    
+    def get_comment_url(self):
+        # Extract numeric author ID from the author's URL
+        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
+        author_id = self.author.id.split('/')[-1]  # Get the last part of the URL
+        return f"http://s25-project-white/api/authors/{author_id}/commented/{self.pk}"
+    
+    @property
+    def id(self):
+        return self.get_comment_url()
+    
+    def __str__(self):
+        return f"Comment by {self.author.displayName} on {self.entry.title}"
 
 class CommentLike(BaseModel):
-   
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=get_mst_time)
+    
+    def get_like_url(self):
+        # Extract numeric author ID from the author's URL
+        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
+        author_id = self.user.id.split('/')[-1]  # Get the last part of the URL
+        return f"http://s25-project-white/api/authors/{author_id}/liked/{self.pk}"
+    
+    @property
+    def id(self):
+        return self.get_like_url()
+    
     class Meta:
         constraints = [
             UniqueConstraint(

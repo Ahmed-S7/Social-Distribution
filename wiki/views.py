@@ -2,7 +2,9 @@ from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer
+
+from .serializers import PageSerializer, LikeSerializer,AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -1195,9 +1197,13 @@ def create_entry(request):
         description = request.POST.get('description', '').strip()
         image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
+        use_markdown = request.POST.get('use_markdown') == 'on'
+        content_type = "text/markdown" if use_markdown else "text/plain"
+
 
         if not title:
             return HttpResponse("Title is required.")
+
 
         author = get_object_or_404(Author, user=request.user)
 
@@ -1477,65 +1483,8 @@ def add_comment_api(request, entry_serial):
             - Example: "Great post! Thanks for sharing."
             - Purpose: The actual comment text to be displayed
 
-
     Response Fields:
-        status (string): Status of the comment addition
-            - Example: "comment_added"
-            - Purpose: Indicates the result of the comment attempt.
-        message (string): A description of the result.
-            - Example: "Comment added successfully"
-            - Purpose: Displays status in the UI.
-        comment_id (integer): ID for the comment.
-            - Example: 123
-            - Purpose: Reference the comment for future operations.
-        content (string): The comment text that was added.
-            - Example: "Great post! Thanks for sharing."
-            - Purpose: Confirm the comment content was saved correctly.
-        author (string): Display name of the comment author.
-            - Example: "test_author2"
-            - Purpose: Show who wrote the comment.
-        created_at (string): Timestamp when the comment was created.
-            - Example: "2024-01-15T10:30:00Z"
-            - Purpose: Track when the comment was posted.
-        comments_count (integer): Total number of comments on the entry.
-            - Example: 5
-            - Purpose: Update comment count in the UI.
-
-    Example Usage:
-
-        # Example 1: Adding a comment
-        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
-        Authorization: Token abc123
-        Content-Type: application/json
-
-        {
-            "content": "Great post! Thanks for sharing."
-        }
-
-        Response:
-        {
-            "status": "comment_added",
-            "message": "Comment added successfully",
-            "comment_id": 123,
-            "content": "Great post! Thanks for sharing.",
-            "author": "test_author2",
-            "created_at": "2024-01-15T10:30:00Z",
-            "comments_count": 5
-        }
-
-        # Example 2: Trying to add empty comment
-        POST /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/
-        Authorization: Token abc123
-        Content-Type: application/json
-
-        {
-            "content": ""
-        }
-
-        Response:
-        {
-            "error": "Comment content is required"
-        }
+        Returns the complete comment object in the required format
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = get_object_or_404(Author, user=request.user)
@@ -1553,15 +1502,9 @@ def add_comment_api(request, entry_serial):
         content=content
     )
     
-    return Response({
-        "status": "comment_added",
-        "message": "Comment added successfully",
-        "comment_id": comment.id,
-        "content": comment.content,
-        "author": author.displayName,
-        "created_at": comment.created_at,
-        "comments_count": entry.comments.count()
-    }, status=status.HTTP_201_CREATED)
+    # Return the properly formatted comment object
+    serializer = CommentSummarySerializer(comment)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -1590,39 +1533,7 @@ def like_comment_api(request, comment_id):
         None
 
     Response Fields:
-        status (string): Status of the like attempt. "liked" or "already_liked"
-            - Example: "liked"
-            - Purpose: Indicates the result of the like attempt.
-        message (string): A user-friendly description of the result.
-            - Example: "Comment liked successfully"
-            - Purpose: Displays status in the UI.
-        likes_count (integer): Total number of likes in the comment
-            - Example: 3
-            - Purpose: To understand how many likes the comment has.
-
-    Example Usage:
-
-        # Example 1: Liking a comment
-        POST /api/comment/123/like/
-        Authorization: Token abc123
-
-        Response:
-        {
-            "status": "liked",
-            "message": "Comment liked successfully",
-            "likes_count": 3
-        }
-
-        # Example 2: Trying to like an already liked comment
-        POST /api/comment/123/like/
-        Authorization: Token abc123
-
-        Response:
-        {
-            "status": "already_liked",
-            "message": "You have already liked this comment",
-            "likes_count": 3
-        }
+        Returns the complete like object in the required format
     """
     comment = get_object_or_404(Comment, id=comment_id)
     author = get_object_or_404(Author, user=request.user)
@@ -1630,16 +1541,12 @@ def like_comment_api(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
     
     if created:
-        return Response({
-            "status": "liked",
-            "message": "Comment liked successfully",
-            "likes_count": comment.likes.count()
-        }, status=status.HTTP_201_CREATED)
+        # Return the properly formatted like object
+        serializer = CommentLikeSummarySerializer(like)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response({
-            "status": "already_liked", 
-            "message": "You have already liked this comment",
-            "likes_count": comment.likes.count()
+            "error": "Comment already liked"
         }, status=status.HTTP_400_BAD_REQUEST)
         
 @login_required
@@ -1767,63 +1674,7 @@ def get_entry_comments_api(request, entry_serial):
     - Don't use for entries you don't have permission to view
 
     Response Fields:
-        entry_id (string): ID of the entry
-            - Example: "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763"
-            - Purpose: Identify the entry being queried
-        entry_title (string): title of the entry
-            - Example: "My Amazing Post"
-            - Purpose: Display context for the comments
-        entry_visibility (string): Visibility setting of the entry
-            - Example: "PUBLIC", "FRIENDS", "UNLISTED"
-            - Purpose: Understand entry access level
-        total_comments (integer): Total number of visible comments
-            - Example: 3
-            - Purpose: Quick summary of engagement
-        comments (array): Array of comment objects
-            - Example: [{"id": 1, "content": "...", "author": {...}}]
-            - Purpose: Detailed list of comments
-
-    Example Usage:
-
-        # Example 1: Getting comments on a public entry
-        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
-
-        Response:
-        {
-            "entry_id": "7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763",
-            "entry_title": "Title",
-            "entry_visibility": "PUBLIC",
-            "total_comments": 2,
-            "comments": [
-                {
-                    "id": 1,
-                    "content": "idk",
-                    "author": {
-                        "id": "http://s25-project-white/api/authors/test1",
-                        "displayName": "test_author1"
-                    },
-                    "created_at": "2024-01-15T10:30:00Z"
-                },
-                {
-                    "id": 2,
-                    "content": "comment 2",
-                    "author": {
-                        "id": "http://s25-project-white/api/authors/test2",
-                        "displayName": "test_author2"
-                    },
-                    "created_at": "2024-01-15T11:15:00Z"
-                }
-            ]
-        }
-
-        Example 2: Getting comments on a friends-only entry (non-friend)
-        GET /api/entry/7b2d7ad6-f630-4bd3-8ae6-b1dd176aa763/comments/view/
-        Authorization: Token abc123
-
-        Response:
-        {
-            "error": "Only frieds can view comments on friends-only entries"
-        }
+        Returns an array of properly formatted comment objects
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
     
@@ -1887,26 +1738,10 @@ def get_entry_comments_api(request, entry_serial):
             # For public entries, show all comments
             visible_comments.append(comment)
     
-    # Serialize the comments
-    comment_data = []
-    for comment in visible_comments:
-        comment_data.append({
-            "id": comment.id,
-            "content": comment.content,
-            "author": {
-                "id": comment.author.id,
-                "displayName": comment.author.displayName
-            },
-            "created_at": comment.created_at
-        })
+    # Serialize the comments using the proper serializer
+    comment_data = [CommentSummarySerializer(comment).data for comment in visible_comments]
     
-    return Response({
-        "entry_id": entry.serial,
-        "entry_title": entry.title,
-        "entry_visibility": entry.visibility,
-        "total_comments": len(visible_comments),
-        "comments": comment_data
-    }, status=status.HTTP_200_OK)
+    return Response(comment_data, status=status.HTTP_200_OK)
 
 
 

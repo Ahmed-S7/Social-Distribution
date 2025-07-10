@@ -166,6 +166,7 @@
                     
                                 </div>
                             {% endif %} 
+
                             {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
                                <div class="post-content text-center">
                                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
