@@ -34,7 +34,6 @@ urlpatterns = [
     path('api/authors/<str:author_serial>/liked/<int:like_serial>/', get_single_like_api, name='get_single_like_api'),
     path('api/authors/<str:author_serial>/commented/', get_author_comments_api, name='get_author_comments_api'),
 
-    path('api/authors/<path:author_fqid>/', get_or_edit_author_api, name='get_or_edit_author_fqid'),
      
     # Profile related API
     path('api/register/', register_api, name='register_api'),
@@ -62,7 +61,7 @@ urlpatterns = [
 
     # Image Entries API
     path('api/authors/<str:author_serial>/entry/<uuid:entry_serial>/image/', get_author_image_api, name='get_author_image_api'),
-    path('api/entries/<path:entry_fqid>/image/', get_entry_image_api, name='get_entry_image_api'),
+    path('api/entries/<uuid:entry_serial>/image/', get_entry_image_api, name='get_entry_image_api'),
 
     #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),
