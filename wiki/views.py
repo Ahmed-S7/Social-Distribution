@@ -1,3 +1,4 @@
+import mimetypes
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
@@ -1908,7 +1909,28 @@ def get_entry_comments_api(request, entry_serial):
         "comments": comment_data
     }, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def get_entry_image_api(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    if not entry.image:
+        return HttpResponse("No image available for this entry.", status=404)
+    image_path = entry.image.path
+    mime_type, _ = mimetypes.guess_type(image_path) # check what type of image it is
+    with open(image_path, 'rb') as image_file:
+        image_data = image_file.read()
+        response = HttpResponse(image_data, content_type=mime_type)
+        return response
+    
 
-
-
-
+@api_view(['GET'])
+def get_author_image_api(request, author_serial, entry_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
+    if not entry.image:
+        return HttpResponse("No image available for this entry.", status=404)
+    image_path = entry.image.path
+    mime_type, _ = mimetypes.guess_type(image_path)
+    with open(image_path, 'rb') as image_file:
+        image_data = image_file.read()
+        response = HttpResponse(image_data, content_type=mime_type)
+        return response
