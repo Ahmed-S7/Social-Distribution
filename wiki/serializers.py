@@ -130,6 +130,7 @@ class LikeSummarySerializer(serializers.Serializer):
 
         # Extract author UUID from the user's id URL
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
+        # fixed this
         return f"{host}/s25-project-white/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
