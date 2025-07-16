@@ -1,14 +1,16 @@
 from .serializers import AuthorSerializer
-from .models import Author
+from .models import Author, RemoteNode
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
 import traceback
 from rest_framework.response import Response
 from urllib.parse import urlparse
-from django.http import Http404, HttpResponseRedirect, HttpResponseServerError
+from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
+import requests
+from requests.auth import HTTPBasicAuth
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
       
@@ -78,5 +80,3 @@ def is_valid_serial(id):
     except Exception as e:
         
         return False
-        
-        

@@ -573,5 +573,15 @@ class InboxItem(BaseModel):
         
 
     
-       
+class RemoteNode(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
+
+    url = models.URLField(unique=True)
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+
+    def __str__(self):
+        status = "active" if not self.is_deleted and self.is_active else "inactive"
+        return f"{self.url} ({status})"
         

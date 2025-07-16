@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike
+from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike, RemoteNode
 
 # Register your models here.
 
@@ -65,6 +65,20 @@ class EntryAdmin(admin.ModelAdmin):
     list_editable = ['author',"title",'content','image', 'serial','visibility']
     list_filter =  ["is_deleted"]
     
+class RemoteNodeAdmin(admin.ModelAdmin):
+    '''Admin display for all RemoteNode objects'''
+    def get_queryset(self, request):
+        return RemoteNode.all_objects.all()
+
+    def node_status(self, obj):
+        status = "Active" if obj.is_active and not obj.is_deleted else "Inactive"
+        return f"{obj.url} ({status})"
+
+    list_display = ['node_status', 'url', 'username', 'is_active', 'is_deleted']
+    list_editable = ['is_active', 'is_deleted']
+    list_filter = ['is_active', 'is_deleted']
+    search_fields = ['url', 'username']
+    
 admin.site.register(Page)
 admin.site.register(Like)
 admin.site.register(RemotePost)
@@ -76,3 +90,4 @@ admin.site.register(AuthorFriend, AuthorFriendsAdmin)
 admin.site.register(InboxItem)
 admin.site.register(Comment)
 admin.site.register(CommentLike)
+admin.site.register(RemoteNode, RemoteNodeAdmin)

@@ -24,7 +24,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import validUserName, saveNewAuthor
+from .util import validUserName, saveNewAuthor, require_basic_auth
 from urllib.parse import urlparse
 import requests
 import json
