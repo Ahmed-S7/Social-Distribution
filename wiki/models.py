@@ -528,6 +528,8 @@ class FollowRequest(BaseModel):
 
                 
 class InboxItem(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
     '''
     A general model for all of the different objects that can be pushed to the inbox 
     
