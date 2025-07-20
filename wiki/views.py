@@ -1091,12 +1091,16 @@ def user_inbox_api(request, author_serial):
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
      
+     
+    current_author = get_object_or_404(Author, serial=author_serial)
+    
     if request.method=="GET":
+         
          
         #decode the foreign author's ID
         decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
         
-        
+
 
         #get the author if it exists
         response = requests.get(decodedId) 
@@ -1108,11 +1112,15 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
         followers_uri =decodedId + "/followers"
         response = requests.get(followers_uri)
         if not response.status_code != 200:
-            return Response(response.json(), response.status_code)
+            response_data = response.json()
+            return Response(response_data, response.status_code)
         
+        if current_author.id in response.text:
+            return Response(response.json(), status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "You are not following this author"}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response(response.data, status=status.HTTP_200_OK)
-
+        
     #TODO:
     # PUT and DELETE endpoints, complete the GET logic 
    
