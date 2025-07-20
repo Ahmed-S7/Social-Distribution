@@ -1090,8 +1090,7 @@ def user_inbox_api(request, author_serial):
 @api_view(['GET','PUT','DELETE'])
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
-
-         
+     
     if request.method=="GET":
          
         #decode the foreign author's ID
@@ -1111,10 +1110,11 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
         if not response.status_code != 200:
             return Response(response.json(), response.status_code)
         
+
         return Response(response.data, status=status.HTTP_200_OK)
-    
+
     #TODO:
-    # PUT and DELETE endpoints
+    # PUT and DELETE endpoints, complete the GET logic 
    
  
     
