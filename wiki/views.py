@@ -1064,7 +1064,7 @@ def user_inbox_api(request, author_serial):
         # follows
         # entry items
       
-        #This will be the final save once the specific type of inbox item is saved
+        #This will be the final save once the specific type of inbox item is validated
         #validates general Inbox item structure
         if newItemSerializer.is_valid():
             try:
