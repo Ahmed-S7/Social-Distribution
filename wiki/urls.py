@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, entry_detail_api, profile_view, get_profile_api, view_external_profile, get_or_edit_author_api
-from .views import MyLoginView, user_wiki, register,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_authors, follow_profile, check_follow_requests, get_local_followers
+from .views import MyLoginView, user_wiki, register,user_inbox_api,foreign_followers_api,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api
 from django.contrib.auth.views import LogoutView
@@ -22,6 +22,9 @@ urlpatterns = [
     path('<str:username>/profile/edit/', edit_profile, name='edit_profile'),
 
     path('api/<str:username>/wiki/', user_wiki_api, name='user_wiki_api'),
+    
+    #INBOX API, SHOULD BE USED FOR EVERY SINGLE TYPE OF INBOX OBJECT, SEE INBOX OBJECT STRUCTURE
+    path('api/authors/<str:author_serial>/inbox/', user_inbox_api, name='user_inbox_api' ),
     
     # Author URLS
     path('authors/', view_authors, name='view_authors'),
@@ -65,6 +68,7 @@ urlpatterns = [
 
     #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),
+    path('api/authors<str:author_serial>/followers/<str:foreign_author_fqid>', foreign_followers_api, name='foreign_followers_api'),
     path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers' ),
     path('api/authors/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
    

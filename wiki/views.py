@@ -515,14 +515,11 @@ def view_external_profile(request, author_serial):
             #store existing following if it exists 
             following_id = logged_in_author.get_following_id_with(profile_viewing)
             
-            
-                
             #store existing friendship if it exists 
             friendship_id = logged_in_author.get_friendship_id_with(profile_viewing)
         
         else:
             
-     
             following_id,friendship_id = None, None
             
             
@@ -752,7 +749,7 @@ def follow_profile(request, author_serial):
             try:
                 newInboxItem.save()
                     
-                    #Exceptions and structure adjusted using copilot: https://www.bing.com/search?pglt=427&q=copilot&cvid=882b9688f1804581bd4975fbe80acc49&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQDIGCAQQABhAMgYIBRAAGEAyBggGEAAYQDIGCAcQABhAMgYICBAAGEDSAQc5MDJqMGoxqAIAsAIA&FORM=ANNTA1&PC=EDGEDB, "[Adjust the structure of these error messages]", June, 2025
+                    #Exception structure adjusted using copilot: https://www.bing.com/search?pglt=427&q=copilot&cvid=882b9688f1804581bd4975fbe80acc49&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQDIGCAQQABhAMgYIBRAAGEAyBggGEAAYQDIGCAcQABhAMgYICBAAGEDSAQc5MDJqMGoxqAIAsAIA&FORM=ANNTA1&PC=EDGEDB, "[Adjust the structure of these error messages]", June, 2025
             except Exception as e:
                         saved_follow_request.delete()  # Rollback follow request
                         return HttpResponseServerError(f"Failed to save Inbox Item: {e}")
@@ -904,9 +901,200 @@ def process_follow_request(request, author_serial, request_id):
 
 
 
+@api_view(['GET','POST'])
+def user_inbox_api(request, author_serial):
+    '''
+    Used to get a User's inbox items, is able to accomodate all types of inbox items
+    Fields:
+    
+    type: the type of inbox item
+    body: the JSON content of the inbox object
+    created_at: the time the inbox object was posted to the inbox
+    
+    Example usage:
+    
+    GET:
+    
+    GET /api/authors/{author_serial}/inbox/
+    
+    for a successful GET request:
+    
+    HTTP 200 OK
+    Allow: GET, OPTIONS, DELETE, POST
+    Content-Type: application/json
+    Vary: Accept
+
+    
+    [
+        {
+        "type": "Follow",
+        "author": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+        "body": {
+            "type": "follow",
+            "state": "requesting",
+            "summary": "b has requested to follow GUTS",
+            "actor": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "host": "http://s25-project-white/api/",
+                "displayName": "b",
+                "github": "",
+                "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "description": ""
+            },
+            "object": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "host": "http://s25-project-white/api/",
+                "displayName": "GUTS",
+                "github": "",
+                "profileImage": "/media/profile_images/gutspfp.jpg",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "description": ""
+            }
+        },
+        "created_at": "2025-07-19T21:59:33.076302-06:00"
+        }
+    ]
+    
+    for a failed get Request:
+    
+    HTTP 400 Bad Request
+    Allow: GET, OPTIONS, POST
+    Content-Type: application/json
+    Vary: Accept
+    
+    {
+    "Error": "We were unable to locate the user who made this request, dev notes: ['“99f5-a05e-497f-afd4-5af96cf3b0b4” is not a valid UUID.']"
+    }
+    
+    POST:
+    
+    for a successful POST request, you will recieve the new serialized inbox object:
+    
+    HTTP 200 OK
+    Allow: GET, POST, OPTIONS
+    Content-Type: application/json
+    Vary: Accept
+    
+    
+    {
+    "type": "Follow",
+    "author": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+    "body": {
+        "type": "follow",
+        "state": "requesting",
+        "summary": "b has requested to follow GUTS",
+        "actor": {
+            "type": "author",
+            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+            "host": "http://s25-project-white/api/",
+            "displayName": "b",
+            "github": "",
+            "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
+            "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
+            "description": ""
+        },
+        "object": {
+            "type": "author",
+            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+            "host": "http://s25-project-white/api/",
+            "displayName": "GUTS",
+            "github": "",
+            "profileImage": "/media/profile_images/gutspfp.jpg",
+            "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+            "description": ""
+        }
+    },
+    "created_at": "2025-07-19T21:59:33.076302-06:00"
+    }
+    For a failed POST request, the requester will recieve the error info:
+    
+    HTTP 404 Not Found
+    Allow: OPTIONS, GET, POST
+    Content-Type: application/json
+    Vary: Accept
+    
+    {
+    "detail": "JSON parse error - Expecting value: line 1 column 1 (char 0)"
+    }
+    
+    '''
+    
+    #If the user is local, make sure they're logged in 
+    if request.user: 
+                
+        current_user = request.user  
+        print(current_user)
+        #IF LOCAL AUTHOR IS LOGGED IN
+        try: 
+            current_author = get_object_or_404(Author, user=current_user)
+            requested_author = get_object_or_404(Author,serial=author_serial)   
+        except Exception as e:
+            return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
+    
+    if not (current_user == requested_author.user):
+            return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    #retrieve all of the author's inbox objects
+    if request.method =="GET":
+        inboxItems = current_author.inboxItems
+        serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
+        return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
+   
+    
+    #retrieve all of the author's inbox objects
+    elif request.method =="POST":   
+        
+        #check for all of the fields
+        type = request.data.get('type')
+        author = request.data.get('author')
+        body = request.data.get('body')
+       
+        newItemSerializer = InboxItemSerializer(data={
+            "type":type,
+            "author":author,
+            "body":body
+        })
+        
+        #TODO: ADD VALIDATION FOR DIFFERENT TYPES OF INBOX OBJECTS:
+        # likes
+        # comments
+        # follows
+        # entry items
+      
+        #This will be the final save once the specific type of inbox item is saved
+        #validates general Inbox item structure
+        if newItemSerializer.is_valid():
+            try:
+                newItemSerializer.save()
+                return Response(newItemSerializer.data, status=status.HTTP_200_OK)    
+            except Exception as e:
+                return Response({"failed to save Inbox item":f"dev notes: {e}"}, status=status.HTTP_200_OK)    
+
+        
+        else:
+            return Response(newItemSerializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        
+        
+    else:
+        return Response({"succeeded":"other methods are not yet implemented"}, status=status.HTTP_200_OK)    
+        
+        
+        
+        
+        
+        
 
 
-@api_view(['PUT'])
+@api_view(['GET','PUT','DELETE'])
+def foreign_followers_api(request,author_serial,foreign_author_fqid):
+    pass
+
+
+
+@api_view(['PUT', 'DELETE'])
 def add_local_follower(request, author_serial, new_follower_serial): 
         """
          Add a follower to a specific user's following list after validating the new follow object
@@ -1082,7 +1270,7 @@ def get_local_followers(request, author_serial):
 
 
 @login_required
-@api_view(['GET','POST'])
+@api_view(['GET'])
 def get_local_follow_requests(request, author_serial):   
     """
     Get a specific author's follow requests in the application

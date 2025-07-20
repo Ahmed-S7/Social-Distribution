@@ -64,12 +64,6 @@ class VisibilityOptions(models.TextChoices):
     DELETED = "deleted", "Deleted"    
 
 
-class InboxObjectType(models.TextChoices):
-    '''stores all of the possible inbox item types'''
-    
-    FOLLOW = "Follow", "follow"
-    LIKE = "like", "Like"
-    COMMENT = "comment", "Comment"
 
  
       
@@ -526,6 +520,13 @@ class FollowRequest(BaseModel):
  
 
 
+class InboxObjectType(models.TextChoices):
+    '''stores all of the possible inbox item types'''
+    
+    FOLLOW = "Follow", "follow"
+    LIKE = "like", "Like"
+    COMMENT = "comment", "Comment"
+    ENTRY = "entry", "Entry" 
                 
 class InboxItem(BaseModel):
     objects = AppManager()
@@ -545,13 +546,13 @@ class InboxItem(BaseModel):
 
     '''
     
-    author = models.ForeignKey(Author, related_name="inbox", on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, related_name="inboxItems", on_delete=models.CASCADE)
     type = models.CharField(
         max_length = 20,
         choices=InboxObjectType.choices,
-        default=None
+        null=False
     )
-    content = models.JSONField()
+    body = models.JSONField()
     created_at =models.DateTimeField(default=get_mst_time)
     objects = AppManager()
     all_objects = models.Manager()
@@ -570,7 +571,7 @@ class InboxItem(BaseModel):
       
     
     def get_content(self):
-        return self.content
+        return self.content 
    
         
 
