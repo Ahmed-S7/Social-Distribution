@@ -2,10 +2,9 @@ import mimetypes
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-
+from .models import Page, Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
-
+import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
@@ -335,7 +334,6 @@ def get_authors(request):
 
 
 
-@login_required
 @api_view(['GET', "PUT"])
 def get_or_edit_author_api(request, author_serial):
     """
@@ -970,6 +968,7 @@ def user_inbox_api(request, author_serial):
     }
     
     POST:
+    Use POST /api/authors/{author_serial}/inbox/
     
     for a successful POST request, you will recieve the new serialized inbox object:
     
@@ -1023,7 +1022,7 @@ def user_inbox_api(request, author_serial):
     '''
     
     #If the user is local, make sure they're logged in 
-    if request.user: 
+    if request.user.is_authenticated:
                 
         current_user = request.user  
         print(current_user)
@@ -1034,8 +1033,8 @@ def user_inbox_api(request, author_serial):
         except Exception as e:
             return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
     
-    if not (current_user == requested_author.user):
-            return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
@@ -1089,8 +1088,48 @@ def user_inbox_api(request, author_serial):
 
 
 @api_view(['GET','PUT','DELETE'])
-def foreign_followers_api(request,author_serial,foreign_author_fqid):
-    pass
+def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
+    'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
+    
+    if 's25-project-white' in FOREIGN_AUTHOR_FQID:
+        localNode = True
+    else:
+        localNode = False
+    
+    foreign_author_api_split = FOREIGN_AUTHOR_FQID.split('/')
+    print(foreign_author_api_split)
+    foreign_author_api_split.pop(-1)
+    foreign_author_api = '/'.join(foreign_author_api_split)
+ 
+    print(FOREIGN_AUTHOR_FQID)   
+    #decode the foreign author's ID
+    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    
+    #parse the ID 
+    parsedId = urlparse(decodedId)
+    #print(decodedId) 
+    
+    #Find the host  from the ID
+    foreign_author_host = parsedId.netloc 
+    #print(foreign_author_host)
+    
+    #
+    response = requests.get(FOREIGN_AUTHOR_FQID) 
+    print(response.text)
+   
+    
+    try:
+        foreign_author = Author.objects.get(id=decodedId)
+    except Author.DoesNotExist:
+        return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
+    parsedId = urlparse(decodedId)
+    
+   
+ 
+    
+        
+    
+    
 
 
 
