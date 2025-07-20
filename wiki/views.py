@@ -1096,10 +1096,10 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     else:
         localNode = False
     
-    foreign_author_api_split = FOREIGN_AUTHOR_FQID.split('/')
-    print(foreign_author_api_split)
-    foreign_author_api_split.pop(-1)
-    foreign_author_api = '/'.join(foreign_author_api_split)
+    foreign_author_path_split = FOREIGN_AUTHOR_FQID.split('/')
+    print(foreign_author_path_split)
+    foreign_author_path_split.pop(-1)
+    foreign_author_path = '/'.join(foreign_author_path_split)
  
     print(FOREIGN_AUTHOR_FQID)   
     #decode the foreign author's ID
@@ -1110,14 +1110,20 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     #print(decodedId) 
     
     #Find the host  from the ID
-    foreign_author_host = parsedId.netloc 
+    foreign_author_host = parsedId.netloc
+    
+     
     #print(foreign_author_host)
     
     #
     response = requests.get(FOREIGN_AUTHOR_FQID) 
+    if not response.status_code == 200:
+         return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
+
+    followers_uri =FOREIGN_AUTHOR_FQID + "/followers"
+
+    response = requests.get(followers_uri)
     print(response.text)
-   
-    
     try:
         foreign_author = Author.objects.get(id=decodedId)
     except Author.DoesNotExist:
@@ -1234,8 +1240,6 @@ def add_local_follower(request, author_serial, new_follower_serial):
                        
                     
 
-
-@login_required
 @api_view(['GET'])
 def get_local_followers(request, author_serial):   
     """
@@ -1275,10 +1279,12 @@ def get_local_followers(request, author_serial):
     if request.method =='GET':
        
         
-        
+        '''
+        uncheck for now
         #If the user is local, make sure they're logged in 
         if not request.user.is_authenticated:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
+       ''' 
         try:
             current_author = Author.objects.get(serial=author_serial)  
         except Exception as e:
