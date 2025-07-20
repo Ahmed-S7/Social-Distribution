@@ -1090,46 +1090,31 @@ def user_inbox_api(request, author_serial):
 @api_view(['GET','PUT','DELETE'])
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
-    
-    if 's25-project-white' in FOREIGN_AUTHOR_FQID:
-        localNode = True
-    else:
-        localNode = False
-    
-    foreign_author_path_split = FOREIGN_AUTHOR_FQID.split('/')
-    print(foreign_author_path_split)
-    foreign_author_path_split.pop(-1)
-    foreign_author_path = '/'.join(foreign_author_path_split)
- 
-    print(FOREIGN_AUTHOR_FQID)   
-    #decode the foreign author's ID
-    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
-    
-    #parse the ID 
-    parsedId = urlparse(decodedId)
-    #print(decodedId) 
-    
-    #Find the host  from the ID
-    foreign_author_host = parsedId.netloc
-    
-     
-    #print(foreign_author_host)
-    
-    #
-    response = requests.get(FOREIGN_AUTHOR_FQID) 
-    if not response.status_code == 200:
-         return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
 
-    followers_uri =FOREIGN_AUTHOR_FQID + "/followers"
+         
+    if request.method=="GET":
+         
+        #decode the foreign author's ID
+        decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+        
+        
 
-    response = requests.get(followers_uri)
-    print(response.text)
-    try:
-        foreign_author = Author.objects.get(id=decodedId)
-    except Author.DoesNotExist:
-        return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
-    parsedId = urlparse(decodedId)
+        #get the author if it exists
+        response = requests.get(decodedId) 
+        if  response.status_code != 200:
+            return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
+
+
+        #get the response at the author followers endpoint
+        followers_uri =decodedId + "/followers"
+        response = requests.get(followers_uri)
+        if not response.status_code != 200:
+            return Response(response.json(), response.status_code)
+        
+        return Response(response.data, status=status.HTTP_200_OK)
     
+    #TODO:
+    # PUT and DELETE endpoints
    
  
     
