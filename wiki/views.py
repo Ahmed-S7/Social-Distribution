@@ -1,9 +1,10 @@
 import mimetypes
 from django.db.models import Q
+from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page, Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
+from .serializers import RemoteFollowingSerializer, PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -23,7 +24,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import validUserName, saveNewAuthor
+from .util import get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse
 import requests
 import json
@@ -422,7 +423,7 @@ def get_or_edit_author_api(request, author_serial):
 
 @login_required   
 @require_GET 
-def view_authors(request):
+def view_local_authors(request):
     current_user = request.user
     
     #retrieve all authors except for the current author
@@ -437,9 +438,9 @@ def view_external_profile(request, author_serial):
     profile_viewing = Author.objects.filter(serial=author_serial).first()
     if not profile_viewing.user.is_active:
         messages.error(request, "This user is not yet approved by admin.")
-        return redirect("wiki:view_authors")
+        return redirect("wiki:view_local_authors")
     if not profile_viewing:
-        return redirect("wiki:view_authors")
+        return redirect("wiki:view_local_authors")
 
     if profile_viewing:
         logged_in = request.user.is_authenticated
@@ -556,8 +557,55 @@ def view_external_profile(request, author_serial):
                        }
                       )
     else:
-        return HttpResponseRedirect("wiki:view_authors")
+        return HttpResponseRedirect("wiki:view_local_authors")
+
+
+
+@require_GET  
+def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
+    
+    #Ensure a proper response of redirect
+    remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
+    if not remote_author_fetch.status_code == 200:
+        return redirect(reverse("wiki:view_local_authors"))
+    
+    #store the author object
+    remote_author_json = remote_author_fetch.json()
+    print(remote_author_json)
+    print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n NameRemote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
+    
+    #Ensure correct response for Author's followers or redirect
+    remote_followers_fetch = remote_followers_fetched(FOREIGN_AUTHOR_FQID)
+    
+    if not remote_followers_fetched:
+        return redirect(reverse("wiki:view_local_authors"))
         
+        
+    #store the author followers 
+    remote_followers_json = remote_followers_fetch.json()
+    
+    followers = remote_followers_json['followers']
+    print(f"\n\nFOLLOWERS: {followers}\n\n\n")
+    decodedId = urllib.parse.quote(FOREIGN_AUTHOR_FQID, safe="")
+    print(decodedId)
+    return render(request, "remote_profile.html", 
+                      {
+                       'author': remote_author_json,
+                       "followers": followers,
+                       "follower_count": len(followers),
+                       "is_local":False,
+                       "FQID":decodedId,
+                       }
+                      )
+         
+        
+        
+        
+   
+    
+    
+    
+          
 @login_required
 def cancel_follow_request(request, author_serial, request_id):
     '''Cancels an active follow request that a user has sent to another author
@@ -618,7 +666,7 @@ def unfollow_profile(request, author_serial, following_id):
         #print("The request being changed is:", active_request)
     except Author.DoesNotExist:
         #print(f"{following_id} is not a valid existing following id")
-        return redirect(reverse("wiki:view_authors"))
+        return redirect(reverse("wiki:view_local_authors"))
 
     
     try:
@@ -683,7 +731,64 @@ def view_entry_author(request, entry_serial):
     entry_author=get_object_or_404(Author, id=author_id)
     return HttpResponseRedirect(reverse("wiki:view_external_profile", kwargs={"author_serial": entry_author.serial}))
    
- 
+#@login_required  
+@require_http_methods(["GET","POST"])  
+def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
+    print(FOREIGN_AUTHOR_FQID)
+    if request.user.is_staff or request.user.is_superuser:
+        return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
+
+    localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
+    remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
+    print(remote_author_serial)
+    current_user = request.user
+    #COMMENTED HERE
+    local_requesting_account = get_object_or_404(Author, user=current_user)
+    requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
+    print(requested_author_object)
+    #api/authors/<str:author_serial>/inbox/
+    if localNode:
+        inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}"
+    else:
+        inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}"
+    
+    print(inbox_url)
+    
+    serializedAuthor = AuthorSerializer(local_requesting_account)
+    print(serializedAuthor.data)
+
+  
+    
+    auth = HTTPBasicAuth("white","somethingunique")
+    
+    followRequest={"type":"follow",
+                   "summary":f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
+                   "actor":serializedAuthor.data,
+                   "object":requested_author_object,     
+                   }
+    
+    print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
+    newFollowRequest = InboxItem(type=InboxObjectType.FOLLOW,
+                                 author=local_requesting_account,
+                                 body=followRequest
+                                 )
+    
+    print(json.dumps(followRequest))
+    serializedFollowRequest = InboxItemSerializer(newFollowRequest)
+    print(serializedFollowRequest.data)
+    follow_request_response = requests.post(
+    inbox_url,
+    json=followRequest,  
+    auth=auth,
+    headers={"Content-Type": "application/json"},
+)
+   
+    print(f"{follow_request_response.status_code}\n\n\n\n\n\n\n\n\n\n")
+    print(follow_request_response.json())
+    
+    
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
@@ -704,21 +809,17 @@ def follow_profile(request, author_serial):
     #print(requested_account)
     ##########################################
     
-    if requesting_account.is_friends_with(requested_account):
+    if requesting_account.is_remote_friends_with(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
         return redirect(query_with_friend_status)
     
     
-    if requesting_account.is_following(requested_account):
+    if requesting_account.is_remote_following(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
     
-    if requesting_account.is_already_requesting(requested_account):
-        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-        query_with_request_status= f"{base_URL}?status=requesting&user={requested_account}"
-        return redirect(query_with_request_status)
             
     try:
         serialized_follow_request = FollowRequestSerializer(
@@ -740,7 +841,7 @@ def follow_profile(request, author_serial):
             newInboxItem = InboxItem(
                     author=requested_account,
                     type=InboxObjectType.FOLLOW,
-                    content=inbox_content
+                    body=inbox_content
             )
 
             #Try to save the new follow request as an inbox item
@@ -1043,19 +1144,26 @@ def user_inbox_api(request, author_serial):
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
     
-    #retrieve all of the author's inbox objects
+    #send an inbox object to a specific author
     elif request.method =="POST":   
+        print(request)
         
         #check for all of the fields
         type = request.data.get('type')
+        
+        
+        if type == "follow":
+            body = request.data
+            author = request.data['actor']['id']
+        
         author = request.data.get('author')
         body = request.data.get('body')
+        
+        
        
-        newItemSerializer = InboxItemSerializer(data={
-            "type":type,
-            "author":author,
+        newItemSerializer = InboxItemSerializer(data= {
             "body":body
-        })
+        }, partial=True)
         
         #TODO: ADD VALIDATION FOR DIFFERENT TYPES OF INBOX OBJECTS:
         # likes
@@ -1068,7 +1176,7 @@ def user_inbox_api(request, author_serial):
         if newItemSerializer.is_valid():
             try:
                 newItemSerializer.save()
-                return Response(newItemSerializer.data, status=status.HTTP_200_OK)    
+                return Response(newItemSerializer.data['body'], status=status.HTTP_200_OK)    
             except Exception as e:
                 return Response({"failed to save Inbox item":f"dev notes: {e}"}, status=status.HTTP_200_OK)    
 
@@ -1091,45 +1199,63 @@ def user_inbox_api(request, author_serial):
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
 
-         
+     
+    current_author = get_object_or_404(Author, serial=author_serial)
+    #decode the foreign author's ID
+    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+<<<<<<< Updated upstream
+        
+        
+
+=======
+        
+
+
+>>>>>>> Stashed changes
+    #get the author if it exists
+    response = requests.get(decodedId) 
+    if  response.status_code != 200:
+        return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
+    
+    #foreign author serialized
+    foreign_author_object = response.json()
+    
     if request.method=="GET":
-         
-        #decode the foreign author's ID
-        decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
-        
-        
-
-        #get the author if it exists
-        response = requests.get(decodedId) 
-        if  response.status_code != 200:
-            return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
-
-
+  
         #get the response at the author followers endpoint
         followers_uri =decodedId + "/followers"
         response = requests.get(followers_uri)
-        if not response.status_code != 200:
-            return Response(response.json(), response.status_code)
+        if response.status_code != 200:
+            response_data = response.json()
+            return Response(response_data, response.status_code)
+       
+        followers_dict = response.json() 
+        follower_ids = [follower["id"] for follower in followers_dict["followers"]]
+
+        if current_author.id in follower_ids:
+            return Response(followers_dict, status=status.HTTP_200_OK)
+           
+        else:
+            return Response({"FOLLOWING NOT FOUND": "You are not following this author"}, status=status.HTTP_404_NOT_FOUND)
         
-        return Response(response.data, status=status.HTTP_200_OK)
-    
     #TODO:
-    # PUT and DELETE endpoints
-   
+    # PUT and DELETE endpoint
+    'PUT api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'  
+    
+    
+    
+    
+    
+    
+    
  
-    
-        
-    
-    
-
-
 
 @api_view(['PUT', 'DELETE'])
 def add_local_follower(request, author_serial, new_follower_serial): 
         """
          Add a follower to a specific user's following list after validating the new follow object
                 
-                Use: "PUT /api/authors/{author_serial}/followers/{new_follower_serial}"
+                Use: "PUT api/authors/local/<str:author_serial>/followers/<str:new_follower_serial>"
 
                 Returns:
                 
@@ -1165,7 +1291,7 @@ def add_local_follower(request, author_serial, new_follower_serial):
         """ 
         #If the user is local, make sure they're logged in 
         if request.user: 
-                
+              
             current_user = request.user  
             #IF LOCAL AUTHOR IS LOGGED IN
             try: 

@@ -5,10 +5,12 @@ import uuid
 from django.shortcuts import redirect
 import traceback
 from rest_framework.response import Response
+import urllib
 from urllib.parse import urlparse
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
+from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
 def validUserName(username):
@@ -80,3 +82,36 @@ def is_valid_serial(id):
     except Exception as e:
         
         return False
+
+def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
+    remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers")
+    if not remote_followers_fetch.status_code == 200:
+        False
+    else:
+        return remote_followers_fetch
+    
+def remote_author_fetched(FOREIGN_AUTHOR_FQID):
+    '''returns the author JSONified object from a remote author's FQID (if valid), false otherwise'''
+    remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
+    if not remote_author_fetch.status_code == 200:
+        False
+    else:
+        print(remote_author_fetch.json())
+        return remote_author_fetch.json()
+        
+def decoded_fqid(FOREIGN_AUTHOR_FQID):
+     return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+
+def get_host_and_scheme(FOREIGN_AUTHOR_FQID):
+    '''gets the scheme and host name for a DECODED foreign author FQID'''
+    parsed = urlparse(FOREIGN_AUTHOR_FQID)
+    host = parsed.netloc
+    scheme = parsed.scheme
+    return host,scheme
+
+def get_serial(FOREIGN_AUTHOR_FQID):
+    '''gets the serial of a DECODED foreign author FQID'''
+    author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
+    return author_serial
+
+    

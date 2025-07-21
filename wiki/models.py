@@ -103,7 +103,12 @@ class Author(BaseModel):
     profileImage = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
+  
     
+    
+    @property
+    def is_local(self):
+        return "s25-project-white" in self.host
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()
@@ -175,10 +180,13 @@ class Author(BaseModel):
             
         return follow_id
    
-        
+    def is_following_remote(self, remoteId):
+        pass
+            
       
     def __str__(self):
         return self.displayName
+
     
 @receiver(post_save, sender=User)
 def update_author_name(sender, instance, **kwargs):
@@ -527,6 +535,7 @@ class InboxObjectType(models.TextChoices):
     LIKE = "like", "Like"
     COMMENT = "comment", "Comment"
     ENTRY = "entry", "Entry" 
+    AUTHOR = "author", "Author"
                 
 class InboxItem(BaseModel):
     objects = AppManager()
@@ -572,6 +581,10 @@ class InboxItem(BaseModel):
     
     def get_content(self):
         return self.content 
+    
+    def __str__(self):
+        return f"{self.author} posted object of type {self.type}"
+        
    
         
 
@@ -589,3 +602,25 @@ class RemoteNode(BaseModel):
         status = "active" if not self.is_deleted and self.is_active else "inactive"
         return f"{self.url} ({status})"
         
+class RemoteFollowing(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
+    remoteFollowerId = models.URLField(null=False)
+    localFollowed = models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
+    date_followed = models.DateTimeField(default=get_mst_time)
+    
+    def __str__(self):
+        status = "currently following" if not self.is_deleted else "No Longer Follows"
+        return f"{self.remoteFollowerId} {status} {self.localFollowed}"
+
+class RemoteFriend(BaseModel):
+    objects = AppManager()
+    all_objects = models.Manager()
+    remoteFriendId = models.URLField(null=False)
+    localFriend = models.ForeignKey(Author, related_name="remotefriends", on_delete=models.CASCADE, null=False)
+    date_followed = models.DateTimeField(default=get_mst_time)
+    
+    def __str__(self):
+        status = "Is Currently Friends With" if not self.is_deleted else " Is No Longer Friends With"
+        return f"{self.remoteFriendId} {status} {self.localFriend}"    
+    
