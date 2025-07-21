@@ -1924,6 +1924,116 @@ Response:
 
 
 @api_view(['GET'])
+def get_entry_comments_by_id_api(request, entry_fqid):
+    """
+    GET /api/entries/{ENTRY_FQID}/comments
+    Returns comments on the entry (that our server knows about)
+    Body is a "comments" object
+    """
+    # Decode the URL-encoded FQID
+    decoded_entry_fqid = urllib.parse.unquote(entry_fqid)
+    
+    # Find entry by its full URL (FQID)
+    entry = get_object_or_404(Entry, id=decoded_entry_fqid)
+
+    # Get the requesting user's author object if authenticated
+    requesting_author = None
+    if request.user.is_authenticated:
+        try:
+            requesting_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            pass
+
+    # Visibility check
+    if entry.visibility == "FRIENDS":
+        if not requesting_author:
+            return Response({
+                "error": "Authentication required to view friends-only entry comments"
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        is_friend = AuthorFriend.objects.filter(
+            Q(friending=entry.author, friended=requesting_author) |
+            Q(friending=requesting_author, friended=entry.author),
+            is_deleted=False
+        ).exists()
+
+        if not is_friend and entry.author != requesting_author:
+            return Response({
+                "error": "Only friends can view comments on friends-only entries"
+            }, status=status.HTTP_403_FORBIDDEN)
+
+    # Pagination logic
+    PAGE_SIZE = 5
+    page_number = int(request.GET.get('page', 1))
+    offset = (page_number - 1) * PAGE_SIZE
+    limit = offset + PAGE_SIZE
+
+    all_comments = entry.comments.filter(is_deleted=False).order_by('-created_at')
+    paginated_comments = all_comments[offset:limit]
+
+    serialized_comments = [
+        CommentSummarySerializer(comment, context={'request': request}).data
+        for comment in paginated_comments
+    ]
+
+    # Build the request host for URLs
+    request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+    
+    # URL encode the entry FQID for the path
+    encoded_entry_fqid = urllib.parse.quote(entry.id, safe='')
+
+    response_data = {
+        "type": "comments",
+        "web": f"{request_host}/entry/{entry.serial}/",
+        "id": f"{request_host}/api/entries/{encoded_entry_fqid}/comments",
+        "page_number": page_number,
+        "size": PAGE_SIZE,
+        "count": all_comments.count(),
+        "src": serialized_comments
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_comment_fqid_api(request, author_serial, entry_serial, remote_comment_fqid):
+    """
+    GET /api/authors/{AUTHOR_SERIAL}/entries/{ENTRY_SERIAL}/comment/{REMOTE_COMMENT_FQID}
+    Get a specific comment by its FQID (can be local or remote)
+    """
+    # Decode the URL-encoded comment FQID
+    decoded_comment_fqid = urllib.parse.unquote(remote_comment_fqid)
+    
+    # First, find the entry
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    
+    # Check if this is a local comment (stored in our database)
+    try:
+        # Parse the FQID to extract the comment ID
+        # FQID format: http://s25-project-white/api/authors/{author_serial}/commented/{comment_id}
+        if decoded_comment_fqid.startswith('http://s25-project-white/api/authors/'):
+            # Extract the comment ID from the FQID
+            comment_id = decoded_comment_fqid.split('/commented/')[-1]
+            comment = Comment.objects.get(id=comment_id)
+            
+            # Serialize the local comment
+            serialized_comment = CommentSummarySerializer(comment, context={'request': request}).data
+            
+            return Response(serialized_comment, status=status.HTTP_200_OK)
+        else:
+            # This might be a remote comment
+            return Response({
+                "error": "Remote comment fetching not implemented yet."
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+    except (Comment.DoesNotExist, ValueError, IndexError):
+        # Comment not found locally or FQID format is invalid
+        return Response({
+            "error": "Comment not found locally. Remote comment fetching not implemented yet."
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
 def get_entry_comments_api(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
 
