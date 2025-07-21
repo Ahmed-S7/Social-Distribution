@@ -1203,33 +1203,9 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     current_author = get_object_or_404(Author, serial=author_serial)
     #decode the foreign author's ID
     decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-        
-        
-
-=======
         
 
 
->>>>>>> Stashed changes
-=======
-        
-
-
->>>>>>> Stashed changes
-=======
-        
-
-
->>>>>>> Stashed changes
-=======
-        
-
-
->>>>>>> Stashed changes
     #get the author if it exists
     response = requests.get(decodedId) 
     if  response.status_code != 200:
