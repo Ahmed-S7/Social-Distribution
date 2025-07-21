@@ -1010,6 +1010,34 @@ class FriendsOnlyCommentsTesting(TestCase):
         self.assertIn('id', response.data)
         self.assertIn('entry', response.data)
 
+    def test_author_comments_fqid_api(self):
+        """Test the author comments by FQID API endpoint"""
+        # Create another comment by the same author
+        comment2 = Comment.objects.create(
+            entry=self.friends_entry,
+            author=self.author2,
+            content="Another comment from the same author",
+            contentType="text/plain"
+        )
+        
+        # Construct the author FQID
+        author_fqid = f"http://s25-project-white/api/authors/{self.author2.serial}"
+        encoded_author_fqid = urllib.parse.quote(author_fqid, safe='')
+        
+        url = f'{BASE_PATH}/authors/{encoded_author_fqid}/commented/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comments')
+        self.assertIn('src', response.data)
+        self.assertIn('count', response.data)
+        self.assertIn('page_number', response.data)
+        self.assertIn('size', response.data)
+        
+        # Should have 2 comments from this author
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
+
 
 class ReadingTestCase(TestCase):
     def setUp(self):

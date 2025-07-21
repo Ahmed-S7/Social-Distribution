@@ -1924,7 +1924,7 @@ Response:
 
 
 @api_view(['GET'])
-def get_entry_comments_by_id_api(request, entry_fqid):
+def get_entry_comments_fqid_api(request, entry_fqid):
     """
     GET /api/entries/{ENTRY_FQID}/comments
     Returns comments on the entry (that our server knows about)
@@ -2030,6 +2030,61 @@ def get_comment_fqid_api(request, author_serial, entry_serial, remote_comment_fq
         # Comment not found locally or FQID format is invalid
         return Response({
             "error": "Comment not found locally. Remote comment fetching not implemented yet."
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+def author_comments_fqid(request, author_fqid):
+    """
+    GET /api/authors/{AUTHOR_FQID}/commented
+    Get the list of comments author has made on any entry (that local node knows about)
+    Returns a comments object
+    """
+    # Decode the URL-encoded author FQID
+    decoded_author_fqid = urllib.parse.unquote(author_fqid)
+    
+
+    # Extract the author serial from the FQID
+    author_serial = decoded_author_fqid.split('/api/authors/')[-1].rstrip('/')
+    
+    try:
+        # Find the author by serial
+        author = Author.objects.get(serial=author_serial)
+        
+        # Get all comments by this author
+        all_comments = Comment.objects.filter(author=author, is_deleted=False).order_by('-created_at')
+        
+        # Pagination logic
+        PAGE_SIZE = 5
+        page_number = int(request.GET.get('page', 1))
+        offset = (page_number - 1) * PAGE_SIZE
+        limit = offset + PAGE_SIZE
+        
+        paginated_comments = all_comments[offset:limit]
+        
+        serialized_comments = [
+            CommentSummarySerializer(comment, context={'request': request}).data
+            for comment in paginated_comments
+        ]
+        
+        # Build the request host for URLs
+        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        
+        response_data = {
+            "type": "comments",
+            "web": f"{request_host}/authors/{author.serial}",
+            "id": f"{request_host}/api/authors/{author.serial}/commented/",
+            "page_number": page_number,
+            "size": PAGE_SIZE,
+            "count": all_comments.count(),
+            "src": serialized_comments
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Author.DoesNotExist:
+        return Response({
+            "error": "Author not found"
         }, status=status.HTTP_404_NOT_FOUND)
 
 
@@ -2322,3 +2377,111 @@ def get_single_like_api(request, author_serial, like_serial):
             "error": "Like not found"
         }, status=status.HTTP_404_NOT_FOUND)
     
+
+@api_view(['GET'])
+def get_comment_fqid(request, comment_fqid):
+    """
+    Get a single comment by its FQID.
+    URL: /api/commented/{COMMENT_FQID}
+    """
+    # URL decode the FQID
+    decoded_comment_fqid = urllib.parse.unquote(comment_fqid)
+    
+    print(f"DEBUG: Received comment FQID: {decoded_comment_fqid}")
+    
+    # Parse the FQID to extract the comment ID
+    # FQID format: http://s25-project-white/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
+    # or http://127.0.0.1:8000/s25-project-white/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
+    if (decoded_comment_fqid.startswith('http://s25-project-white/api/authors/') or 
+        decoded_comment_fqid.startswith('http://127.0.0.1:8000/s25-project-white/api/authors/')):
+        
+        # Extract the comment ID from the FQID
+        # Split by '/comments/' and take the last part
+        if '/comments/' in decoded_comment_fqid:
+            comment_id = decoded_comment_fqid.split('/comments/')[-1].rstrip('/')
+            
+            print(f"DEBUG: Extracted comment ID: {comment_id}")
+            
+            try:
+                # Find the comment by ID
+                comment = Comment.objects.get(id=comment_id)
+                
+                # Serialize the comment
+                serializer = CommentSummarySerializer(comment, context={'request': request})
+                
+                return Response(serializer.data, status=status.HTTP_200_OK)
+                
+            except Comment.DoesNotExist:
+                return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({"error": "Invalid comment FQID format."}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        # Handle remote comments (not implemented yet)
+        return Response({"error": "Remote comment fetching not implemented yet."}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+def get_single_comment_fqid(request, comment_fqid):
+    """
+    Get a single comment by its FQID.
+    URL: /api/commented/{COMMENT_FQID}
+    """
+    # URL decode the FQID
+    decoded_comment_fqid = urllib.parse.unquote(comment_fqid)
+    
+    print(f"DEBUG: Received comment FQID: {decoded_comment_fqid}")
+    
+    # Parse the FQID to extract the comment ID
+    
+    # Extract the comment ID from the FQID
+    # Split by '/comments/' and take the last part
+    if '/comments/' in decoded_comment_fqid:
+        comment_id = decoded_comment_fqid.split('/comments/')[-1].rstrip('/')
+        
+        print(f"DEBUG: Extracted comment ID: {comment_id}")
+        
+        try:
+            # Find the comment by ID
+            comment = Comment.objects.get(id=comment_id)
+            
+            # Serialize the comment
+            serializer = CommentSummarySerializer(comment, context={'request': request})
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"error": "Invalid comment FQID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_author_comment_by_serial(request, author_serial, comment_serial):
+    """
+    Get a single comment by author serial and comment serial.
+    URL: /api/authors/{AUTHOR_SERIAL}/commented/{COMMENT_SERIAL}
+    """
+    print(f"DEBUG: Received author_serial: {author_serial}, comment_serial: {comment_serial}")
+    
+    try:
+        # Find the author by serial
+        author = Author.objects.get(serial=author_serial)
+        
+        # Find the comment by serial (assuming comment has a serial field)
+        # If comment doesn't have a serial field, we'll use the ID
+        try:
+            comment = Comment.objects.get(id=comment_serial, author=author)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found for this author."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Serialize the comment
+        serializer = CommentSummarySerializer(comment, context={'request': request})
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
