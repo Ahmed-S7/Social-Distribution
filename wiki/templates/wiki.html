@@ -104,6 +104,7 @@
             <a href="{% url 'wiki:entry_detail' entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
               💬 Comment ({{ entry.comments.count }})
             </a>
+            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
           </div>
         </div>
       </div>
@@ -113,4 +114,19 @@
     {% endif %}
   </div>
 </body>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.share-link-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const link = btn.getAttribute('data-link');
+        navigator.clipboard.writeText(link).then(function() {
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => { btn.textContent = '🔗 Share Link'; }, 1200);
+        }, function() {
+          alert('Failed to copy link');
+        });
+      });
+    });
+  });
+</script>
 </html>
