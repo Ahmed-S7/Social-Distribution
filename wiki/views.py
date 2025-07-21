@@ -785,7 +785,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     headers={"Content-Type": "application/json"},
 )
    
-    print(f"{follow_request_response.status_code}\n\n\n\n\n\n\n\n\n\n")
+    print(f"{follow_request_response.status_code}")
     print(follow_request_response.json())
     
     
@@ -1146,7 +1146,7 @@ def user_inbox_api(request, author_serial):
     
     #send an inbox object to a specific author
     elif request.method =="POST":   
-        print(request)
+        print(F"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST{request}\n\n\n\n\n\n\n\n")
         
         #check for all of the fields
         type = request.data.get('type')
