@@ -1204,9 +1204,15 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     #decode the foreign author's ID
     decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         
         
 
+=======
+        
+
+
+>>>>>>> Stashed changes
 =======
         
 
