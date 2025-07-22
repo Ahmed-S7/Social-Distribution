@@ -785,17 +785,26 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
 
     
     print(followRequest.data)
+    #login
     response= requests.post(login_url, json=auth, headers=headers)
     print(response.status_code)
+    
+    
     print(response.text)
     print(login_url)
+    
+    credentials = f"{auth['username']}:{auth['password']}"
+    token = base64.b64encode(credentials.encode()).decode()
 
     if response.status_code==200:
         follow_request_response = requests.post(
         inbox_url,
-        data=followRequest.data, 
-        headers={"Content-Type": "application/json"},
-        )
+        json=followRequest.data,  
+        headers={
+        "Content-Type": "application/json",
+    }
+    )
+
         print(follow_request_response.text)
     print("HERERERRERERRER__________________________________________________________________________________________",follow_request_response.status_code)
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
@@ -1016,8 +1025,7 @@ def process_follow_request(request, author_serial, request_id):
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
-
-@login_required
+@csrf_exempt
 @api_view(['GET','POST'])
 def user_inbox_api(request, author_serial):
     '''
@@ -1322,12 +1330,6 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     
     
    
- 
-    
-    
-    
-    
-    
  
 
 @api_view(['PUT', 'DELETE'])
