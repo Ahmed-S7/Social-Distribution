@@ -1335,7 +1335,6 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'PUT api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'  
     
     
-    # PUT and DELETE endpoints, complete the GET logic 
    
  
     
