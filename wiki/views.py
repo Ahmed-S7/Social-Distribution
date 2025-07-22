@@ -1186,7 +1186,7 @@ def user_inbox_api(request, author_serial):
     #sends an inbox object to a specific author
     elif request.method =="POST": 
         is_local = request.get_host() == requested_author.host
-        if current_author.is_local:
+        if is_local:
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         #print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
