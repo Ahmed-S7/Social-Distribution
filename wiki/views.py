@@ -297,7 +297,6 @@ def login_api(request):
         return Response({"detail": "Invalid credentials"}, status=403)
     if not user.is_active:
         return Response({"detail": "pending admin approval"}, status=403)
-    login(request,user)
     return Response({"detail": "Login successful"}, status=200)
 
 @api_view(['GET'])
@@ -575,7 +574,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #store the author object
     remote_author_json = remote_author_fetched(FOREIGN_AUTHOR_FQID)
     print(remote_author_json)
-    print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n NameRemote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
+    print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n Remote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
     #Ensure correct response for Author's followers or redirect
     remote_followers_fetch = remote_followers_fetched(FOREIGN_AUTHOR_FQID)
@@ -754,6 +753,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #api/authors/<str:author_serial>/inbox/
     if localNode:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
+        login_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/login/"
     else:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
@@ -762,35 +762,53 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     serializedAuthor = AuthorSerializer(local_requesting_account)
     print(serializedAuthor.data)
 
-    auth = HTTPBasicAuth("white","whitepass")
-    
+    auth = {"username":"white",
+            "password":"uniquepass"}
+    headers = {
+            "Content-Type": "application/json"
+        }
     followRequest = {
     "type": "follow",
     "summary": f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
     "actor": serializedAuthor.data,
     "object": requested_author_object
-}
-
+    }
+    followRequestObject=RemoteFollowRequest(requesterId=requested_author_object['id'], 
+                                            requester=serializedAuthor.data,
+                                            local_profile=local_requesting_account,
+                                            requested_account=requested_author_object,
+                                            state=RequestState.REQUESTING)
+    followRequest = FollowRequestSerializer(followRequestObject)
+    print(followRequest)
     
     print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
-    newFollowRequest = InboxItem(type=InboxObjectType.FOLLOW,
-                                 author=local_requesting_account,
-                                 body=followRequest
-                                 )
+
     
-    serializedFollowRequest = InboxItemSerializer(newFollowRequest)
+    print(followRequest.data)
+    #login
+    response= requests.post(login_url, json=auth, headers=headers)
+    print(response.status_code)
     
     
-    print(serializedFollowRequest.data)
-    follow_request_response = requests.post(
-    inbox_url,
-    data=serializedFollowRequest.data,  
-    auth=auth,
-    headers={"Content-Type": "application/json"},
+    print(response.text)
+    print(login_url)
+    
+    credentials = f"{auth['username']}:{auth['password']}"
+    token = base64.b64encode(credentials.encode()).decode()
+
+    if response.status_code==200:
+        follow_request_response = requests.post(
+        inbox_url,
+        json=followRequest.data,  
+        auth=HTTPBasicAuth(auth['username'],auth['password']),
+        timeout=3
     )
+
+        print(follow_request_response.text)
+    print("HERERERRERERRER__________________________________________________________________________________________",follow_request_response.status_code)
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    print("FOLLOWER", follow_request_response.text)
     
+    print(check_node_validity(remote_author_host))
     
     return render(request, "remote_profile.html", 
                       {
@@ -801,16 +819,18 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        "FQID":decoded_FOREIGN_AUTHOR_FQID,
                        }
                       )
-
     
-async def get_login_response():
-    async with aiohttp.ClientSession() as currentSession:
-        #async with currentSession.post("")
-        pass
+    
+            
+        
         
 def check_node_validity(host):
-    remoteNodes = RemoteNode.objects.all()
-    print(remoteNodes)         
+    '''checks if the node associated with a given host is valid'''
+    remoteNode = RemoteNode.objects.filter(Q(url=f"http://{host}") | Q (url=f"https://{host}"))
+    if remoteNode:
+        return True
+    return False
+        
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
@@ -1004,8 +1024,7 @@ def process_follow_request(request, author_serial, request_id):
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
-
-@login_required
+@csrf_exempt
 @api_view(['GET','POST'])
 def user_inbox_api(request, author_serial):
     '''
@@ -1136,35 +1155,27 @@ def user_inbox_api(request, author_serial):
     }
     
     '''
+    current_user=request.user
     
-    #If the user is local, make sure they're logged in 
-    if request.user.is_authenticated:
-                
-        current_user = request.user  
-        print(current_user)
-        try: 
-            current_author = get_object_or_404(Author, user=current_user)
-            requested_author = get_object_or_404(Author,serial=author_serial)   
-        except Exception as e:
-            return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
+    requested_author = get_object_or_404(Author, serial=author_serial)
     
-    else:
-        return Response({"Error":f"You are unauthorized to view or interact with this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
-        if current_author!=requested_author:
+        if current_user!=requested_author.user:
             return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        inboxItems = current_author.inboxItems.order_by('-created_at')
+        inboxItems = requested_author.inboxItems.order_by('-created_at')
         serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
     
     #sends an inbox object to a specific author
     elif request.method =="POST": 
-        if current_author.is_local:
+        is_local = request.get_host() == requested_author.host
+        if is_local:
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         #print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
@@ -1310,12 +1321,6 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     
     
    
- 
-    
-    
-    
-    
-    
  
 
 @api_view(['PUT', 'DELETE'])

@@ -86,13 +86,13 @@
 
                             {% if is_a_friend %}
                            
-                                <button class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
+                                <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
                                 <script>
                                 document.getElementById("unfriend_button").disabled = true; 
                                 </script>
                             {% elif is_following %}
 
-                                <button class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
+                                <button id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
                                 <script>
                                 document.getElementById("unfollow_button").disabled = true; 
                                 </script>
@@ -100,7 +100,7 @@
                             {% elif is_currently_requesting %}
 
                                 {% csrf_token %}
-                                <button class="unrequest_button" type="submit" >Cancel Request</button>
+                                <button id="unrequest_button" class="unrequest_button" type="submit" >Cancel Request</button>
                                 <script>
                                 document.getElementById("unrequest_button").disabled = true; 
                                 </script>

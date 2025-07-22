@@ -29,8 +29,10 @@ urlpatterns = [
     # Author URLS
     path('authors/', view_local_authors, name='view_local_authors'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
+   
+    #Remote Author URLS
     path('authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile'),
-    
+     
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),
     path('api/authors/<str:author_serial>/', get_or_edit_author_api, name='get_or_edit_author'),
