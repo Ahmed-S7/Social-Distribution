@@ -45,18 +45,18 @@ urlpatterns = [
     path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
 
     # Entry Related URLs
-    path('entry/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
-    path('entry/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
+    path('entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
+    path('entries/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
     path('comment/<int:comment_id>/like/', like_comment, name='like-comment'),
-    path('entry/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),
+    path('entries/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),
     path('create_entry/', create_entry, name='create_entry'),
-    path('entry/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
-    path('entry/<uuid:entry_serial>/delete/', delete_entry, name='delete_entry'),
-    path('entry/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
+    path('entries/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
+    path('entries/<uuid:entry_serial>/delete/', delete_entry, name='delete_entry'),
+    path('entries/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
 
     # Entry Related API
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
-    path('api/entry/<uuid:entry_serial>/like/', like_entry_api, name='like_entry_api'),
+    path('api/entries/<uuid:entry_serial>/like/', like_entry_api, name='like_entry_api'),
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/likes/', get_entry_likes_api, name='get_entry_likes_api'),
     #path('api/entry/<uuid:entry_serial>/comments/', add_comment_api, name='add_comment_api'),
     #path('api/entry/<uuid:entry_serial>/comments/view/', get_entry_comments_api, name='get_entry_comments_api'),
@@ -64,7 +64,7 @@ urlpatterns = [
     path('api/comment/<int:comment_id>/like/', like_comment_api, name='like_comment_api'),
 
     # Image Entries API
-    path('api/authors/<str:author_serial>/entry/<uuid:entry_serial>/image/', get_author_image_api, name='get_author_image_api'),
+    path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/image/', get_author_image_api, name='get_author_image_api'),
     path('api/entries/<uuid:entry_serial>/image/', get_entry_image_api, name='get_entry_image_api'),
 
     #Follow Requests/Followers API

@@ -99,7 +99,7 @@ class Author(BaseModel):
     
     serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
     
-    profileImage = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    profileImage = models.URLField(blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
   

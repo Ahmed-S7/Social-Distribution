@@ -52,7 +52,7 @@
                                 <!--Make profile picture lead to pfp editing-->
                                 {% if author.profileImage %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="{{ author.profileImage.url }}" alt="Profile Picture">
+                                    <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
                                 </a>
                                 {% else %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
