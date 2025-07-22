@@ -754,6 +754,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #api/authors/<str:author_serial>/inbox/
     if localNode:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
+        login_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/login/"
     else:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
@@ -762,8 +763,11 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     serializedAuthor = AuthorSerializer(local_requesting_account)
     print(serializedAuthor.data)
 
-    auth = HTTPBasicAuth("white","whitepass")
-    
+    auth = {"username":"white",
+            "password":"whitepass"}
+    headers = {
+            "Content-Type": "application/json"
+        }
     followRequest = {
     "type": "follow",
     "summary": f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
@@ -782,15 +786,21 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     
     print(serializedFollowRequest.data)
-    follow_request_response = requests.post(
-    inbox_url,
-    data=serializedFollowRequest.data,  
-    auth=auth,
-    headers={"Content-Type": "application/json"},
-    )
-    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    print("FOLLOWER", follow_request_response.text)
+    response = asyncio.run(get_login_response(login_url, auth, headers))
     
+    print(response.status)
+    print(response.text)
+    if response.status==200:
+        follow_request_response = requests.post(
+        inbox_url,
+        data=serializedFollowRequest.data,  
+        auth=auth,
+        headers={"Content-Type": "application/json"},
+        )
+    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
+    print("RESPONSE", follow_request_response.text)
+    print(remote_author_host)
+    print(check_node_validity(remote_author_host))
     
     return render(request, "remote_profile.html", 
                       {
@@ -801,16 +811,22 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        "FQID":decoded_FOREIGN_AUTHOR_FQID,
                        }
                       )
-
     
-async def get_login_response():
+async def get_login_response(url, auth, headers):
     async with aiohttp.ClientSession() as currentSession:
-        #async with currentSession.post("")
-        pass
+        async with currentSession.post(url, json=auth, headers=headers) as response:
+            result = await response.text()
+            return response
+            
+        
         
 def check_node_validity(host):
-    remoteNodes = RemoteNode.objects.all()
-    print(remoteNodes)         
+    '''checks if the node associated with a given host is valid'''
+    remoteNode = RemoteNode.objects.filter(Q(url=f"http://{host}") | Q (url=f"https://{host}"))
+    if remoteNode.is_valid:
+        return True
+    return False
+        
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
