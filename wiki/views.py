@@ -802,6 +802,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         json=followRequest.data,  
         headers={
         "Content-Type": "application/json",
+        "Authorization": f"Basic {token}"
     }
     )
 
@@ -1184,6 +1185,7 @@ def user_inbox_api(request, author_serial):
     
     #sends an inbox object to a specific author
     elif request.method =="POST": 
+        is_local = request.get_host() == requested_author.host
         if current_author.is_local:
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
