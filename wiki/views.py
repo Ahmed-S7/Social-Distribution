@@ -199,7 +199,7 @@ def register(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
         github = request.POST.get('github') or None
-        profileImage = request.FILES.get('profileImage') or None
+        profileImage = request.POST.get('profileImage') or None
 
         userIsValid = validUserName(username)
         
@@ -1605,7 +1605,7 @@ def edit_profile(request, username):
         new_username = request.POST.get('displayName')
         github = request.POST.get('github')
         description = request.POST.get('description')
-        image_file = request.FILES.get('profileImage')
+        profile_image_url = request.POST.get('profileImage')
 
         # Check if the new username is already taken by someone else
         if new_username and new_username != request.user.username:
@@ -1629,8 +1629,8 @@ def edit_profile(request, username):
         author.github = github
         author.description = description
 
-        if image_file:
-            author.profileImage = image_file
+        if profile_image_url: 
+            author.profileImage = profile_image_url
 
         author.save()
         return redirect('wiki:profile', username=new_username)
@@ -2322,14 +2322,26 @@ def get_author_comments_api(request, author_serial):
 @api_view(['GET'])
 def get_entry_image_api(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
+
     if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
-    image_path = entry.image.path
-    mime_type, _ = mimetypes.guess_type(image_path) # check what type of image it is
-    with open(image_path, 'rb') as image_file:
-        image_data = image_file.read()
-        response = HttpResponse(image_data, content_type=mime_type)
-        return response
+
+    # Determine MIME type from contentType
+    if entry.contentType.startswith('image/png'):
+        mime_type = 'image/png'
+    elif entry.contentType.startswith('image/jpeg'):
+        mime_type = 'image/jpeg'
+    else:
+        mime_type = 'application/octet-stream'  # fallback
+
+    # Decode the base64 image data
+    try:
+        image_data = base64.b64decode(entry.content)
+    except Exception:
+        return HttpResponse("Failed to decode image.", status=500)
+
+    # Return as binary response
+    return HttpResponse(image_data, content_type=mime_type)
     
 
 @api_view(['GET'])
