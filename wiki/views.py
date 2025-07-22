@@ -1,4 +1,6 @@
 import mimetypes
+import aiohttp
+import asyncio
 from django.db.models import Q
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
@@ -279,7 +281,7 @@ class MyLoginView(LoginView):
             pass  # normal invalid credentials case
 
         return super().form_invalid(form)
-    
+@csrf_exempt   
 @api_view(['POST'])
 def login_api(request):
     username = request.data.get('username')
@@ -295,6 +297,7 @@ def login_api(request):
         return Response({"detail": "Invalid credentials"}, status=403)
     if not user.is_active:
         return Response({"detail": "pending admin approval"}, status=403)
+    login(request,user)
     return Response({"detail": "Login successful"}, status=200)
 
 @api_view(['GET'])
@@ -731,7 +734,7 @@ def view_entry_author(request, entry_serial):
     entry_author=get_object_or_404(Author, id=author_id)
     return HttpResponseRedirect(reverse("wiki:view_external_profile", kwargs={"author_serial": entry_author.serial}))
    
-#@login_required  
+@login_required  
 @require_http_methods(["GET","POST"])  
 def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     print(FOREIGN_AUTHOR_FQID)
@@ -744,7 +747,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
     print(remote_author_serial)
     current_user = request.user
-    #COMMENTED HERE
+    
     local_requesting_account = get_object_or_404(Author, user=current_user)
     requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
     print(requested_author_object)
@@ -759,9 +762,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     serializedAuthor = AuthorSerializer(local_requesting_account)
     print(serializedAuthor.data)
 
-  
-    
-    auth = HTTPBasicAuth("ThatGuy","a")
+    auth = HTTPBasicAuth("white","whitepass")
     
     followRequest = {
     "type": "follow",
@@ -778,6 +779,8 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                  )
     
     serializedFollowRequest = InboxItemSerializer(newFollowRequest)
+    
+    
     print(serializedFollowRequest.data)
     follow_request_response = requests.post(
     inbox_url,
@@ -800,7 +803,14 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                       )
 
     
-    
+async def get_login_response():
+    async with aiohttp.ClientSession() as currentSession:
+        #async with currentSession.post("")
+        pass
+        
+def check_node_validity(host):
+    remoteNodes = RemoteNode.objects.all()
+    print(remoteNodes)         
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
@@ -1132,7 +1142,6 @@ def user_inbox_api(request, author_serial):
                 
         current_user = request.user  
         print(current_user)
-        #IF LOCAL AUTHOR IS LOGGED IN
         try: 
             current_author = get_object_or_404(Author, user=current_user)
             requested_author = get_object_or_404(Author,serial=author_serial)   
@@ -1153,7 +1162,7 @@ def user_inbox_api(request, author_serial):
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
     
-    #sends a inbox object to a specific author
+    #sends an inbox object to a specific author
     elif request.method =="POST": 
         if current_author.is_local:
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
