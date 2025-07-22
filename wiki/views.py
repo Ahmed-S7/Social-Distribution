@@ -570,7 +570,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
         return redirect(reverse("wiki:view_local_authors"))
     
     #store the author object
-    remote_author_json = remote_author_fetch.json()
+    remote_author_json = remote_author_fetched(FOREIGN_AUTHOR_FQID)
     print(remote_author_json)
     print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n NameRemote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
@@ -582,7 +582,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
         
         
     #store the author followers 
-    remote_followers_json = remote_followers_fetch.json()
+    remote_followers_json = remote_followers_fetch
     
     followers = remote_followers_json['followers']
     print(f"\n\nFOLLOWERS: {followers}\n\n\n")
@@ -785,7 +785,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     auth=auth,
     headers={"Content-Type": "application/json"},
     )
-    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID).json()
+    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     print("FOLLOWER", follow_request_response.text)
     
     
