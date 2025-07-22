@@ -71,18 +71,6 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         return None
     
 
-def is_valid_serial(id):
-    
-    try:
-        
-        id = uuid.UUID(id)
-        
-        return True
-            
-    except Exception as e:
-        
-        return False
-
 def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     '''retrieves a list of a remote authors followers or returns False'''
     remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers")

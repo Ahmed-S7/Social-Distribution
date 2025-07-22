@@ -821,13 +821,13 @@ def follow_profile(request, author_serial):
     #print(requested_account)
     ##########################################
     
-    if requesting_account.is_remote_friends_with(requested_account):
+    if requesting_account.is_friends_with(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
         return redirect(query_with_friend_status)
     
     
-    if requesting_account.is_remote_following(requested_account):
+    if requesting_account.is_following(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
@@ -848,22 +848,6 @@ def follow_profile(request, author_serial):
             # Save follow request to DB
             saved_follow_request = serialized_follow_request.save()
 
-            #make the inbox JSON content
-            inbox_content = serialized_follow_request.data     
-            newInboxItem = InboxItem(
-                    author=requested_account,
-                    type=InboxObjectType.FOLLOW,
-                    body=inbox_content
-            )
-
-            #Try to save the new follow request as an inbox item
-            try:
-                newInboxItem.save()
-                    
-                    #Exception structure adjusted using copilot: https://www.bing.com/search?pglt=427&q=copilot&cvid=882b9688f1804581bd4975fbe80acc49&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQDIGCAQQABhAMgYIBRAAGEAyBggGEAAYQDIGCAcQABhAMgYICBAAGEDSAQc5MDJqMGoxqAIAsAIA&FORM=ANNTA1&PC=EDGEDB, "[Adjust the structure of these error messages]", June, 2025
-            except Exception as e:
-                        saved_follow_request.delete()  # Rollback follow request
-                        return HttpResponseServerError(f"Failed to save Inbox Item: {e}")
 
         else:
             return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
@@ -874,11 +858,11 @@ def follow_profile(request, author_serial):
 
 
     if requested_account:
-        messages.success(request,f"You have successfully requested to follow {requested_account}! :)")
+
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
     else:
-        messages.error(request,f"The author you request to follow might not exist :(")
+       
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
         
 @api_view(['GET']) 
@@ -1185,16 +1169,19 @@ def user_inbox_api(request, author_serial):
             body = request.data
             authorFQID = request.data['actor']['id']
             remoteAuthorObject = remote_author_fetched(authorFQID)
+
             if not remoteAuthorObject:
                  return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
              ################################################################TEST#####################################################################################################
             print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
              ####################################################################################################################################################################
             requested_account_serialized = AuthorSerializer(requested_author)
-            print(requested_account_serialized.data)
             remote_follow_request = RemoteFollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_account_serialized.data, local_profile=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = RemoteFollowRequestSerializer(remote_follow_request, data={
-                "actor":remote_follow_request.requester    
+                "actor":remote_follow_request.requester,
+                "object": remote_follow_request.requested_account
+                
+                  
             }, partial=True)
             
             if not remote_serialized_request.is_valid():
@@ -1202,12 +1189,12 @@ def user_inbox_api(request, author_serial):
                 
             else:
                 type="Follow"
-                
+                print("valid serializer")
                 #attempt to save the follow request
                 try:
                     remote_serialized_request.save()
                 except Exception as e:
-                    print(remote_serialized_request.errors)
+                    print(remote_serialized_request.data)
                     return Response({"Unable to save follow request" : f"dev notes:{e}, serializer errors: {remote_serialized_request.errors or None}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 #set the inbox body to the validated inbox object 
