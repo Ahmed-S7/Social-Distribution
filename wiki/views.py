@@ -2546,4 +2546,86 @@ def get_entry_likes_by_fqid(request, entry_fqid):
     else:
         return Response({"error": "Invalid entry FQID format."}, status=status.HTTP_400_BAD_REQUEST)
 
-            
+@api_view(['GET'])
+def get_comment_likes_by_fqid(request, author_serial, entry_serial, comment_fqid):
+    """
+    Get all likes for a comment by its FQID.
+    URL: /api/authors/{AUTHOR_SERIAL}/entries/{ENTRY_SERIAL}/comments/{COMMENT_FQID}/likes
+    "Who Liked This Comment"
+    """
+    # URL decode the FQID
+    decoded_comment_fqid = urllib.parse.unquote(comment_fqid)
+    
+    print(f"DEBUG: Received comment FQID: {decoded_comment_fqid}")
+    print(f"DEBUG: Author serial: {author_serial}, Entry serial: {entry_serial}")
+    
+
+    # Extract the comment ID from the FQID
+    # Split by '/comments/' or '/commented/' and take the last part
+    if '/comments/' in decoded_comment_fqid:
+        comment_id = decoded_comment_fqid.split('/comments/')[-1].rstrip('/')
+    elif '/commented/' in decoded_comment_fqid:
+        comment_id = decoded_comment_fqid.split('/commented/')[-1].rstrip('/')
+    else:
+        return Response({"error": "Invalid comment FQID format."}, status=status.HTTP_400_BAD_REQUEST)
+        
+    print(f"DEBUG: Extracted comment ID: {comment_id}")
+    
+    try:
+        # Find the comment by ID
+        comment = Comment.objects.get(id=comment_id)
+        
+        # Verify the comment belongs to the specified entry and author
+        # Convert to strings for comparison and handle potential None values
+        comment_entry_serial = str(comment.entry.serial) if comment.entry else None
+        comment_author_serial = str(comment.entry.author.serial) if comment.entry and comment.entry.author else None
+        
+        print(f"DEBUG: Comment entry serial: {comment_entry_serial}, expected: {entry_serial}")
+        print(f"DEBUG: Comment author serial: {comment_author_serial}, expected: {author_serial}")
+        print(f"DEBUG: Entry serial lengths: {len(str(comment_entry_serial))} vs {len(str(entry_serial))}")
+        print(f"DEBUG: Author serial lengths: {len(str(comment_author_serial))} vs {len(str(author_serial))}")
+        print(f"DEBUG: Entry serial match: {comment_entry_serial == entry_serial}")
+        print(f"DEBUG: Author serial match: {comment_author_serial == author_serial}")
+        
+        # Convert both sides to strings for proper comparison
+        if str(comment_entry_serial) != str(entry_serial) or str(comment_author_serial) != str(author_serial):
+            print(f"DEBUG: Validation failed - values don't match")
+            return Response({"error": "Comment does not belong to the specified entry or author."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        print(f"DEBUG: Validation passed - values match")
+        
+        # Get all likes for this comment
+        likes = CommentLike.objects.filter(comment=comment, is_deleted=False).order_by('-created_at')
+        
+        # Pagination logic
+        PAGE_SIZE = 5
+        page_number = int(request.GET.get('page', 1))
+        offset = (page_number - 1) * PAGE_SIZE
+        limit = offset + PAGE_SIZE
+        
+        paginated_likes = likes[offset:limit]
+        
+        serialized_likes = [
+            CommentLikeSummarySerializer(like, context={'request': request}).data
+            for like in paginated_likes
+        ]
+        
+        # Build the request host for URLs
+        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        
+        response_data = {
+            "type": "likes",
+            "web": f"{request_host}/entries/{entry_serial}",
+            "id": f"{request_host}/api/authors/{author_serial}/entries/{entry_serial}/comments/{decoded_comment_fqid}/likes",
+            "page_number": page_number,
+            "size": PAGE_SIZE,
+            "count": likes.count(),
+            "src": serialized_likes
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error fetching comment likes: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
