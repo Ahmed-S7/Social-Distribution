@@ -53,7 +53,8 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         displayName = username,
         
         serial = serial_id,
-
+        
+        host=host,
 
         github=github,
         #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE

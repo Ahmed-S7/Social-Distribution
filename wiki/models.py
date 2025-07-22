@@ -89,7 +89,7 @@ class Author(BaseModel):
      
     id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
      
-    host = models.URLField(default=f"http://s25-project-white/api/")
+    host = models.URLField(default=f"http://127.0.0.1:8000/")
     
     displayName = models.CharField(max_length=150)
 
@@ -107,7 +107,7 @@ class Author(BaseModel):
     
     @property
     def is_local(self):
-        return "s25-project-white" in self.host
+        return "s25-project-white" in self.id
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()
