@@ -8,7 +8,6 @@ from django.dispatch import receiver
 from django.forms import DateTimeField
 from django.utils.timezone import make_aware
 from django.utils import timezone
-
 import pytz
 from datetime import datetime
 from django.utils.safestring import mark_safe
@@ -545,7 +544,7 @@ class InboxItem(BaseModel):
     
     FIELDS:
     
-    author: the author posting the inbox item
+    author: the author recieving the inbox item
     
     type: the type of inbox item
     
@@ -553,6 +552,7 @@ class InboxItem(BaseModel):
     
     created_at: the time that the inbox item was posted
 
+    use: author.inboxItems to retrieve all of an authors inbox items, this is effectively their inbox
     '''
     
     author = models.ForeignKey(Author, related_name="inboxItems", on_delete=models.CASCADE)
@@ -583,7 +583,7 @@ class InboxItem(BaseModel):
         return self.content 
     
     def __str__(self):
-        return f"{self.author} posted object of type {self.type}"
+        return f"{self.author} received Inbox Item object of type {self.type}"
         
    
         
@@ -605,22 +605,147 @@ class RemoteNode(BaseModel):
 class RemoteFollowing(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
-    remoteFollowerId = models.URLField(null=False)
-    localFollowed = models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
+    followerId = models.URLField(null=False)
+    following = models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
     date_followed = models.DateTimeField(default=get_mst_time)
     
+    class Meta:
+        constraints = [
+                UniqueConstraint(
+                fields=['followerId', 'following'],
+                condition=Q(is_deleted=False),
+                name='unique_active_remote_following'
+            )
+                
+            ]
+        
+    #derived from stackoverflow.com: https://stackoverflow.com/questions/67658422/how-to-overwrite-save-method-in-django-model-form, "How to overwrite the save method in django model form", June 15, 2025
+    def save(self, *args, **kwargs):
+         if self.followerId == self.following.id:
+             raise ValidationError("You cannot follow Yourself")
+         
+         if  self.following.is_deleted:#handle the deleted remote authors in the future if need be
+            raise ValidationError("Cannot follow or be followed by a deleted author")
+        
+         return super().save(*args,**kwargs)  
+     
     def __str__(self):
-        status = "currently following" if not self.is_deleted else "No Longer Follows"
-        return f"{self.remoteFollowerId} {status} {self.localFollowed}"
+        if self.is_deleted==True:
+                return f"{self.followerId} No Longer Follows {self.following}"
+            
+
+
+class RemoteFollowRequest(BaseModel):
+    """**Models a follow Request**\n
+    
+    *Example Usages:*\n
+        
+    Get an author's list of follow requests:\n
+        - author.remote_follow_requests.all()\n\n
+        
+    Get the state of a given follow request:\n
+        - followrequest.get_request_state()
+        
+    FIELDS:
+    - requesterId: the author sending the follow request
+    - requested_account: the author recieving the follow request
+    - state: that state of the follow request (requesting, accepted, or rejected)
+    
+    """
+    
+    objects = AppManager()
+    all_objects = models.Manager()
+    requesterId = models.URLField(null=False)#foreign author ID
+    requester = models.JSONField()
+    requested_account = models.ForeignKey(Author, related_name="remote_follow_requests", on_delete=models.CASCADE, null=False)
+    type = models.CharField(default="follow")
+    summary = models.CharField(default="You have recieved a follow request!")
+    state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
+    created_at = models.DateTimeField(default=get_mst_time)
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+            fields=['requesterId', 'requested_account', 'state'],
+            condition=Q(is_deleted=False),
+            name='unique_active_remote_follow_request'
+        )
+            
+        ]
+        
+    def get_request_state(self):
+        """returns the state of active follow requests"""
+        return self.state
+        
+    def set_request_state(self, new_state:RequestState):
+        '''
+        **Updates the state of a sent follow request.**
+        
+        Example usage:
+        
+            - followRequest.set_request_state(RequestState.ACCEPTED)
+
+        args:
+        
+            - new_state(RequestState): a valid request state to update the follow request to 
+            
+        Raises:
+        
+            - TypeError: whenever an invalid request state is passed to the function 
+            
+        '''
+        if isinstance(new_state, RequestState):
+            self.state = new_state
+            self.save() 
+            
+        else:
+            raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
+        
+    def save(self, *args, **kwargs):
+         if self.requesterId == self.requested_account.id:
+              raise ValidationError("You cannot send a follow request to  yourself.")
+          
+         #Validation Error Raised if a follow request already exists with:  
+         if RemoteFollowRequest.objects.filter(
+             requesterId=self.requesterId, # the same requesting user
+             requested_account=self.requested_account, # the same requested user
+             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING] # with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
+             ).exclude(pk=self.pk).exists():
+            
+            raise ValidationError("User already has an active follow request or relationship with this user")
+        
+        
+         return super().save(*args,**kwargs)
+    def __str__(self):
+        return f"{self.requesterId} has requested to follow {self.requested_account.displayName}"  
+
 
 class RemoteFriend(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
-    remoteFriendId = models.URLField(null=False)
-    localFriend = models.ForeignKey(Author, related_name="remotefriends", on_delete=models.CASCADE, null=False)
-    date_followed = models.DateTimeField(default=get_mst_time)
+    friendingId = models.URLField(null=False)#foreign author's ID
+    friended = models.ForeignKey(Author, related_name="remote_friends", null=False, on_delete=models.CASCADE)
+    friended_at =  models.DateTimeField(default=get_mst_time)
+       
+    #prevents any duplicate friend requests
+    class Meta:
+            
     
+        constraints = [
+            UniqueConstraint(fields=['friendingId', 'friended'],
+                                    condition=Q(is_deleted=False),
+                                    name='unique_active_remote_friendship'
+        )
+        ]
+        
+    def save(self, *args, **kwargs):
+        if self.friendingId == self.friended.id:
+              raise ValidationError("You cannot be friends with yourself.")   
+          
+        return super().save(*args,**kwargs)    
+     
     def __str__(self):
-        status = "Is Currently Friends With" if not self.is_deleted else " Is No Longer Friends With"
-        return f"{self.remoteFriendId} {status} {self.localFriend}"    
+        if self.is_deleted==True:
+            return f"{self.friendingId} Is No Longer Friends With {self.friended.displayName}"
+             
+        return f"{self.friendingId} Is Friends With {self.friended.displayName}"   
     

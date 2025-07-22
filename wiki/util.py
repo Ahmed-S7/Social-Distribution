@@ -1,4 +1,4 @@
-from .serializers import AuthorSerializer
+
 from .models import Author, RemoteNode
 from django.http import HttpResponse, Http404
 import uuid
@@ -15,7 +15,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
-      
+    from .serializers import AuthorSerializer  
     usernameCheck = AuthorSerializer( 
     data={
 
@@ -84,23 +84,24 @@ def is_valid_serial(id):
         return False
 
 def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
+    '''retrieves a list of a remote authors followers or returns False'''
     remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers")
-    if not remote_followers_fetch.status_code == 200:
-        False
+    if not remote_followers_fetch.status_code in [301,302,200]:
+        return False
     else:
-        return remote_followers_fetch
+        return remote_followers_fetch.json()
     
 def remote_author_fetched(FOREIGN_AUTHOR_FQID):
     '''returns the author JSONified object from a remote author's FQID (if valid), false otherwise'''
     remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
-    if not remote_author_fetch.status_code == 200:
-        False
+    if not remote_author_fetch.status_code in [301,302,200]:
+       return False
     else:
-        print(remote_author_fetch.json())
         return remote_author_fetch.json()
         
 def decoded_fqid(FOREIGN_AUTHOR_FQID):
-     return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    '''percent decodes and author's fqid'''
+    return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
 
 def get_host_and_scheme(FOREIGN_AUTHOR_FQID):
     '''gets the scheme and host name for a DECODED foreign author FQID'''
@@ -113,5 +114,3 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
-
-    

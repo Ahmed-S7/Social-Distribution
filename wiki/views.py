@@ -3,8 +3,8 @@ from django.db.models import Q
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import RemoteFollowingSerializer, PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+from .models import RemoteFollowing, RemoteFollowRequest,RemoteFriend,Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
+from .serializers import RemoteFollowRequestSerializer,RemoteFriendSerializer,RemoteFollowingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -582,7 +582,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
         
         
     #store the author followers 
-    remote_followers_json = remote_followers_fetch.json()
+    remote_followers_json = remote_followers_fetch
     
     followers = remote_followers_json['followers']
     print(f"\n\nFOLLOWERS: {followers}\n\n\n")
@@ -750,9 +750,9 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     print(requested_author_object)
     #api/authors/<str:author_serial>/inbox/
     if localNode:
-        inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}"
+        inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
     else:
-        inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}"
+        inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
     print(inbox_url)
     
@@ -761,13 +761,15 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
 
   
     
-    auth = HTTPBasicAuth("white","somethingunique")
+    auth = HTTPBasicAuth("ThatGuy","a")
     
-    followRequest={"type":"follow",
-                   "summary":f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
-                   "actor":serializedAuthor.data,
-                   "object":requested_author_object,     
-                   }
+    followRequest = {
+    "type": "follow",
+    "summary": f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
+    "actor": serializedAuthor.data,
+    "object": requested_author_object
+}
+
     
     print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
     newFollowRequest = InboxItem(type=InboxObjectType.FOLLOW,
@@ -775,18 +777,28 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                  body=followRequest
                                  )
     
-    print(json.dumps(followRequest))
     serializedFollowRequest = InboxItemSerializer(newFollowRequest)
     print(serializedFollowRequest.data)
     follow_request_response = requests.post(
     inbox_url,
-    json=followRequest,  
+    data=serializedFollowRequest.data,  
     auth=auth,
     headers={"Content-Type": "application/json"},
-)
-   
-    print(f"{follow_request_response.status_code}")
-    print(follow_request_response.json())
+    )
+    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID).json()
+    print("FOLLOWER", follow_request_response.text)
+    
+    
+    return render(request, "remote_profile.html", 
+                      {
+                       'author': requested_author_object,
+                       "followers": followers,
+                       "follower_count": len(followers),
+                       "is_local":False,
+                       "FQID":decoded_FOREIGN_AUTHOR_FQID,
+                       }
+                      )
+
     
     
 
@@ -999,7 +1011,7 @@ def process_follow_request(request, author_serial, request_id):
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
 
-
+@login_required
 @api_view(['GET','POST'])
 def user_inbox_api(request, author_serial):
     '''
@@ -1010,6 +1022,17 @@ def user_inbox_api(request, author_serial):
     body: the JSON content of the inbox object
     created_at: the time the inbox object was posted to the inbox
     
+    
+    In its most basic form, we have: 
+    
+         {
+            "type": {the type of inbox item}
+            "author":{the recieving author's ID}
+            "body": {the object sent to this inbox}
+            "created_at": {the time this inbox object was recieved}
+        }
+                
+                
     Example usage:
     
     GET:
@@ -1080,9 +1103,8 @@ def user_inbox_api(request, author_serial):
     
     
     {
-    "type": "Follow",
-    "author": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
-    "body": {
+    
+    {
         "type": "follow",
         "state": "requesting",
         "summary": "b has requested to follow GUTS",
@@ -1106,9 +1128,8 @@ def user_inbox_api(request, author_serial):
             "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
             "description": ""
         }
-    },
-    "created_at": "2025-07-19T21:59:33.076302-06:00"
     }
+   
     For a failed POST request, the requester will recieve the error info:
     
     HTTP 404 Not Found
@@ -1119,6 +1140,34 @@ def user_inbox_api(request, author_serial):
     {
     "detail": "JSON parse error - Expecting value: line 1 column 1 (char 0)"
     }
+    
+    ##USE THIS FOR TESTING THE FOLLOW REQUESTS INBOX ITEMS (POST):
+    
+    {
+            "type": "follow",
+            "state": "requesting",
+            "summary": "You have recieved a follow request!",
+            "actor": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "host": "http://s25-project-white/api/",
+                "displayName": "b",
+                "github": "",
+                "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "description": ""
+            },
+            "object": {
+                "type": "author",
+                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "host": "http://s25-project-white/api/",
+                "displayName": "GUTS",
+                "github": "",
+                "profileImage": "/media/profile_images/gutspfp.jpg",
+                "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "description": ""
+            }
+        }
     
     '''
     
@@ -1135,33 +1184,73 @@ def user_inbox_api(request, author_serial):
             return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
     
     else:
-        return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"Error":f"You are unauthorized to view or interact with this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
-        inboxItems = current_author.inboxItems
+        
+        if current_author!=requested_author:
+            return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        inboxItems = current_author.inboxItems.order_by('-created_at')
         serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
     
-    #send an inbox object to a specific author
-    elif request.method =="POST":   
-        print(F"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST{request}\n\n\n\n\n\n\n\n")
+    #sends a inbox object to a specific author
+    elif request.method =="POST": 
+        #################################TEST##################################### 
+        #print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
+        #########################################################################
+        type = request.data.get("type")
         
-        #check for all of the fields
-        type = request.data.get('type')
+        if not type:
+            return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
         
-        
-        if type == "follow":
+        #for follow requests
+        if type == "follow" or type == "Follow":
+            
             body = request.data
-            author = request.data['actor']['id']
+            authorFQID = request.data['actor']['id']
+            remoteAuthorObject = remote_author_fetched(authorFQID)
+            if not remoteAuthorObject:
+                 return Response({"failed to save Inbox item, could not fetch author object":f"dev notes: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
+             ################################################################TEST#####################################################################################################
+             #print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
+             ####################################################################################################################################################################
+            remote_follow_request = RemoteFollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_author, state=RequestState.REQUESTING)
+            remote_serialized_request = RemoteFollowRequestSerializer(remote_follow_request, data={
+                "actor":remote_follow_request.requester    
+            }, partial=True)
+            
+            if not remote_serialized_request.is_valid():
+                return Response({"failed to save Inbox item":f"dev notes: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)    
+                
+            else:
+                type="Follow"
+                
+                #attempt to save the follow request
+                try:
+                    remote_serialized_request.save()
+                except Exception as e:
+                    return Response({"Unable to save follow request" : f"dev notes:{e}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                #set the inbox body to the validated inbox object 
+                #This goes in the inbox item body now so WE can retrieve it later wherever need be
+                body = remote_serialized_request.data
+                ################TEST##############
+                #print('\n\n\n',body,'\n\n\n')
+                ################TEST##############
         
-        author = request.data.get('author')
-        body = request.data.get('body')
         
         
-       
+        
+        # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
+        # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
+        # Use author.inboxitems to retrieve all of an author's inbox items
         newItemSerializer = InboxItemSerializer(data= {
+            "type":type,
+            "author":requested_author.id,
             "body":body
         }, partial=True)
         
@@ -1170,7 +1259,7 @@ def user_inbox_api(request, author_serial):
         # comments
         # follows
         # entry items
-      
+        
         #This will be the final save once the specific type of inbox item is validated
         #validates general Inbox item structure
         if newItemSerializer.is_valid():
@@ -1178,15 +1267,15 @@ def user_inbox_api(request, author_serial):
                 newItemSerializer.save()
                 return Response(newItemSerializer.data['body'], status=status.HTTP_200_OK)    
             except Exception as e:
-                return Response({"failed to save Inbox item":f"dev notes: {e}"}, status=status.HTTP_200_OK)    
+                return Response({"failed to save Inbox item":f"dev notes: {e}"}, status=status.HTTP_400_BAD_REQUEST)    
 
         
         else:
-            return Response(newItemSerializer.errors,status=status.HTTP_400_BAD_REQUEST)
+            return Response({f"FAILED TO SAVE INBOX ITEM":f"{newItemSerializer.errors}"} ,status=status.HTTP_400_BAD_REQUEST)
         
         
     else:
-        return Response({"succeeded":"other methods are not yet implemented"}, status=status.HTTP_200_OK)    
+        return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK)    
         
         
         
