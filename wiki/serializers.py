@@ -94,7 +94,7 @@ class RemoteFriendSerializer(serializers.ModelSerializer):
             
 class RemoteFollowRequestSerializer(serializers.ModelSerializer):
     actor = serializers.JSONField(source="requester")
-    object = AuthorSerializer(source="requested_account")
+    object = serializers.JSONField(source="requested_account")
     class Meta:
         model= RemoteFollowRequest
         fields = ["type","state","summary", "actor", "object"]    

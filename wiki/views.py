@@ -1141,34 +1141,6 @@ def user_inbox_api(request, author_serial):
     "detail": "JSON parse error - Expecting value: line 1 column 1 (char 0)"
     }
     
-    ##USE THIS FOR TESTING THE FOLLOW REQUESTS INBOX ITEMS (POST):
-    
-    {
-            "type": "follow",
-            "state": "requesting",
-            "summary": "You have recieved a follow request!",
-            "actor": {
-                "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
-                "host": "http://s25-project-white/api/",
-                "displayName": "b",
-                "github": "",
-                "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
-                "description": ""
-            },
-            "object": {
-                "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
-                "host": "http://s25-project-white/api/",
-                "displayName": "GUTS",
-                "github": "",
-                "profileImage": "/media/profile_images/gutspfp.jpg",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
-                "description": ""
-            }
-        }
-    
     '''
     
     #If the user is local, make sure they're logged in 
@@ -1214,11 +1186,13 @@ def user_inbox_api(request, author_serial):
             authorFQID = request.data['actor']['id']
             remoteAuthorObject = remote_author_fetched(authorFQID)
             if not remoteAuthorObject:
-                 return Response({"failed to save Inbox item, could not fetch author object":f"dev notes: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
+                 return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
              ################################################################TEST#####################################################################################################
-             #print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
+            print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
              ####################################################################################################################################################################
-            remote_follow_request = RemoteFollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_author, state=RequestState.REQUESTING)
+            requested_account_serialized = AuthorSerializer(requested_author)
+            print(requested_account_serialized.data)
+            remote_follow_request = RemoteFollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_account_serialized.data, local_profile=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = RemoteFollowRequestSerializer(remote_follow_request, data={
                 "actor":remote_follow_request.requester    
             }, partial=True)
@@ -1233,7 +1207,8 @@ def user_inbox_api(request, author_serial):
                 try:
                     remote_serialized_request.save()
                 except Exception as e:
-                    return Response({"Unable to save follow request" : f"dev notes:{e}"}, status=status.HTTP_400_BAD_REQUEST)
+                    print(remote_serialized_request.errors)
+                    return Response({"Unable to save follow request" : f"dev notes:{e}, serializer errors: {remote_serialized_request.errors or None}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 #set the inbox body to the validated inbox object 
                 #This goes in the inbox item body now so WE can retrieve it later wherever need be
@@ -1248,6 +1223,7 @@ def user_inbox_api(request, author_serial):
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
         # Use author.inboxitems to retrieve all of an author's inbox items
+        print(requested_author)
         newItemSerializer = InboxItemSerializer(data= {
             "type":type,
             "author":requested_author.id,

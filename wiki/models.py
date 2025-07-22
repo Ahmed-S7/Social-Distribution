@@ -656,8 +656,9 @@ class RemoteFollowRequest(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
     requesterId = models.URLField(null=False)#foreign author ID
-    requester = models.JSONField()
-    requested_account = models.ForeignKey(Author, related_name="remote_follow_requests", on_delete=models.CASCADE, null=False)
+    requester = models.JSONField(null=False)#requesting author object
+    requested_account = models.JSONField(null=False)#requested author object
+    local_profile = models.ForeignKey(Author, related_name="remote_follow_requests", on_delete=models.CASCADE)
     type = models.CharField(default="follow")
     summary = models.CharField(default="You have recieved a follow request!")
     state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
