@@ -297,7 +297,6 @@ def login_api(request):
         return Response({"detail": "Invalid credentials"}, status=403)
     if not user.is_active:
         return Response({"detail": "pending admin approval"}, status=403)
-    login(request,user)
     return Response({"detail": "Login successful"}, status=200)
 
 @api_view(['GET'])
@@ -764,7 +763,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     print(serializedAuthor.data)
 
     auth = {"username":"white",
-            "password":"whitepass"}
+            "password":"uniquepass"}
     headers = {
             "Content-Type": "application/json"
         }
@@ -773,33 +772,34 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     "summary": f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
     "actor": serializedAuthor.data,
     "object": requested_author_object
-}
-
+    }
+    followRequestObject=RemoteFollowRequest(requesterId=requested_author_object['id'], 
+                                            requester=serializedAuthor.data,
+                                            local_profile=local_requesting_account,
+                                            requested_account=requested_author_object,
+                                            state=RequestState.REQUESTING)
+    followRequest = FollowRequestSerializer(followRequestObject)
+    print(followRequest)
     
     print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
-    newFollowRequest = InboxItem(type=InboxObjectType.FOLLOW,
-                                 author=local_requesting_account,
-                                 body=followRequest
-                                 )
+
     
-    serializedFollowRequest = InboxItemSerializer(newFollowRequest)
-    
-    
-    print(serializedFollowRequest.data)
-    response = asyncio.run(get_login_response(login_url, auth, headers))
-    
-    print(response.status)
+    print(followRequest.data)
+    response= requests.post(login_url, json=auth, headers=headers)
+    print(response.status_code)
     print(response.text)
-    if response.status==200:
+    print(login_url)
+
+    if response.status_code==200:
         follow_request_response = requests.post(
         inbox_url,
-        data=serializedFollowRequest.data,  
-        auth=auth,
+        data=followRequest.data, 
         headers={"Content-Type": "application/json"},
         )
+        print(follow_request_response.text)
+    print("HERERERRERERRER__________________________________________________________________________________________",follow_request_response.status_code)
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    print("RESPONSE", follow_request_response.text)
-    print(remote_author_host)
+    
     print(check_node_validity(remote_author_host))
     
     return render(request, "remote_profile.html", 
@@ -812,18 +812,14 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        }
                       )
     
-async def get_login_response(url, auth, headers):
-    async with aiohttp.ClientSession() as currentSession:
-        async with currentSession.post(url, json=auth, headers=headers) as response:
-            result = await response.text()
-            return response
+    
             
         
         
 def check_node_validity(host):
     '''checks if the node associated with a given host is valid'''
     remoteNode = RemoteNode.objects.filter(Q(url=f"http://{host}") | Q (url=f"https://{host}"))
-    if remoteNode.is_valid:
+    if remoteNode:
         return True
     return False
         
