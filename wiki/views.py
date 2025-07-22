@@ -574,7 +574,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #store the author object
     remote_author_json = remote_author_fetched(FOREIGN_AUTHOR_FQID)
     print(remote_author_json)
-    print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n NameRemote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
+    print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n Remote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
     #Ensure correct response for Author's followers or redirect
     remote_followers_fetch = remote_followers_fetched(FOREIGN_AUTHOR_FQID)
@@ -1157,28 +1157,39 @@ def user_inbox_api(request, author_serial):
     }
     
     '''
-    
-    #If the user is local, make sure they're logged in 
-    if request.user.is_authenticated:
-                
-        current_user = request.user  
-        print(current_user)
-        try: 
-            current_author = get_object_or_404(Author, user=current_user)
-            requested_author = get_object_or_404(Author,serial=author_serial)   
-        except Exception as e:
+     # Get the Authorization header
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+    if not auth_header or not auth_header.startswith('Basic '):
+            return Response({'error': 'Authorization header missing or invalid'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Decode base64 credentials
+    try:
+            auth_encoded = auth_header.split(' ')[1]  # Get the base64 part
+            auth_decoded = base64.b64decode(auth_encoded).decode('utf-8')  # "username:password"
+            username, password = auth_decoded.split(':', 1)
+    except Exception:
+            return Response({'error': 'Invalid Basic Auth encoding'}, status=401)
+
+    # Authenticate the user
+    current_user = authenticate(username=username, password=password)
+    if current_user is None:
+        return Response({'error': 'Invalid credentials'}, status=403)
+
+    try: 
+        requested_author = get_object_or_404(Author,serial=author_serial)   
+    except Exception as e:
             return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
     
-    else:
-        return Response({"Error":f"You are unauthorized to view or interact with this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
+
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
-        if current_author!=requested_author:
+        if current_user!=requested_author.user:
             return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
         
-        inboxItems = current_author.inboxItems.order_by('-created_at')
+        inboxItems = requested_author.inboxItems.order_by('-created_at')
         serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
