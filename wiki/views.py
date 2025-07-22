@@ -2485,3 +2485,65 @@ def get_author_comment_by_serial(request, author_serial, comment_serial):
         return Response({"error": "Author not found."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(['GET'])
+def get_entry_likes_by_fqid(request, entry_fqid):
+    """
+    Get all likes for an entry by its FQID.
+    URL: /api/entries/{ENTRY_FQID}/likes
+    "Who Liked This Entry"
+    """
+    # URL decode the FQID
+    decoded_entry_fqid = urllib.parse.unquote(entry_fqid)
+    
+    print(f"DEBUG: Received entry FQID: {decoded_entry_fqid}")
+
+    if '/entries/' in decoded_entry_fqid:
+        entry_serial = decoded_entry_fqid.split('/entries/')[-1].rstrip('/')
+        
+        print(f"DEBUG: Extracted entry serial: {entry_serial}")
+        
+        try:
+            # Find the entry by serial
+            entry = Entry.objects.get(serial=entry_serial)
+            
+            # Get all likes for this entry
+            likes = Like.objects.filter(entry=entry, is_deleted=False).order_by('-created_at')
+            
+            # Pagination logic
+            PAGE_SIZE = 5
+            page_number = int(request.GET.get('page', 1))
+            offset = (page_number - 1) * PAGE_SIZE
+            limit = offset + PAGE_SIZE
+            
+            paginated_likes = likes[offset:limit]
+            
+            serialized_likes = [
+                LikeSummarySerializer(like, context={'request': request}).data
+                for like in paginated_likes
+            ]
+            
+            # Build the request host for URLs
+            request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+
+            response_data = {
+                "type": "likes",
+                "web": f"{request_host}/entries/{entry.serial}",
+                "id": f"{request_host}/api/entries/{entry.serial}/likes",
+                "page_number": page_number,
+                "size": PAGE_SIZE,
+                "count": likes.count(),
+                "src": serialized_likes
+            }
+                
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Entry.DoesNotExist:
+            return Response({"error": "Entry not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Error fetching likes: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"error": "Invalid entry FQID format."}, status=status.HTTP_400_BAD_REQUEST)
+
+            
