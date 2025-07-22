@@ -800,10 +800,8 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         follow_request_response = requests.post(
         inbox_url,
         json=followRequest.data,  
-        headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Basic {token}"
-    }
+        auth=HTTPBasicAuth(auth),
+        timeout=3
     )
 
         print(follow_request_response.text)
@@ -1157,29 +1155,9 @@ def user_inbox_api(request, author_serial):
     }
     
     '''
-     # Get the Authorization header
-    auth_header = request.META.get('HTTP_AUTHORIZATION')
-
-    if not auth_header or not auth_header.startswith('Basic '):
-            return Response({'error': 'Authorization header missing or invalid'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # Decode base64 credentials
-    try:
-            auth_encoded = auth_header.split(' ')[1]  # Get the base64 part
-            auth_decoded = base64.b64decode(auth_encoded).decode('utf-8')  # "username:password"
-            username, password = auth_decoded.split(':', 1)
-    except Exception:
-            return Response({'error': 'Invalid Basic Auth encoding'}, status=401)
-
-    # Authenticate the user
-    current_user = authenticate(username=username, password=password)
-    if current_user is None:
-        return Response({'error': 'Invalid credentials'}, status=403)
-
-    try: 
-        requested_author = get_object_or_404(Author,serial=author_serial)   
-    except Exception as e:
-            return Response({"Error":f"We were unable to locate the user who made this request, dev notes: {e}"}, status=status.HTTP_404_NOT_FOUND )
+    current_user=request.user
+    
+    requested_author = get_object_or_404(serial=author_serial)
     
 
     
