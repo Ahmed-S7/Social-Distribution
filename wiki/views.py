@@ -800,7 +800,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         follow_request_response = requests.post(
         inbox_url,
         json=followRequest.data,  
-        auth=HTTPBasicAuth(auth),
+        auth=HTTPBasicAuth(auth['username'],auth['password']),
         timeout=3
     )
 
@@ -1157,7 +1157,7 @@ def user_inbox_api(request, author_serial):
     '''
     current_user=request.user
     
-    requested_author = get_object_or_404(serial=author_serial)
+    requested_author = get_object_or_404(Author, serial=author_serial)
     
 
     
