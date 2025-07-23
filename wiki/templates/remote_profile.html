@@ -91,24 +91,16 @@
                                     {% if is_a_friend %}
                                 
                                         <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
-                                        <script>
-                                        document.getElementById("unfriend_button").disabled = true; 
-                                        </script>
+                                        
                                     {% elif is_following %}
-                                        <script>
-                                        document.getElementById("unfollow_button").disabled = true; 
-                                        </script>
 
                                         <button style="display: flex; justify-content: center;" id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
-                                       
-
+                                    
                                     {% elif is_currently_requesting %}
 
                                         {% csrf_token %}
                                         <button id="unrequest_button" class="unrequest_button" type="submit" >Following Profile</button>
-                                        <script>
-                                        document.getElementById("unrequest_button").disabled = true; 
-                                        </script>
+                                       
                                     {% else %}
 
                                     <form action="{% url 'wiki:follow_remote_profile' FQID %}" method="POST">
