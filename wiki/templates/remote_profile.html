@@ -78,49 +78,64 @@
                                 <p class="folow_and_entry_count"> {{following_count}} </p>
                                 <p class="follow_and_entry_title"> Following</p>
                             </section> 
-
+                           
+                           
                         </section> 
 
-                        {% if valid_node %} 
-                            <section class="follow_info_button">    
                            
-                            {% if is_a_friend %}
+
+                      
+                            <section class="follow_info_button">   
+
+                            {% if valid_node %}
+                                    {% if is_a_friend %}
+                                
+                                        <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
+                                        <script>
+                                        document.getElementById("unfriend_button").disabled = true; 
+                                        </script>
+                                    {% elif is_following %}
+
+                                        <button id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
+                                        <script>
+                                        document.getElementById("unfollow_button").disabled = true; 
+                                        </script>
+
+                                    {% elif is_currently_requesting %}
+
+                                        {% csrf_token %}
+                                        <button id="unrequest_button" class="unrequest_button" type="submit" >Following Profile</button>
+                                        <script>
+                                        document.getElementById("unrequest_button").disabled = true; 
+                                        </script>
+                                    {% else %}
+
+                                    <form action="{% url 'wiki:follow_remote_profile' FQID %}" method="POST">
+                                        {% csrf_token %}
+                                        <button class="follow_button" type="submit">Follow Profile</button> 
+                                    </form>
+
+                                    {% endif%}
+
                            
-                                <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
-                                <script>
-                                document.getElementById("unfriend_button").disabled = true; 
-                                </script>
-                            {% elif is_following %}
+                            {%else%}
 
-                                <button id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
-                                <script>
-                                document.getElementById("unfollow_button").disabled = true; 
-                                </script>
+                                {%if not_authorized%}
+                                    <p class="follow_and_entry_title" style="text-align: center;font-size:1.5em; color:red;">Users cannot follow remote authors using a local host</p>
+                                {% endif %}     
 
-                            {% elif is_currently_requesting %}
+                            {% endif %}
 
-                                {% csrf_token %}
-                                <button id="unrequest_button" class="unrequest_button" type="submit" >Cancel Request</button>
-                                <script>
-                                document.getElementById("unrequest_button").disabled = true; 
-                                </script>
-                            {% else %}
-
-                            <form action="{% url 'wiki:follow_remote_profile' FQID %}" method="POST">
-                                {% csrf_token %}
-                                <button class="follow_button" type="submit">Follow Profile</button> 
-                            </form>
-
-                            {% endif%}
                         </section>
-                    {% endif %}
 
+
+                    
 
                     </section>
-                    
+                        
 
                         <section class="description_content">
-                    
+                        
                         {% if author.description  %}
                             <p>{{ author.description}} </p>
                         {% else  %}
