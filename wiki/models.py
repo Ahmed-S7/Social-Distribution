@@ -603,36 +603,53 @@ class RemoteNode(BaseModel):
         return f"{self.url} ({status})"
         
 class RemoteFollowing(BaseModel):
+    """**Models a Remote Following**\n
+    
+    *Example Usages:*\n
+        
+    Get an author's list of remote follower objects:\n
+        - author.remotefollowers.all()\n\n
+        
+    Get the state of a given follow request:\n
+        - followrequest.get_request_state()
+        
+    FIELDS:
+    - followerId: the ID of the remote following author
+    - follower: the JSON object of the author that is the follower
+    - following: the JSON object of the author getting followed
+    - local_profile: the author object from this node
+    - data_followed: the time that the following took place 
+    """
     objects = AppManager()
     all_objects = models.Manager()
-    followerId = models.URLField(null=False)
-    following = models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
+    followerId = models.URLField(null=False)#remote author ID
+    follower = models.JSONField(null=False)#following author object
+    following = models.JSONField(null=False)#followed author object
+    local_profile= models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
     date_followed = models.DateTimeField(default=get_mst_time)
     
     class Meta:
         constraints = [
                 UniqueConstraint(
-                fields=['followerId', 'following'],
+                fields=['follower', 'following'],
                 condition=Q(is_deleted=False),
                 name='unique_active_remote_following'
             )
                 
             ]
         
-    #derived from stackoverflow.com: https://stackoverflow.com/questions/67658422/how-to-overwrite-save-method-in-django-model-form, "How to overwrite the save method in django model form", June 15, 2025
     def save(self, *args, **kwargs):
-         if self.followerId == self.following.id:
+         if self.followerId == self.local_profile.id:
              raise ValidationError("You cannot follow Yourself")
-         
-         if  self.following.is_deleted:#handle the deleted remote authors in the future if need be
-            raise ValidationError("Cannot follow or be followed by a deleted author")
+
         
          return super().save(*args,**kwargs)  
      
     def __str__(self):
         if self.is_deleted==True:
-                return f"{self.followerId} No Longer Follows {self.following}"
-            
+            return f"{self.followerId} No Longer Follows {self.local_profile.id}"
+        else:
+            return f"{self.followerId} Has Followed {self.local_profile.id}"
 
 
 class RemoteFollowRequest(BaseModel):
@@ -649,6 +666,7 @@ class RemoteFollowRequest(BaseModel):
     FIELDS:
     - requesterId: the author sending the follow request
     - requested_account: the author recieving the follow request
+    - type: indicates that this is a follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     
     """

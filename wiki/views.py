@@ -805,7 +805,6 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     )
 
         print(follow_request_response.text)
-    print("HERERERRERERRER__________________________________________________________________________________________",follow_request_response.status_code)
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
     print(check_node_validity(remote_author_host))
@@ -1268,47 +1267,50 @@ def user_inbox_api(request, author_serial):
         
         
 
-
+@login_required
 @api_view(['GET','PUT','DELETE'])
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
 
-     
-    current_author = get_object_or_404(Author, serial=author_serial)
+    current_user = request.user
+    try:
+        current_author = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+         return Response({"NOT FOUND": "We could not locate an author with this specific serial"}, status=status.HTTP_404_NOT_FOUND)
+    
     #decode the foreign author's ID
     decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
      
-     
-    current_author = get_object_or_404(Author, serial=author_serial)
+
+    remote_author_object = remote_author_fetched(decodedId)
     
-    if request.method=="GET":
-         
-         
-        #decode the foreign author's ID
-        decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    #get the author if it exists (using decoded ID)
+    if not remote_author_object:
+       return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)      
+    print(f"Remote Author: {remote_author_object}")    
+    
+    
+    #decode the foreign author's ID
+    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    
+    try:  
+        #get the response at the author followers endpoint
+            followers_uri =decodedId + "/followers"
+            response = requests.get(followers_uri)
+            if response.status_code != 200:
+                response_data = response.json()
+                return Response(response_data, response.status_code)
         
-
-
-    #get the author if it exists
-    response = requests.get(decodedId) 
-    if  response.status_code != 200:
-        return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)
+            followers_dict = response.json() 
+            follower_ids = [follower["id"] for follower in followers_dict["followers"]]
+            
+    except Exception as e:
+        return Response({"Failed to retrieve author object": f"{e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    #foreign author serialized
-    foreign_author_object = response.json()
     
     if request.method=="GET":
   
-        #get the response at the author followers endpoint
-        followers_uri =decodedId + "/followers"
-        response = requests.get(followers_uri)
-        if response.status_code != 200:
-            response_data = response.json()
-            return Response(response_data, response.status_code)
-       
-        followers_dict = response.json() 
-        follower_ids = [follower["id"] for follower in followers_dict["followers"]]
-
+        
         if current_author.id in follower_ids:
             return Response(followers_dict, status=status.HTTP_200_OK)
            
@@ -1318,6 +1320,38 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     #TODO:
     # PUT and DELETE endpoint
     'PUT api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'  
+    if request.method=="PUT":
+        if current_user != current_author.user:
+            return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_401_UNAUTHORIZED)
+      
+        current_author_serialized = AuthorSerializer(current_author)
+        print(current_author_serialized)
+        newRemoteFollowing= RemoteFollowing(local_profile=current_author,follower=remote_author_object,following=current_author_serialized.data,followerId=remote_author_object['id'])
+        newFollowingSerialized = RemoteFollowingSerializer(newRemoteFollowing, 
+                                                            data={
+                                                                "follower":newRemoteFollowing.follower,
+                                                                "following":newRemoteFollowing.following,
+                                                                "followerId":newRemoteFollowing.followerId,
+                                                                },partial=True)
+        
+        if newFollowingSerialized.is_valid():
+            print("SERIALIZER IS VALID")
+            try:
+                newFollowingSerialized.save()
+                print("NEW FOLLOWING:\n\n\n", newFollowingSerialized.data)
+                return Response({"Successfully added follower": f"{newFollowingSerialized.data}"}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"error": f"We were unable to add this follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+        else:
+            return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+        
+    
+        
+       
+           
+        
+        
+        
     
     
    

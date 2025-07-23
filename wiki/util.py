@@ -47,17 +47,17 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         newAuthor = Author(
                     
         user = user,
-        #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
+      
         id = base_id,
                     
         displayName = username,
         
         serial = serial_id,
         
-        host=host,
+        host=port+'://'+host,
 
         github=github,
-        #URL TEMPORARILY USES LOCAL HOST AS PORT, CHANGE WHEN CONNECTING WITH OTHER NODES OR USING HOSTED SITE
+    
         web =base_web,
         
         )
@@ -75,7 +75,7 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
 def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     '''retrieves a list of a remote authors followers or returns False'''
     remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers")
-    if not remote_followers_fetch.status_code in [301,302,200]:
+    if not remote_followers_fetch.status_code == 200:
         return False
     else:
         return remote_followers_fetch.json()
@@ -83,7 +83,7 @@ def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
 def remote_author_fetched(FOREIGN_AUTHOR_FQID):
     '''returns the author JSONified object from a remote author's FQID (if valid), false otherwise'''
     remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
-    if not remote_author_fetch.status_code in [301,302,200]:
+    if not remote_author_fetch.status_code == 200:
        return False
     else:
         return remote_author_fetch.json()
