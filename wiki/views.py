@@ -26,7 +26,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import get_remote_author_followers,get_remote_author_followings, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse, unquote
 import requests
 import json
@@ -634,9 +634,11 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
         
         
     #store the author followers 
-    remote_followers_json = remote_followers_fetch
     
-    followers = remote_followers_json['followers']
+    followers = get_remote_author_followers(remote_author_json)
+    following = get_remote_author_followings(remote_author_json)
+    print(followers)
+    print(len(followers))
     print(f"\n\nFOLLOWERS: {followers}\n\n\n")
    
     return render(request, "remote_profile.html", 
@@ -648,6 +650,8 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        "follower_count": len(followers),
                        "is_local":False,
                        "FQID":decoded_FOREIGN_AUTHOR_FQID,
+                       "following": following,
+                       "following_count":len(following)
                        }
                       )
          
