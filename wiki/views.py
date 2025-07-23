@@ -925,6 +925,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     print(f"HOST AND SCHEME {node_url}")
     valid_node = node_valid(remote_author_host)
+    print("NODE VALIDITY:", valid_node)
     
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
