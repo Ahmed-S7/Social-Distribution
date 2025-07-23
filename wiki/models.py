@@ -12,6 +12,7 @@ import pytz
 from datetime import datetime
 from django.utils.safestring import mark_safe
 import markdown
+import requests
 
 # Create your models here.
 
@@ -166,7 +167,13 @@ class Author(BaseModel):
         
         return friendship.id
         
-        
+    def is_remotely_following(self,FOREIGN_AUTHOR_FQID):
+        url = self.id+'/followers/'+FOREIGN_AUTHOR_FQID
+        print(url)
+        print(requests.get(url).text)
+        #return requests.get('GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}')   
+    
+     
     def get_following_id_with(self, other_author):
         '''retrieve the id of the following object between a user and the author they follow if one exists, return None if one does not exist'''
         try:

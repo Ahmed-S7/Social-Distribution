@@ -591,7 +591,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
     
     #NECESSARY FIELDS FOR PROFILE DISPLAY
-    is_following = logged_in_author.is_remotely_following(remote_author_json)if logged_in_author else False #this will be true if ANY requests from the local author exist
+    is_following = logged_in_author.is_remotely_following(remote_author_json['id'])if logged_in_author else False #this will be true if ANY requests from the local author exist
     followers = remote_author_json.followers.all()#stores all of the followers a given author has
     following = remote_author_json.following.all()#stores all of the followers a given author has
     #all_entries = remote_author_json.get_all_remote_entries()#stores all of the user's entries
@@ -1336,8 +1336,7 @@ def user_inbox_api(request, author_serial):
         
         
         
-
-@login_required
+@csrf_exempt
 @api_view(['GET','PUT','DELETE'])
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
