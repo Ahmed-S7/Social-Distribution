@@ -268,7 +268,8 @@ a{
 
 /*For someone viewing an author profile that doesn't belong to them*/
 /*******************************************************************/
-.follow_info_button form{
+
+.follow_info_button{
     display: flex;
     justify-content: center;
     width: 100%;
