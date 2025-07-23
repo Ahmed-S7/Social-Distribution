@@ -826,13 +826,9 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     '''
     
     
-    if ("http://127.0.0.1" in local_requesting_account.host):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
-         return render(request, "remote_profile.html", 
-                      {
-                       "not_authorized":True,
-                       }
-                      )
+    #if ("http://127.0.0.1" in local_requesting_account.host):
+        #base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
+        #return(redirect(base_URL))
     
     if(local_requesting_account.is_remotely_following(requested_author_object)):
          base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
@@ -844,7 +840,8 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
-        
+    
+       
     
     
     #api/authors/<str:author_serial>/inbox/
@@ -916,10 +913,12 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                              following=followRequestObject.requested_account,
                                              local_profile=local_requesting_account,
                                              follower=serializedAuthor.data,
-                                             )
-        print(newRemoteFollowing)
+        )
+        print(newRemoteFollowing)                                   
         newRemoteFollowing.save()
  
+    print("FOLLOW REQUEST STATUS CODE:",follow_request_response.status_code)
+        
     node_url = remote_author_scheme+'://'+remote_author_host
     
     
