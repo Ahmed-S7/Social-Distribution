@@ -566,6 +566,7 @@ def view_external_profile(request, author_serial):
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
     
+    print("AUTH TOKEN:", AUTHTOKEN)
     #decode the fqid and  retrieve necessary info
     decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     
@@ -825,18 +826,24 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         return redirect(query_with_follow_status)
     '''
     
-    
     if ("http://127.0.0.1" in local_requesting_account.host):
-        base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
-        return(redirect(base_URL))
+        base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
+        return(render(request, "remote_profile.html", {
+            "FQID": decoded_FOREIGN_AUTHOR_FQID,
+            "valid_node":False,
+            "not_authorized":True
+        }
+            
+            
+        ))
     
     if(local_requesting_account.is_remotely_following(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
     if(local_requesting_account.is_remotely_requesting(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
@@ -854,7 +861,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     #ensure an author exists or redirect
     if not requested_author_object:
-        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
+        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
         print(url)
         return redirect(url)
         
@@ -888,8 +895,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #print(followRequest)
     #print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
     #print(followRequest.data)
-
-    
+    print("AUTH TOKEN:", AUTHTOKEN)
     #send the request to the remote endpoint along with the basic auth
     follow_request_response = requests.post(
     inbox_url,

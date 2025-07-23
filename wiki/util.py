@@ -17,9 +17,9 @@ from .serializers import EntrySerializer
 
 #AUTH TOKEN TO BE USED WITH REQUESTS
 AUTH = {"username":"white",
-            "password":"uniquepass"}
+        "password":"uniquepass"}
 
-AUTHTOKEN = (HTTPBasicAuth(AUTH['username'],AUTH['password']))
+AUTHTOKEN = HTTPBasicAuth(AUTH['username'],AUTH['password'])
 
 
 def validUserName(username):
