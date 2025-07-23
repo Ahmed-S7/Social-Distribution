@@ -918,6 +918,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         newRemoteFollowing.save()
  
     print("FOLLOW REQUEST STATUS CODE:",follow_request_response.status_code)
+    print("FOLLOW REQUEST CONTENT:", follow_request_response.text)
         
     node_url = remote_author_scheme+'://'+remote_author_host
     
@@ -1300,6 +1301,7 @@ def user_inbox_api(request, author_serial):
     elif request.method =="POST": 
         is_local = request.get_host() == requested_author.host
         if is_local:
+            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
