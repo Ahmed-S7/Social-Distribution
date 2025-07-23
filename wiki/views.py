@@ -566,8 +566,10 @@ def view_external_profile(request, author_serial):
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
     
-     #decode the fqid and  retrieve necessary info
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    #doubly decode the fqid and  retrieve necessary info
+    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
+    
     
     #Ensure a proper response or redirect
     remote_author_fetch = requests.get(decoded_FOREIGN_AUTHOR_FQID)
@@ -787,7 +789,7 @@ def view_entry_author(request, entry_serial):
 @login_required  
 @require_http_methods(["GET","POST"])  
 def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
-    print(FOREIGN_AUTHOR_FQID)
+    
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
     
@@ -795,7 +797,9 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
     
     #decode the fqid and  retrieve necessary info
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    #doubly decode the fqid and  retrieve necessary info
+    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
     remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
     remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
     current_user = request.user
@@ -1408,10 +1412,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     if not remote_author_object:
        return Response({"error": "the URL is you provided does not belong to an author we recognize"}, status=status.HTTP_404_NOT_FOUND)      
     print(f"Remote Author: {remote_author_object}")    
-    
-    
-    #decode the foreign author's ID
-    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+
     
     try:  
         #get the response at the author followers endpoint
