@@ -169,8 +169,10 @@ class Author(BaseModel):
         
     def is_remotely_following(self,FOREIGN_AUTHOR_FQID):
         url = self.id+'/followers/'+FOREIGN_AUTHOR_FQID
-        print(url)
-        print(requests.get(url).text)
+        response =  requests.get(url)
+        is_following = True if response.status_code==200 else False 
+        return is_following
+       
         #return requests.get('GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}')   
     
      
@@ -656,10 +658,10 @@ class RemoteFollowing(BaseModel):
         #if the follower is local, they are the follower display name 
         if str(self.local_profile.id) == str(self.followerId):
             follower = self.local_profile.displayName
-            followed = self.followerId
+            followed = self.following['displayName']
         #otherwise they are the account being followed
         else:
-            follower = self.followerId
+            follower = self.follower['displayName']
             followed = self.local_profile.displayName
     
         if self.is_deleted:
@@ -751,7 +753,7 @@ class RemoteFollowRequest(BaseModel):
         
          return super().save(*args,**kwargs)
     def __str__(self):
-        return f"{self.requesterId} has requested to follow {self.local_profile.displayName}"  
+        return f"{self.requester['displayName']} has requested to follow {self.requested_account['displayName']}"  
 
 
 class RemoteFriend(BaseModel):

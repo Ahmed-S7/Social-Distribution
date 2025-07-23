@@ -75,7 +75,7 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
 def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     '''retrieves a list of a remote authors followers or returns False'''
     remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers")
-    if not remote_followers_fetch.status_code == 200:
+    if not remote_followers_fetch.status_code ==200:
         return False
     else:
         return remote_followers_fetch.json()
@@ -87,7 +87,12 @@ def remote_author_fetched(FOREIGN_AUTHOR_FQID):
        return False
     else:
         return remote_author_fetch.json()
-        
+    
+def encoded_fqid(FOREIGN_AUTHOR_FQID):
+    '''percent encodes an author's fqid'''  
+    return urllib.parse.quote(FOREIGN_AUTHOR_FQID, safe="")     
+
+ 
 def decoded_fqid(FOREIGN_AUTHOR_FQID):
     '''percent decodes and author's fqid'''
     return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
