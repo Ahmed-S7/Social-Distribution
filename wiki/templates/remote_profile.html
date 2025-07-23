@@ -81,9 +81,9 @@
 
                         </section> 
 
-
+                        {% if valid_node %} 
                             <section class="follow_info_button">    
-
+                           
                             {% if is_a_friend %}
                            
                                 <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
@@ -111,9 +111,9 @@
                                 <button class="follow_button" type="submit">Follow Profile</button> 
                             </form>
 
-
                             {% endif%}
                         </section>
+                    {% endif %}
 
 
                     </section>

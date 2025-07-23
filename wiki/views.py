@@ -565,19 +565,39 @@ def view_external_profile(request, author_serial):
 
 @require_GET  
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
+    ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
+    
     
     #Ensure a proper response of redirect
     remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
     if not remote_author_fetch.status_code == 200:
         return redirect(reverse("wiki:view_local_authors"))
+    #determine if the node is local
+    localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
     
+    #decode the fqid and  retrieve necessary info
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
+    
+    #check for if the current user's node is active
+    node_url = remote_author_scheme + "://" + remote_author_host
     #store the author object
-    remote_author_json = remote_author_fetched(FOREIGN_AUTHOR_FQID)
+    remote_author_json = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
     print(remote_author_json)
     print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n Remote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
+    
+    
+    node_url = remote_author_scheme+'://'+remote_author_host
+    
+    
+    print(f"HOST AND SCHEME {node_url}")
+    valid_node = node_valid(remote_author_host)
+        
+    #check if the node is active, set view accordingly
+    
     #Ensure correct response for Author's followers or redirect
-    remote_followers_fetch = remote_followers_fetched(FOREIGN_AUTHOR_FQID)
+    remote_followers_fetch = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
     if not remote_followers_fetched:
         return redirect(reverse("wiki:view_local_authors"))
@@ -588,15 +608,15 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     followers = remote_followers_json['followers']
     print(f"\n\nFOLLOWERS: {followers}\n\n\n")
-    decodedId = urllib.parse.quote(FOREIGN_AUTHOR_FQID, safe="")
-    print(decodedId)
+   
     return render(request, "remote_profile.html", 
                       {
+                       "valid_node":valid_node,
                        'author': remote_author_json,
                        "followers": followers,
                        "follower_count": len(followers),
                        "is_local":False,
-                       "FQID":decodedId,
+                       "FQID":decoded_FOREIGN_AUTHOR_FQID,
                        }
                       )
          
@@ -739,17 +759,20 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     print(FOREIGN_AUTHOR_FQID)
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
-
+    
+    #determine if the node is local
     localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
+    
+    #decode the fqid and  retrieve necessary info
     decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
     remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
-    print(remote_author_serial)
     current_user = request.user
     
+   
     local_requesting_account = get_object_or_404(Author, user=current_user)
     requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    print(requested_author_object)
+    #print(requested_author_object)
     #api/authors/<str:author_serial>/inbox/
     if localNode:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
@@ -757,11 +780,12 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     else:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
-    print(inbox_url)
+    #print(inbox_url)
     
     serializedAuthor = AuthorSerializer(local_requesting_account)
-    print(serializedAuthor.data)
-
+    #print(serializedAuthor.data)
+    
+    
     auth = {"username":"white",
             "password":"uniquepass"}
     headers = {
@@ -779,23 +803,15 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                             requested_account=requested_author_object,
                                             state=RequestState.REQUESTING)
     followRequest = FollowRequestSerializer(followRequestObject)
-    print(followRequest)
+    #print(followRequest)
     
-    print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
+    #print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
 
-    
-    print(followRequest.data)
-    #login
-    ##response= requests.post(login_url, json=auth, headers=headers)
-    #print(response.status_code)
-    #
-    
-    #print(response.text)
-    #print(login_url)
+    #print(followRequest.data)
     
     credentials = f"{auth['username']}:{auth['password']}"
     token = base64.b64encode(credentials.encode()).decode()
-
+    
     #if response.status_code==200:
     follow_request_response = requests.post(
     inbox_url,
@@ -803,14 +819,18 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     auth=HTTPBasicAuth(auth['username'],auth['password']),
     timeout=3
     )
-
-    print(follow_request_response.text)
-    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
+ 
+    node_url = remote_author_scheme+'://'+remote_author_host
     
-    print(check_node_validity(remote_author_host))
+    
+    print(f"HOST AND SCHEME {node_url}")
+    valid_node = node_valid(remote_author_host)
+    
+    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
     return render(request, "remote_profile.html", 
                       {
+                       "valid_node":valid_node,
                        'author': requested_author_object,
                        "followers": followers,
                        "follower_count": len(followers),
@@ -819,13 +839,14 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        }
                       )
     
-    
             
         
-        
-def check_node_validity(host):
+def node_valid(host_and_scheme):
     '''checks if the node associated with a given host is valid'''
-    remoteNode = RemoteNode.objects.filter(Q(url=f"http://{host}") | Q (url=f"https://{host}"))
+    remoteNode = RemoteNode.objects.filter(
+                    Q(url=f"http://{host_and_scheme}") & Q(is_active=True)| 
+                    Q(url=f"https://{host_and_scheme}") & Q(is_active=True)                                                                          
+                    )
     if remoteNode:
         return True
     return False
@@ -1156,9 +1177,13 @@ def user_inbox_api(request, author_serial):
     '''
     current_user=request.user
     
+    currentNodes = RemoteNode.objects.all()
+    print(currentNodes)
+    
     requested_author = get_object_or_404(Author, serial=author_serial)
     
-
+    #check the node validity
+    
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
