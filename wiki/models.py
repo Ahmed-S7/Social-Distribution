@@ -742,7 +742,7 @@ class RemoteFollowRequest(BaseModel):
             raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
         
     def save(self, *args, **kwargs):
-         if self.requesterId == self.local_profile.id:
+         if self.requesterId == self.requested_account['id']:
               raise ValidationError("You cannot send a follow request to  yourself.")
           
          #Validation Error Raised if a follow request already exists with:  
