@@ -770,20 +770,17 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     current_user = request.user
     
    
+    #set the local account making the request and the remote author recieving the request
     local_requesting_account = get_object_or_404(Author, user=current_user)
     requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    #print(requested_author_object)
+    
     #api/authors/<str:author_serial>/inbox/
     if localNode:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
-        login_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/login/"
     else:
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
-    #print(inbox_url)
-    
     serializedAuthor = AuthorSerializer(local_requesting_account)
-    #print(serializedAuthor.data)
     
     
     auth = {"username":"white",
@@ -797,28 +794,52 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     "actor": serializedAuthor.data,
     "object": requested_author_object
     }
+    
+    #create the follow request to the remote author
     followRequestObject=RemoteFollowRequest(requesterId=requested_author_object['id'], 
                                             requester=serializedAuthor.data,
                                             local_profile=local_requesting_account,
                                             requested_account=requested_author_object,
                                             state=RequestState.REQUESTING)
-    followRequest = FollowRequestSerializer(followRequestObject)
+    
+    
+    #serialize request
+    followRequestSerial = FollowRequestSerializer(followRequestObject, data={
+        "requesterId":requested_author_object['id'],
+        "requester":serializedAuthor.data,
+        "local_profile":local_requesting_account,
+        "requested_account":requested_author_object,
+        "state":RequestState.REQUESTING
+    }) 
+    
+   
+    #save the request
+    if followRequestSerial.is_valid():
+        followRequestSerial.save()
+        
     #print(followRequest)
-    
     #print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
-
     #print(followRequest.data)
+
     
-    credentials = f"{auth['username']}:{auth['password']}"
-    token = base64.b64encode(credentials.encode()).decode()
-    
-    #if response.status_code==200:
+    #send the request to the remote endpoint along with the basic auth
     follow_request_response = requests.post(
     inbox_url,
-    json=followRequest.data,  
+    json=followRequestSerial.data,  
     auth=HTTPBasicAuth(auth['username'],auth['password']),
-    timeout=3
+    timeout=2
     )
+    
+    #create following requesting (local) author to the remote author to track the followings
+    #these are automatically generated on the sender's side (they will automatically set as followed)
+    #the remote endpoint has the ability to accept the request and create a friendship or following on their node
+    if follow_request_response == 200:
+        newRemoteFollowing = RemoteFollowing(followerId=local_requesting_account.id,
+                                             following=followRequestObject.requested_account,
+                                             local_profile=local_requesting_account,
+                                             follower=serializedAuthor.data,
+                                             )
+        newRemoteFollowing.save()
  
     node_url = remote_author_scheme+'://'+remote_author_host
     
@@ -848,7 +869,7 @@ def node_valid(host_and_scheme):
                     Q(url=f"https://{host_and_scheme}") & Q(is_active=True)                                                                          
                     )
     if remoteNode:
-        return True
+        return remoteNode
     return False
         
 
@@ -1368,7 +1389,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
             except Exception as e:
                 return Response({"error": f"We were unable to add this follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
         else:
-            return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_400_BAD_REQUEST) 
         
     
         
