@@ -19,7 +19,7 @@ from .serializers import EntrySerializer
 AUTH = {"username":"white",
             "password":"uniquepass"}
 
-AUTHTOKEN = HTTPBasicAuth(HTTPBasicAuth(AUTH['username'],AUTH['password']))
+AUTHTOKEN = (HTTPBasicAuth(AUTH['username'],AUTH['password']))
 
 
 def validUserName(username):
