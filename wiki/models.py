@@ -650,9 +650,10 @@ class RemoteFollowing(BaseModel):
         if self.local_profile.id == self.followerId:
             follower = self.local_profile.displayName
             followed = self.followerId
-        # otherwise they are the account being followed
-        follower = self.followerId
-        followed = self.local_profile.displayName
+        #otherwise they are the account being followed
+        else:
+            follower = self.followerId
+            followed = self.local_profile.displayName
         
         if self.is_deleted==True:
             return f"{follower} No Longer Follows {followed}"
