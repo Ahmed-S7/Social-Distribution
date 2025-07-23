@@ -639,7 +639,7 @@ class RemoteFollowing(BaseModel):
             ]
         
     def save(self, *args, **kwargs):
-         if self.followerId == self.local_profile.id:
+         if self.followerId == self.following['id']:
              raise ValidationError("You cannot follow Yourself")
 
         

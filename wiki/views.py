@@ -840,6 +840,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                              local_profile=local_requesting_account,
                                              follower=serializedAuthor.data,
                                              )
+        print(newRemoteFollowing)
         newRemoteFollowing.save()
  
     node_url = remote_author_scheme+'://'+remote_author_host
