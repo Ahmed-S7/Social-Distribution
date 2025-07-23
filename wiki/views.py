@@ -815,6 +815,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
    
     #save the request
     if followRequestSerial.is_valid():
+        print("\n\n\n\n\"the serializer is valid!\n\n\n\n\n")
         followRequestSerial.save()
         
     #print(followRequest)
@@ -825,7 +826,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #send the request to the remote endpoint along with the basic auth
     follow_request_response = requests.post(
     inbox_url,
-    json=followRequestSerial.data,  
+    json=followRequest.data,  
     auth=HTTPBasicAuth(auth['username'],auth['password']),
     timeout=2
     )
