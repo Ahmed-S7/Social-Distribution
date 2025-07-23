@@ -834,7 +834,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #create following requesting (local) author to the remote author to track the followings
     #these are automatically generated on the sender's side (they will automatically set as followed)
     #the remote endpoint has the ability to accept the request and create a friendship or following on their node
-    if follow_request_response == 200:
+    if follow_request_response.status_code == 200:
         newRemoteFollowing = RemoteFollowing(followerId=local_requesting_account.id,
                                              following=followRequestObject.requested_account,
                                              local_profile=local_requesting_account,
