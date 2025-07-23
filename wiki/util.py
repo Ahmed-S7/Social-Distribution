@@ -14,6 +14,14 @@ from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer
+
+#AUTH TOKEN TO BE USED WITH REQUESTS
+AUTH = {"username":"white",
+            "password":"uniquepass"}
+
+AUTHTOKEN = HTTPBasicAuth(HTTPBasicAuth(AUTH['username'],AUTH['password']))
+
+
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
     from .serializers import AuthorSerializer  

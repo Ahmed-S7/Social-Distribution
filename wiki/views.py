@@ -26,7 +26,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import get_remote_author_followers,get_remote_author_followings, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import AUTHTOKEN, get_remote_author_followers,get_remote_author_followings, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse, unquote
 import requests
 import json
@@ -826,9 +826,9 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     '''
     
     
-    #if ("http://127.0.0.1" in local_requesting_account.host):
-        #base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
-        #return(redirect(base_URL))
+    if ("http://127.0.0.1" in local_requesting_account.host):
+        base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
+        return(redirect(base_URL))
     
     if(local_requesting_account.is_remotely_following(requested_author_object)):
          base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
@@ -851,13 +851,6 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
     
     serializedAuthor = AuthorSerializer(local_requesting_account)
-    
-    
-    auth = {"username":"white",
-            "password":"uniquepass"}
-    headers = {
-            "Content-Type": "application/json"
-        }
     
     #ensure an author exists or redirect
     if not requested_author_object:
@@ -901,7 +894,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     follow_request_response = requests.post(
     inbox_url,
     json=followRequestSerial.data,  
-    auth=HTTPBasicAuth(auth['username'],auth['password']),
+    auth=AUTHTOKEN,
     timeout=2
     )
     
