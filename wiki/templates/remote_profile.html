@@ -87,7 +87,7 @@
                       
                             <section class="follow_info_button">   
 
-                            <!--{% if valid_node %}-->
+                            {% if valid_node %}
                                     {% if is_a_friend %}
                                 
                                         <button id="unfriend_button" class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
@@ -118,14 +118,14 @@
                                     {% endif%}
 
                            
-                         <!--   {%else%}
+                            {%else%}
 
                                 {%if not_authorized%}
                                     <p class="follow_and_entry_title" style="text-align: center;font-size:1.5em; color:red;">Users cannot follow remote authors using a local host</p>
                                 {% endif %}     
 
                             {% endif %}
--->
+
                         </section>
 
 
