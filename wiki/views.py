@@ -810,7 +810,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         "local_profile":local_requesting_account,
         "requested_account":requested_author_object,
         "state":RequestState.REQUESTING
-    }) 
+    }, partial=True) 
     
    
     #save the request
@@ -826,7 +826,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #send the request to the remote endpoint along with the basic auth
     follow_request_response = requests.post(
     inbox_url,
-    json=followRequest.data,  
+    json=followRequestSerial.data,  
     auth=HTTPBasicAuth(auth['username'],auth['password']),
     timeout=2
     )
