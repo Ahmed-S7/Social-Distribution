@@ -97,10 +97,8 @@ def encoded_fqid(FOREIGN_AUTHOR_FQID):
 def decoded_fqid(FOREIGN_AUTHOR_FQID):
     '''percent decodes and author's fqid'''
     fqid = FOREIGN_AUTHOR_FQID 
-    for _ in range(5):  # Decode multiple times until it's safe
-        decoded = unquote(FOREIGN_AUTHOR_FQID)
-        if decoded == fqid:  # No change means it's fully decoded
-            break
+    for _ in range(5): 
+        decoded = unquote(fqid)
         fqid = decoded
     return fqid
 
@@ -151,3 +149,7 @@ def send_entry_to_remote_followers(entry, request=None):
             response.raise_for_status()
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
+
+def get_remote_author_follower(FOREIGN_AUTHOR_FQID):
+    pass
+    

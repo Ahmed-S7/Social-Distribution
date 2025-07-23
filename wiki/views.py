@@ -569,7 +569,6 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #decode the fqid and  retrieve necessary info
     decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     
-    
     #Ensure a proper response or redirect
     remote_author_fetch = requests.get(decoded_FOREIGN_AUTHOR_FQID)
     if not remote_author_fetch.status_code == 200:
@@ -824,7 +823,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     
     if ("http://127.0.0.1" in local_requesting_account.host):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
          return render(request, "remote_profile.html", 
                       {
                        "not_authorized":True,
@@ -832,12 +831,12 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                       )
     
     if(local_requesting_account.is_remotely_following(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
     if(local_requesting_account.is_remotely_requesting(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
@@ -861,7 +860,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     #ensure an author exists or redirect
     if not requested_author_object:
-        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": decoded_fqid(FOREIGN_AUTHOR_FQID)})
         print(url)
         return redirect(url)
         
@@ -1400,7 +1399,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
          return Response({"NOT FOUND": "We could not locate an author with this specific serial"}, status=status.HTTP_404_NOT_FOUND)
     
     #decode the foreign author's ID
-    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    decodedId = decoded_fqid(FOREIGN_AUTHOR_FQID)
      
 
     remote_author_object = remote_author_fetched(decodedId)
