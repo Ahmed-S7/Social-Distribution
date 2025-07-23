@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 import traceback
 from rest_framework.response import Response
 import urllib
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
@@ -96,7 +96,13 @@ def encoded_fqid(FOREIGN_AUTHOR_FQID):
  
 def decoded_fqid(FOREIGN_AUTHOR_FQID):
     '''percent decodes and author's fqid'''
-    return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    fqid = FOREIGN_AUTHOR_FQID 
+    for _ in range(5):  # Decode multiple times until it's safe
+        decoded = unquote(FOREIGN_AUTHOR_FQID)
+        if decoded == fqid:  # No change means it's fully decoded
+            break
+        fqid = decoded
+    return fqid
 
 def get_host_and_scheme(FOREIGN_AUTHOR_FQID):
     '''gets the scheme and host name for a DECODED foreign author FQID'''

@@ -27,7 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
 from .util import encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 import requests
 import json
 import base64
@@ -566,9 +566,8 @@ def view_external_profile(request, author_serial):
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
     
-    #doubly decode the fqid and  retrieve necessary info
-    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
+    #decode the fqid and  retrieve necessary info
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     
     
     #Ensure a proper response or redirect
@@ -797,9 +796,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
     
     #decode the fqid and  retrieve necessary info
-    #doubly decode the fqid and  retrieve necessary info
-    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
     remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
     current_user = request.user
