@@ -1,5 +1,5 @@
-
-from .models import Author, RemoteNode
+import requests
+from .models import Author, RemoteNode, AuthorFollowing
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -13,6 +13,7 @@ import sys
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
+from .serializers import EntrySerializer
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
     from .serializers import AuthorSerializer  
@@ -103,3 +104,39 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
+
+
+def get_remote_recipients(author):
+    """
+    Returns RemoteFollowing objects for authors following this local author.
+    These contain JSON for remote followers.
+    """
+    return author.remotefollowers.all()
+def send_entry_to_remote_followers(entry, request=None):
+    """
+    Sends the serialized entry to every remote follower's inbox.
+    Assumes remote follower's inbox URL is under their JSON 'id' + '/inbox'
+    """
+    recipients = get_remote_recipients(entry.author)
+
+    for rel in recipients:
+        follower = rel.follower
+        inbox_url = follower.get('id', '').rstrip('/') + '/inbox'
+
+        if not inbox_url:
+            continue
+
+        try:
+            serialized = EntrySerializer(entry, context={"request": request}).data
+            response = requests.post(
+                inbox_url,
+                json={
+                    "type": "entry",
+                    "author": entry.author.get_web_url(),
+                    "body": serialized
+                },
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+        except Exception as e:
+            print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
