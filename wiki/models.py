@@ -646,10 +646,18 @@ class RemoteFollowing(BaseModel):
          return super().save(*args,**kwargs)  
      
     def __str__(self):
+        #if the follower is local, they are the follower display name 
+        if self.local_profile.id == self.followerId:
+            follower = self.local_profile.displayName
+            followed = self.followerId
+        # otherwise they are the account being followed
+        follower = self.followerId
+        followed = self.local_profile.displayName
+        
         if self.is_deleted==True:
-            return f"{self.followerId} No Longer Follows {self.local_profile.id}"
+            return f"{follower} No Longer Follows {followed}"
         else:
-            return f"{self.followerId} Has Followed {self.local_profile.id}"
+            return f"f{follower} Has Followed {followed}"
 
 
 class RemoteFollowRequest(BaseModel):
