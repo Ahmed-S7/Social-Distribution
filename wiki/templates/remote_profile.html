@@ -95,11 +95,12 @@
                                         document.getElementById("unfriend_button").disabled = true; 
                                         </script>
                                     {% elif is_following %}
-
-                                        <button id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
                                         <script>
                                         document.getElementById("unfollow_button").disabled = true; 
                                         </script>
+
+                                        <button style="display: flex; justify-content: center;" id="unfollow_button" class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
+                                       
 
                                     {% elif is_currently_requesting %}
 
