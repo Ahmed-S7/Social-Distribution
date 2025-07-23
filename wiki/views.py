@@ -591,7 +591,8 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     logged_in = request.user.is_authenticated
     logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
     
-    
+    print(f"Logged in author is currently requesting this author:{logged_in_author.is_remotely_requesting(FOREIGN_AUTHOR_FQID)}\n\n",)
+    print(f"Local requesting account:\n\n{logged_in_author}")
     
     #NECESSARY FIELDS FOR PROFILE DISPLAY
     is_following = logged_in_author.is_remotely_following(remote_author_id)if logged_in_author else False #this will be true if ANY requests from the local author exist
@@ -832,7 +833,10 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
-    
+    if(local_requesting_account.is_remotely_requesting(FOREIGN_AUTHOR_FQID)):
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
+         return (redirect(query_with_follow_status))
     
         
     
@@ -863,7 +867,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
        
     #create the follow request to the remote author
     print(requested_author_object)
-    followRequestObject=RemoteFollowRequest(requesterId=requested_author_object['id'], 
+    followRequestObject=RemoteFollowRequest(requesterId=local_requesting_account.id, 
                                             requester=serializedAuthor.data,
                                             local_profile=local_requesting_account,
                                             requested_account=requested_author_object,
@@ -872,7 +876,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     #serialize request
     followRequestSerial = FollowRequestSerializer(followRequestObject, data={
-        "requesterId":requested_author_object['id'],
+        "requesterId":local_requesting_account.id,
         "requester":serializedAuthor.data,
         "local_profile":local_requesting_account,
         "requested_account":requested_author_object,

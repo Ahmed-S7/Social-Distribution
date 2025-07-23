@@ -137,6 +137,10 @@ class Author(BaseModel):
         '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
+    def is_remotely_requesting(self, FOREIGN_AUTHOR_FQID):
+        '''checks if an author is actively requesting a specific author'''
+        return RemoteFollowRequest.objects.filter(requesterId=self.id, requested_account__id=FOREIGN_AUTHOR_FQID, state=RequestState.REQUESTING).exists()
+    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
