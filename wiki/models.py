@@ -12,6 +12,7 @@ import pytz
 from datetime import datetime
 from django.utils.safestring import mark_safe
 import markdown
+import requests
 
 # Create your models here.
 
@@ -136,6 +137,10 @@ class Author(BaseModel):
         '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
+    def is_remotely_requesting(self, remote_author):
+        '''checks if an author is actively requesting a specific author'''
+        return RemoteFollowRequest.objects.filter(requesterId=self.id, requested_account=remote_author, state=RequestState.REQUESTING).exists()
+    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
@@ -166,7 +171,13 @@ class Author(BaseModel):
         
         return friendship.id
         
-        
+    def is_remotely_following(self,remote_author):
+        return RemoteFollowing.objects.filter(followerId=self.id, following=remote_author).exists()
+    
+       
+        #return requests.get('GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}')   
+    
+     
     def get_following_id_with(self, other_author):
         '''retrieve the id of the following object between a user and the author they follow if one exists, return None if one does not exist'''
         try:
@@ -639,17 +650,26 @@ class RemoteFollowing(BaseModel):
             ]
         
     def save(self, *args, **kwargs):
-         if self.followerId == self.local_profile.id:
+         if self.followerId == self.following['id']:
              raise ValidationError("You cannot follow Yourself")
 
         
          return super().save(*args,**kwargs)  
-     
+    
     def __str__(self):
-        if self.is_deleted==True:
-            return f"{self.followerId} No Longer Follows {self.local_profile.id}"
+        #if the follower is local, they are the follower display name 
+        if str(self.local_profile.id) == str(self.followerId):
+            follower = self.local_profile.displayName
+            followed = self.following['displayName']
+        #otherwise they are the account being followed
         else:
-            return f"{self.followerId} Has Followed {self.local_profile.id}"
+            follower = self.follower['displayName']
+            followed = self.local_profile.displayName
+    
+        if self.is_deleted:
+            return f"{follower} No Longer Follows {followed}"
+        else:
+            return f"{follower} Has Followed {followed}"
 
 
 class RemoteFollowRequest(BaseModel):
@@ -720,7 +740,7 @@ class RemoteFollowRequest(BaseModel):
             raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
         
     def save(self, *args, **kwargs):
-         if self.requesterId == self.local_profile.id:
+         if self.requesterId == self.requested_account['id']:
               raise ValidationError("You cannot send a follow request to  yourself.")
           
          #Validation Error Raised if a follow request already exists with:  
@@ -735,7 +755,7 @@ class RemoteFollowRequest(BaseModel):
         
          return super().save(*args,**kwargs)
     def __str__(self):
-        return f"{self.requesterId} has requested to follow {self.local_profile.displayName}"  
+        return f"{self.requester['displayName']} has requested to follow {self.requested_account['displayName']}"  
 
 
 class RemoteFriend(BaseModel):

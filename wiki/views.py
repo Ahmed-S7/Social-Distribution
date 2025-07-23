@@ -26,7 +26,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse
 import requests
 import json
@@ -562,37 +562,67 @@ def view_external_profile(request, author_serial):
         return HttpResponseRedirect("wiki:view_local_authors")
 
 
-
-@require_GET  
+@login_required  
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
     
+     #decode the fqid and  retrieve necessary info
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     
-    #Ensure a proper response of redirect
-    remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID)
+    #Ensure a proper response or redirect
+    remote_author_fetch = requests.get(decoded_FOREIGN_AUTHOR_FQID)
     if not remote_author_fetch.status_code == 200:
         return redirect(reverse("wiki:view_local_authors"))
-    #determine if the node is local
-    localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
     
-    #decode the fqid and  retrieve necessary info
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
+    #determine if the node is local
+    localNode = "s25-project-white" in decoded_FOREIGN_AUTHOR_FQID
+    
+   
     remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
     
     #check for if the current user's node is active
     node_url = remote_author_scheme + "://" + remote_author_host
     #store the author object
     remote_author_json = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
+    remote_author_id=remote_author_json['id']
     print(remote_author_json)
     print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n Remote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
+    logged_in = request.user.is_authenticated
+    logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
+    
+    #print(remote_author_json)
+   
+    #print(f"Local requesting account:\n\n{logged_in_author}")
+    
+   
+
+    #NECESSARY FIELDS FOR PROFILE DISPLAY
+    is_following = logged_in_author.is_remotely_following(remote_author_json) if logged_in_author else False #this will be true if ANY requests from the local author exist
+    followers = remote_followers_fetched(remote_author_id)#stores all of the followers a given author has
+    following = RemoteFollowing.objects.filter(followerId=remote_author_json['id'])#stores all of the people the remote author follows on this node
+    #all_entries = remote_author_json.get_all_remote_entries()#stores all of the user's entries
+    #is_a_friend = logged_in_author.is_remotely_friends_with(remote_author_json)if logged_in_author else False
+    #total_friends = remote_author_json.remote_friends.all()if logged_in_author else Author.objects.none()
+        
+    # VISUAL REPRESENTATION TEST
+    print(f"Logged in author is currently requesting this author:{logged_in_author.is_remotely_requesting(remote_author_json)}\n\n",)
+    #print("Entries:", all_entries or None)
+    print("followers:", followers or None)
+    print("follower count:", len(followers) or None)
+    print("following:", following or None)
+    #print(f"Accounts {profile_viewing} is following:", len(following) or None)
+    #print(f"{logged_in_author} is friends with this account:", is_a_friend)
+    print(f"{logged_in_author} is following this account:", is_following)
+    #print(f"{profile_viewing} friend count:", len(total_friends) or None)
     
     
     node_url = remote_author_scheme+'://'+remote_author_host
     
     
     print(f"HOST AND SCHEME {node_url}")
-    valid_node = node_valid(remote_author_host)
+    valid_node = node_valid(remote_author_host) or ((request.get_host() in logged_in_author.host) and ("127.0.0.1" not in request.get_host()))
+    print(request.get_host())
         
     #check if the node is active, set view accordingly
     
@@ -611,6 +641,7 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
    
     return render(request, "remote_profile.html", 
                       {
+                       "is_following":is_following,
                        "valid_node":valid_node,
                        'author': remote_author_json,
                        "followers": followers,
@@ -773,6 +804,44 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #set the local account making the request and the remote author recieving the request
     local_requesting_account = get_object_or_404(Author, user=current_user)
     requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
+    requested_author_id = requested_author_object['id']
+    
+    print(local_requesting_account.is_remotely_following(requested_author_id))
+    #check if the user already follows this account, redirect to viewing the profile if they do
+    '''
+    if requesting_account.is_friends_with(requested_account):
+        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+        query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
+        return redirect(query_with_friend_status)
+    
+    
+    if requesting_account.is_following(requested_account):
+        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
+        query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
+        return redirect(query_with_follow_status)
+    '''
+    
+    
+    if ("http://127.0.0.1" in local_requesting_account.host):
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         return render(request, "remote_profile.html", 
+                      {
+                       "not_authorized":True,
+                       }
+                      )
+    
+    if(local_requesting_account.is_remotely_following(requested_author_object)):
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
+         return (redirect(query_with_follow_status))
+    
+    if(local_requesting_account.is_remotely_requesting(requested_author_object)):
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
+         return (redirect(query_with_follow_status))
+    
+        
+    
     
     #api/authors/<str:author_serial>/inbox/
     if localNode:
@@ -788,15 +857,19 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     headers = {
             "Content-Type": "application/json"
         }
-    followRequest = {
-    "type": "follow",
-    "summary": f"{str(local_requesting_account)} has requested to follow {requested_author_object['displayName']}",
-    "actor": serializedAuthor.data,
-    "object": requested_author_object
-    }
     
+    #ensure an author exists or redirect
+    if not requested_author_object:
+        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+        print(url)
+        return redirect(url)
+        
+        
+        
+       
     #create the follow request to the remote author
-    followRequestObject=RemoteFollowRequest(requesterId=requested_author_object['id'], 
+    print(requested_author_object)
+    followRequestObject=RemoteFollowRequest(requesterId=local_requesting_account.id, 
                                             requester=serializedAuthor.data,
                                             local_profile=local_requesting_account,
                                             requested_account=requested_author_object,
@@ -805,16 +878,17 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     #serialize request
     followRequestSerial = FollowRequestSerializer(followRequestObject, data={
-        "requesterId":requested_author_object['id'],
+        "requesterId":local_requesting_account.id,
         "requester":serializedAuthor.data,
         "local_profile":local_requesting_account,
         "requested_account":requested_author_object,
         "state":RequestState.REQUESTING
-    }) 
+    }, partial=True) 
     
    
     #save the request
     if followRequestSerial.is_valid():
+        print("\n\n\n\n\"the serializer is valid!\n\n\n\n\n")
         followRequestSerial.save()
         
     #print(followRequest)
@@ -833,12 +907,13 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #create following requesting (local) author to the remote author to track the followings
     #these are automatically generated on the sender's side (they will automatically set as followed)
     #the remote endpoint has the ability to accept the request and create a friendship or following on their node
-    if follow_request_response == 200:
+    if follow_request_response.status_code == 200:
         newRemoteFollowing = RemoteFollowing(followerId=local_requesting_account.id,
                                              following=followRequestObject.requested_account,
                                              local_profile=local_requesting_account,
                                              follower=serializedAuthor.data,
                                              )
+        print(newRemoteFollowing)
         newRemoteFollowing.save()
  
     node_url = remote_author_scheme+'://'+remote_author_host
@@ -1223,7 +1298,7 @@ def user_inbox_api(request, author_serial):
         if is_local:
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
-        #print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
+        print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
         type = request.data.get("type")
         
@@ -1312,8 +1387,7 @@ def user_inbox_api(request, author_serial):
         
         
         
-
-@login_required
+@csrf_exempt
 @api_view(['GET','PUT','DELETE'])
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
