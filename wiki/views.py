@@ -786,25 +786,25 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     print(followRequest.data)
     #login
-    response= requests.post(login_url, json=auth, headers=headers)
-    print(response.status_code)
+    ##response= requests.post(login_url, json=auth, headers=headers)
+    #print(response.status_code)
+    #
     
-    
-    print(response.text)
-    print(login_url)
+    #print(response.text)
+    #print(login_url)
     
     credentials = f"{auth['username']}:{auth['password']}"
     token = base64.b64encode(credentials.encode()).decode()
 
-    if response.status_code==200:
-        follow_request_response = requests.post(
-        inbox_url,
-        json=followRequest.data,  
-        auth=HTTPBasicAuth(auth['username'],auth['password']),
-        timeout=3
+    #if response.status_code==200:
+    follow_request_response = requests.post(
+    inbox_url,
+    json=followRequest.data,  
+    auth=HTTPBasicAuth(auth['username'],auth['password']),
+    timeout=3
     )
 
-        print(follow_request_response.text)
+    print(follow_request_response.text)
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
     print(check_node_validity(remote_author_host))
