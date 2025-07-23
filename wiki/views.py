@@ -583,10 +583,32 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     node_url = remote_author_scheme + "://" + remote_author_host
     #store the author object
     remote_author_json = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
+    
     print(remote_author_json)
     print(f"\n\nRemote Author Profile Image: {remote_author_json['profileImage']}\n\n\n\nRemote Author Host: {remote_author_json['host']}\n\nRemote Author Display: {remote_author_json['displayName']}\n\n Remote Author ID: {remote_author_json['id']}\n\nRemote Author Page :{remote_author_json['web']}\n\nRemote Author Github: {remote_author_json['github']}\n\n")
     
+    logged_in = request.user.is_authenticated
+    logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
     
+    #NECESSARY FIELDS FOR PROFILE DISPLAY
+    is_following = logged_in_author.is_remotely_following(remote_author_json)if logged_in_author else False #this will be true if ANY requests from the local author exist
+    followers = remote_author_json.followers.all()#stores all of the followers a given author has
+    following = remote_author_json.following.all()#stores all of the followers a given author has
+    #all_entries = remote_author_json.get_all_remote_entries()#stores all of the user's entries
+    is_a_friend = logged_in_author.is_remotely_friends_with(remote_author_json)if logged_in_author else False
+    total_friends = remote_author_json.remote_friends.all()if logged_in_author else Author.objects.none()
+        
+    # VISUAL REPRESENTATION TEST
+    '''
+        print("Entries:", all_entries or None)
+        print("followers:", followers or None)
+        print("follower count:", len(followers) or None)
+        print("following:", following or None)
+        print(f"Accounts {profile_viewing} is following:", len(following) or None)
+        print(f"{logged_in_author} is friends with this account:", is_a_friend)
+        print(f"{logged_in_author} is following this account:", is_following)
+        print(f"{profile_viewing} friend count:", len(total_friends) or None)
+    '''
     
     node_url = remote_author_scheme+'://'+remote_author_host
     
