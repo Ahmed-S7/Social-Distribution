@@ -217,7 +217,7 @@ class Entry(BaseModel):
 
     objects = AppManager()
     all_objects = models.Manager()
-
+    origin_url = models.URLField(null=True, blank=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()

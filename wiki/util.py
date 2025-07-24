@@ -135,33 +135,37 @@ def get_remote_followers(author):
 
 
 def send_entry_to_remote_followers(entry, request=None):
-    """
-    Sends the serialized entry to every remote follower's inbox.
-    Assumes remote follower's inbox URL is under their JSON 'id' + '/inbox'
-    """
-    recipients = get_remote_recipients(entry.author)
+    from .models import AuthorFollowing
+    from .serializers import EntrySerializer
+    from .util import AUTHTOKEN
 
-    for rel in recipients:
+    # Find all remote followers (not local)
+    remote_followers = AuthorFollowing.objects.filter(
+        following=entry.author
+    ).exclude(follower__host="http://127.0.0.1:8000/")
+
+    for rel in remote_followers:
         follower = rel.follower
-        inbox_url = follower.get('id', '').rstrip('/') + '/inbox'
+        inbox_url = follower.id.rstrip('/') + '/inbox/'
 
-        if not inbox_url:
-            continue
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
 
         try:
-            serialized = EntrySerializer(entry, context={"request": request}).data
             response = requests.post(
                 inbox_url,
-                json={
-                    "type": "entry",
-                    "author": entry.author.get_web_url(),
-                    "body": serialized
-                },
+                json=payload,
+                auth=AUTHTOKEN,
                 headers={"Content-Type": "application/json"}
             )
-            response.raise_for_status()
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
         except Exception as e:
-            print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
+            print(f"Exception sending entry to {inbox_url}: {e}")
             
             
             
