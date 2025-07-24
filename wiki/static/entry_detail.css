@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+:root {
+  --red-hover: rgba(230, 23, 23, 0.93);
+  --nav_bar-color: #e4e9e9;
+  --background-color: #ffffff;
+  --follow-button: #0090ce;
+  --header-color:rgb(137, 198, 225);
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f9f9f9;
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    margin:0em;
+    
+}
+
+
+.mt-4{
+    font-family: 'Nunito', sans-serif;
+}
+h2, h3, .entry_details{
+    color: rgb(0, 26, 128);
+}
+
+.entry_title{
+    text-align: center;
+}
+/*Container For Entry*/
+.entry_container{
+    padding-top: 4em;
+}
+/*Full Section For Entry*/
+.entry_details{
+    margin: 2rem auto;
+    padding: 1rem;
+    width:30em;
+    align-items: center;
+    box-shadow: 0 0.125em 0.5em rgba(0, 0, 0, 0.1);
+    border-style:ridge;
+    border-width:0.0625em;
+    border-radius:2em;
+}
+
+.view_author_button{
+    background-color: white;
+    border:none;
+    font-variant: small-caps;
+    color:black;
+    border-radius:0.5em;
+    text-align: center;
+    font-family: 'Nunito', sans-serif; 
+    font-size:1em;
+}
+
+.view_author_button:hover{
+    background-color: var(--header-color);
+}
+.entry_content{
+    text-align: center;
+}
+.entry_details.entry_author{
+    text-align: left;
+}
+.entry_details img{
+    border-color:rgba(0, 0, 0, 0.798);
+    border-width: 0.0625;
+    max-width:25em;
+    border-radius:1em;
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+}
+.comment-content{
+    max-width:30em;
+    text-overflow:ellipsis;
+    overflow:hidden;
+}
+div.comment-section{
+    justify-content: center;
+    text-align: left;
+    width:30em;
+}
+.default_buttons{
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Nunito', sans-serif;
+    text-decoration: none;
+    color: inherit;
+    border: none;
+    font-weight: bold;
+    background-color:none;
+    padding-left:2em;
+    padding-right:2em;
+    width:98%;
+    background-color:var(--header-color);
+    font-size: 1.2em;
+}
+.like-btn{
+    background:none;
+    border:none;
+}
+.default_buttons p:hover{
+     color: rgba(0, 14, 84, 0.771);
+}
+
+a{
+    text-decoration: none;
+    color:black;
+}
