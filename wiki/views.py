@@ -1054,6 +1054,10 @@ def process_follow_request(request, author_serial, request_id):
         if new_following_serializer.is_valid():
             try:
                 new_following_serializer.save()
+                # Send all appropriate entries to new remote follower
+                if not follower.is_local:
+                    from .util import send_all_entries_to_follower
+                    send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
             except Exception as e:
                 print(e)
                 return check_follow_requests(request, request.user.username)
@@ -1790,6 +1794,10 @@ def add_local_follower(request, author_serial, new_follower_serial):
                     try:
                         new_following = AuthorFollowing.objects.create(follower=pending_follower, following=current_author)
                         new_following.save()
+                        # Send all appropriate entries to new remote follower
+                        if not pending_follower.is_local:
+                            from .util import send_all_entries_to_follower
+                            send_all_entries_to_follower(local_author=current_author, remote_follower=pending_follower, request=request)
                         return Response({"follower addition status":"successful","type": "new follower", "follow summary": AuthorFollowingSerializer(new_following).data, "follower": AuthorSerializer(pending_follower).data}, status=status.HTTP_200_OK)
                     except Exception as e:
                         return Response({"Follow creation failed": f"{e}"}, status= status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -210,3 +210,44 @@ def author_exists(id):
     
     '''
     return Author.objects.filter(id=id)
+def send_all_entries_to_follower(local_author, remote_follower, request=None):
+    """
+    Send all appropriate entries (public, unlisted, and friends-only if applicable)
+    from local_author to remote_follower's inbox.
+    """
+
+    # Determine if the remote follower is a friend (mutual following)
+    is_friend = AuthorFriend.objects.filter(
+        (Q(friending=local_author, friended=remote_follower) | Q(friending=remote_follower, friended=local_author)),
+        is_deleted=False
+    ).exists()
+
+    # Get all entries the remote follower should see
+    entries = Entry.objects.filter(
+        author=local_author,
+        is_deleted=False
+    ).filter(
+        Q(visibility="PUBLIC") |
+        Q(visibility="UNLISTED") |
+        (Q(visibility="FRIENDS") & is_friend)
+    ).order_by('created_at')
+
+    inbox_url = remote_follower.id.rstrip('/') + '/inbox/'
+
+    for entry in entries:
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
+        try:
+            response = requests.post(
+                inbox_url,
+                json=payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
+        except Exception as e:
+            print(f"Exception sending entry to {inbox_url}: {e}")
