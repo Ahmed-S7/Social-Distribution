@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Page, Like,RemoteFollowRequest,RemoteFollowing,RemoteFriend, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike, RemoteNode
+from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike, RemoteNode
 
 # Register your models here.
 
@@ -61,8 +61,8 @@ class EntryAdmin(admin.ModelAdmin):
     def entry(self, obj):
         return str(obj)
 
-    list_display= ['entry','id','author','is_deleted',"title",'content','image','created_at', 'serial','visibility']
-    list_editable = ['author',"title",'content','image', 'serial','visibility']
+    list_display= ['entry','id','author','is_deleted',"title",'content','created_at', 'serial','visibility']
+    list_editable = ['author',"title",'content', 'serial','visibility']
     list_filter =  ["is_deleted"]
     
 class RemoteNodeAdmin(admin.ModelAdmin):
@@ -91,6 +91,3 @@ admin.site.register(InboxItem)
 admin.site.register(Comment)
 admin.site.register(CommentLike)
 admin.site.register(RemoteNode, RemoteNodeAdmin)
-admin.site.register(RemoteFollowing)
-admin.site.register(RemoteFriend)
-admin.site.register(RemoteFollowRequest)

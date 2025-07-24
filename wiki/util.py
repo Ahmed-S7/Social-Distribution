@@ -1,5 +1,5 @@
 import requests
-from .models import Author, RemoteNode, AuthorFollowing, RemoteFollowing
+from .models import Author, RemoteNode, AuthorFollowing
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -122,8 +122,7 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
-
-
+'''
 def get_remote_recipients(author):
     """
     Returns RemoteFollowing objects for authors following this local author.
@@ -158,11 +157,14 @@ def send_entry_to_remote_followers(entry, request=None):
             response.raise_for_status()
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
-
-def get_remote_author_followers(foreign_author):
-    all_followings = RemoteFollowing.objects.filter(following=foreign_author)
-    return all_followings
+            
+'''            
+            
+def author_exists(id):
+    '''
+    - checks for an author's existence based on their id field
+    - returns the author if it exists
+    - returns None if this is not a valid author
     
-def get_remote_author_followings(foreign_author):
-    all_followings = RemoteFollowing.objects.filter(follower=foreign_author)
-    return all_followings
+    '''
+    return Author.objects.filter(id=id)

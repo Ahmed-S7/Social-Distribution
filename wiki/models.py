@@ -103,12 +103,11 @@ class Author(BaseModel):
     profileImage = models.URLField(blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
-  
+    
+    is_local = models.URLField(default=True)
     
     
-    @property
-    def is_local(self):
-        return self.host == "http://127.0.0.1:8000/" 
+
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()
@@ -222,7 +221,6 @@ class Entry(BaseModel):
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
-    image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
     created_at = models.DateTimeField(default=get_mst_time)
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 
@@ -243,14 +241,6 @@ class Entry(BaseModel):
             self.id = self.get_entry_url()
         if not self.web:
             self.web = self.get_web_url()
-        if self.image and not self.contentType.startswith("image/"):
-            filename = self.image.name.lower()
-            if filename.endswith(".png"):
-               self.contentType = "image/png;base64"
-            elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
-               self.contentType = "image/jpeg;base64"
-            else:
-               self.contentType = "application/base64"
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -601,178 +591,3 @@ class RemoteNode(BaseModel):
         status = "active" if not self.is_deleted and self.is_active else "inactive"
         return f"{self.url} ({status})"
         
-class RemoteFollowing(BaseModel):
-    """**Models a Remote Following**\n
-    
-    *Example Usages:*\n
-        
-    Get an author's list of remote follower objects:\n
-        - author.remotefollowers.all()\n\n
-        
-    Get the state of a given follow request:\n
-        - followrequest.get_request_state()
-        
-    FIELDS:
-    - followerId: the ID of the remote following author
-    - follower: the JSON object of the author that is the follower
-    - following: the JSON object of the author getting followed
-    - local_profile: the author object from this node
-    - data_followed: the time that the following took place 
-    """
-    objects = AppManager()
-    all_objects = models.Manager()
-    followerId = models.URLField(null=False)#remote author ID
-    follower = models.JSONField(null=False)#following author object
-    following = models.JSONField(null=False)#followed author object
-    local_profile= models.ForeignKey(Author, related_name="remotefollowers", on_delete=models.CASCADE, null=False)
-    date_followed = models.DateTimeField(default=get_mst_time)
-    
-    class Meta:
-        constraints = [
-                UniqueConstraint(
-                fields=['follower', 'following'],
-                condition=Q(is_deleted=False),
-                name='unique_active_remote_following'
-            )
-                
-            ]
-        
-    def save(self, *args, **kwargs):
-         if self.followerId == self.following['id']:
-             raise ValidationError("You cannot follow Yourself")
-
-        
-         return super().save(*args,**kwargs)  
-    
-    def __str__(self):
-        #if the follower is local, they are the follower display name 
-        if str(self.local_profile.id) == str(self.followerId):
-            follower = self.local_profile.displayName
-            followed = self.following['displayName']
-        #otherwise they are the account being followed
-        else:
-            follower = self.follower['displayName']
-            followed = self.local_profile.displayName
-    
-        if self.is_deleted:
-            return f"{follower} No Longer Follows {followed}"
-        else:
-            return f"{follower} Has Followed {followed}"
-
-
-class RemoteFollowRequest(BaseModel):
-    """**Models a follow Request**\n
-    
-    *Example Usages:*\n
-        
-    Get an author's list of follow requests:\n
-        - author.remote_follow_requests.all()\n\n
-        
-    Get the state of a given follow request:\n
-        - followrequest.get_request_state()
-        
-    FIELDS:
-    - requesterId: the author sending the follow request
-    - requested_account: the author recieving the follow request
-    - type: indicates that this is a follow request
-    - state: that state of the follow request (requesting, accepted, or rejected)
-    
-    """
-    
-    objects = AppManager()
-    all_objects = models.Manager()
-    requesterId = models.URLField(null=False)#foreign author ID
-    requester = models.JSONField(null=False)#requesting author object
-    requested_account = models.JSONField(null=False)#requested author object
-    local_profile = models.ForeignKey(Author, related_name="remote_follow_requests", on_delete=models.CASCADE)
-    type = models.CharField(default="follow")
-    summary = models.CharField(default="You have recieved a follow request!")
-    state = models.CharField(max_length=15, choices=RequestState.choices, default=RequestState.REQUESTING)
-    created_at = models.DateTimeField(default=get_mst_time)
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-            fields=['requesterId', 'requested_account', 'state'],
-            condition=Q(is_deleted=False),
-            name='unique_active_remote_follow_request'
-        )
-            
-        ]
-        
-    def get_request_state(self):
-        """returns the state of active follow requests"""
-        return self.state
-        
-    def set_request_state(self, new_state:RequestState):
-        '''
-        **Updates the state of a sent follow request.**
-        
-        Example usage:
-        
-            - followRequest.set_request_state(RequestState.ACCEPTED)
-
-        args:
-        
-            - new_state(RequestState): a valid request state to update the follow request to 
-            
-        Raises:
-        
-            - TypeError: whenever an invalid request state is passed to the function 
-            
-        '''
-        if isinstance(new_state, RequestState):
-            self.state = new_state
-            self.save() 
-            
-        else:
-            raise TypeError("Could not update follow Request Status, new request state must be of Type 'RequestState'.")
-        
-    def save(self, *args, **kwargs):
-         if self.requesterId == self.requested_account['id']:
-              raise ValidationError("You cannot send a follow request to  yourself.")
-          
-         #Validation Error Raised if a follow request already exists with:  
-         if RemoteFollowRequest.objects.filter(
-             requesterId=self.requesterId, # the same requesting user
-             requested_account=self.requested_account, # the same requested user
-             state__in=[RequestState.ACCEPTED, RequestState.REQUESTING] # with a status of requesting (current request is still pending) or accepted (meaning they follow the user already)
-             ).exclude(pk=self.pk).exists():
-            
-            raise ValidationError("User already has an active follow request or relationship with this user")
-        
-        
-         return super().save(*args,**kwargs)
-    def __str__(self):
-        return f"{self.requester['displayName']} has requested to follow {self.requested_account['displayName']}"  
-
-
-class RemoteFriend(BaseModel):
-    objects = AppManager()
-    all_objects = models.Manager()
-    friendingId = models.URLField(null=False)#foreign author's ID
-    friended = models.ForeignKey(Author, related_name="remote_friends", null=False, on_delete=models.CASCADE)
-    friended_at =  models.DateTimeField(default=get_mst_time)
-       
-    #prevents any duplicate friend requests
-    class Meta:
-            
-    
-        constraints = [
-            UniqueConstraint(fields=['friendingId', 'friended'],
-                                    condition=Q(is_deleted=False),
-                                    name='unique_active_remote_friendship'
-        )
-        ]
-        
-    def save(self, *args, **kwargs):
-        if self.friendingId == self.friended.id:
-              raise ValidationError("You cannot be friends with yourself.")   
-          
-        return super().save(*args,**kwargs)    
-     
-    def __str__(self):
-        if self.is_deleted==True:
-            return f"{self.friendingId} Is No Longer Friends With {self.friended.displayName}"
-             
-        return f"{self.friendingId} Is Friends With {self.friended.displayName}"   
-    

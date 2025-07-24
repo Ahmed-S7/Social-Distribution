@@ -76,11 +76,6 @@
                 </small>
               </div>
             </div>
-            {% if entry.image %}
-              <div style="margin: 1em 0;">
-                <img class='entry_image' src="{{ entry.image.url }}" alt="Post image"/>
-              </div>
-            {% endif %}
 
             {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
                 <div class="post-content text-center">

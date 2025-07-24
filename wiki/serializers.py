@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import RemoteFollowing, RemoteFollowRequest, RemoteFriend, Page, Like, RemotePost, Author, AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry, Comment, CommentLike
+from .models import  Page, Like, RemotePost, Author, AuthorFriend, AuthorFollowing, FollowRequest, InboxItem, InboxObjectType, Entry, Comment, CommentLike
 from django.contrib.auth.models import User
 from django.utils.timezone import localtime
 import base64
@@ -58,6 +58,16 @@ class AuthorSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+    def create(self, validated_data):
+        displayName = validated_data.get("id")
+        user = User.objects.create(username=displayName, password="whitepass")
+
+        # Now create the Author and link the new user
+        author = Author.objects.create(user=user, **validated_data)
+        return author
+       
+        
+        
 class FollowRequestSerializer(serializers.ModelSerializer):
     actor = AuthorSerializer(source="requester")
     object = AuthorSerializer(source="requested_account")
@@ -65,6 +75,12 @@ class FollowRequestSerializer(serializers.ModelSerializer):
         model= FollowRequest
         fields = ["type","state","summary", "actor", "object"]
         
+class FollowRequestReadingSerializer(serializers.ModelSerializer):
+    actor = AuthorSerializer(source="requester", read_only=True)
+    object = AuthorSerializer(source="requested_account", read_only=True)
+    class Meta:
+        model= FollowRequest
+        fields = ["type","state","summary", "actor", "object"]        
 class AuthorFriendSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthorFriend
@@ -78,28 +94,6 @@ class AuthorFollowingSerializer(serializers.ModelSerializer):
         fields = ['follower', 'following',  'date_followed']
     def get_date_followed(self,obj):
         return localtime(obj.date_followed).isoformat()
-        
-class RemoteFollowingSerializer(serializers.ModelSerializer):
-    date_followed = serializers.SerializerMethodField()
-    class Meta:
-        model = RemoteFollowing
-        fields = ['followerId', 'following',  'date_followed']
-    def get_date_followed(self,obj):
-        return localtime(obj.date_followed).isoformat()
-
-class RemoteFriendSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RemoteFriend
-        fields = ['friendingId','friended','friended_at']
-            
-class RemoteFollowRequestSerializer(serializers.ModelSerializer):
-    actor = serializers.JSONField(source="requester")
-    object = serializers.JSONField(source="requested_account")
-    class Meta:
-        model= RemoteFollowRequest
-        fields = ["type","state","summary", "actor", "object"]    
-    def get_actor(self,obj):
-        pass
         
         
 class InboxItemSerializer(serializers.ModelSerializer):
@@ -298,11 +292,7 @@ class EntrySerializer(serializers.ModelSerializer):
     content = serializers.SerializerMethodField()
 
     def get_content(self, obj):
-        if obj.contentType.startswith("image/") and obj.image:
-            with obj.image.open('rb') as img_file:
-                encoded = base64.b64encode(img_file.read()).decode('utf-8')
-                return encoded
-        return obj.content
+        return obj.content  
 
     def get_comments(self, obj):
         author_id = obj.author.serial
