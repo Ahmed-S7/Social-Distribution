@@ -926,18 +926,8 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     valid_node = node_valid(remote_author_host)
     print("NODE VALIDITY:", valid_node)
     
-    followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    
-    return render(request, "remote_profile.html", 
-                      {
-                       "valid_node":valid_node,
-                       'author': requested_author_object,
-                       "followers": followers,
-                       "follower_count": len(followers),
-                       "is_local":False,
-                       "FQID":decoded_FOREIGN_AUTHOR_FQID,
-                       }
-                      )
+    #Back to the profile view after processing the information
+    reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
     
             
         

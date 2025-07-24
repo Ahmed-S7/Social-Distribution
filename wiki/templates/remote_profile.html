@@ -90,15 +90,11 @@
                             {% if valid_node %}
                                     {% if is_a_friend %}
                                 
-                                        <button class="unfriend_button" name='action' value='unfriend' type="submit" >Friends </button> 
+                                        <button class="unfriend_button" name='action' value='unfriend' type="submit" >Unfriend </button> 
                                         
-                                    {% elif is_following %}
+                                    {% elif is_following or is_currently_requesting%}
 
-                                        <button class="unfollow_button" name='action' value='unfollow' type="submit" >Following</button>
-                                    
-                                    {% elif is_currently_requesting %}
-
-                                        <button class="unrequest_button" type="submit" >Following Profile</button>
+                                        <button class="unfollow_button" name='action' value='unfollow' type="submit" >Unfollow</button>
                                        
                                     {% else %}
 
