@@ -24,7 +24,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse, unquote
 import requests
 import json
@@ -1217,6 +1217,9 @@ def user_inbox_api(request, author_serial):
             print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
              ####################################################################################################################################################################
             requested_account_serialized = AuthorSerializer(requested_author)
+            if requested_account_serialized.is_valid() and not author_exists(authorFQID):
+                requested_account_serialized.save()
+              
             remote_follow_request = FollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_account_serialized.data, local_profile=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = FollowRequestSerializer(remote_follow_request, data={
                 "actor":remote_follow_request.requester,

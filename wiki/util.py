@@ -159,4 +159,11 @@ def send_entry_to_remote_followers(entry, request=None):
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
             
-            
+def author_exists(id):
+    '''
+    - checks for an author's existence based on their id field
+    - returns the author if it exists
+    - returns None if this is not a valid author
+    
+    '''
+    return Author.objects.filter(id=id)
