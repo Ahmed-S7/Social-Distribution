@@ -23,6 +23,7 @@ AUTH =  {"username":"white",
 AUTHTOKEN = HTTPBasicAuth(AUTH['username'],AUTH['password'])
 
 
+
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
     from .serializers import AuthorSerializer  
