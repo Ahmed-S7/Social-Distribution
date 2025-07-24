@@ -86,6 +86,8 @@ class Author(BaseModel):
     #for future user story
     #is_registered= models.BooleanField(default=False)
     
+    is_local = models.BooleanField(default=True)
+    
     user = models.OneToOneField(User, on_delete= models.CASCADE, related_name="author")
      
     id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
@@ -100,15 +102,11 @@ class Author(BaseModel):
     
     serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
     
-    profileImage = models.URLField(blank=True, null=True)
+    profileImage = models.URLField(blank=True, null=True) 
     
     web = models.URLField(blank=True, null=False, default=None)
   
     
-    
-    @property
-    def is_local(self):
-        return self.host == "http://127.0.0.1:8000/" 
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()
@@ -359,6 +357,8 @@ class AuthorFriend(BaseModel):
         friended_at: time the friendship was instantiated
       
         ''' 
+        
+        is_local = models.BooleanField(default=True)
         objects = AppManager()
         all_objects = models.Manager()
         friending = models.ForeignKey(Author, related_name="friend_a", on_delete=models.CASCADE, null=False)
@@ -413,6 +413,8 @@ class AuthorFollowing(BaseModel):
     
     following: the one getting followed
     '''
+    
+    is_local = models.BooleanField(default=True)
     objects = AppManager()
     all_objects = models.Manager()
     follower = models.ForeignKey(Author, related_name="following", on_delete=models.CASCADE, null=False)
@@ -473,6 +475,8 @@ class FollowRequest(BaseModel):
     - requested_account: the author recieving the follow request
     - state: that state of the follow request (requesting, accepted, or rejected)
     """
+    
+    is_local = models.BooleanField(default=True)
     objects = AppManager()
     all_objects = models.Manager()
     type = models.CharField(default="follow")
@@ -549,6 +553,8 @@ class InboxObjectType(models.TextChoices):
     AUTHOR = "author", "Author"
                 
 class InboxItem(BaseModel):
+    
+    is_local = models.BooleanField(default=True)
     objects = AppManager()
     all_objects = models.Manager()
     '''
@@ -632,6 +638,8 @@ class RemoteFollowing(BaseModel):
     - local_profile: the author object from this node
     - data_followed: the time that the following took place 
     """
+    
+    is_local = models.BooleanField(default=True)
     objects = AppManager()
     all_objects = models.Manager()
     followerId = models.URLField(null=False)#remote author ID
@@ -692,6 +700,7 @@ class RemoteFollowRequest(BaseModel):
     
     """
     
+    is_local = models.BooleanField(default=True)
     objects = AppManager()
     all_objects = models.Manager()
     requesterId = models.URLField(null=False)#foreign author ID
@@ -765,7 +774,7 @@ class RemoteFriend(BaseModel):
     friendingId = models.URLField(null=False)#foreign author's ID
     friended = models.ForeignKey(Author, related_name="remote_friends", null=False, on_delete=models.CASCADE)
     friended_at =  models.DateTimeField(default=get_mst_time)
-       
+    is_local = models.BooleanField(default=True)  
     #prevents any duplicate friend requests
     class Meta:
             
