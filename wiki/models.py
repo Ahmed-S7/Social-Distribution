@@ -229,6 +229,8 @@ class Entry(BaseModel):
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
+    is_local = models.BooleanField(default=True)
+    
     
     @property
     def is_local(self):

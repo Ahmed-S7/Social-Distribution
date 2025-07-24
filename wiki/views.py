@@ -173,6 +173,33 @@ def like_entry(request, entry_serial):
     liked_author = get_object_or_404(Author, id=entry.author.id) #author that liked the entry
     like, created = Like.objects.get_or_create(entry=entry, user=author)
 
+    if created:
+        # Check if the entry is remote (not local) and send like to remote inbox
+        if not entry.author.is_local:
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = entry.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the like object to send
+                like_serializer = LikeSummarySerializer(like, context={'request': request})
+                like_data = like_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=like_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent like to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending like to remote inbox: {str(e)}")
+
     if not created:
         like.delete()  # Toggle like off
 
@@ -1345,6 +1372,194 @@ def user_inbox_api(request, author_serial):
             ################TEST##############
             
         ##################################### END OF FOLLOW REQUEST PROCESSING ######################################################################################################################################
+        
+        ############## PROCESSES LIKE INBOX OBJECTS ###################################################################################################################
+        
+        elif type == "like" or type == "Like":
+            
+            try:
+                body = request.data
+                authorFQID = request.data['author']['id']
+                objectFQID = request.data['object']
+            except Exception as e:
+                return Response({"failed to save Inbox item": "could not fetch like object, improperly formatted like"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print("LIKE REQUEST BODY:", "\n\n\n", request.data, '\n\n\n')
+            remoteAuthorObject = remote_author_fetched(authorFQID)
+
+            if not remoteAuthorObject or not authorFQID:
+                return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # CHECK FOR THE EXISTENCE OF THE AUTHOR
+            if not author_exists(authorFQID):
+                
+                # SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                
+                # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                if not requesting_account_serialized.is_valid():
+                    return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
+                requester = requesting_account_serialized.save()
+                requester.is_local=False
+                requester.save()
+                   
+            # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
+            else:
+                requester = Author.objects.get(id=authorFQID)
+            
+            # Check if the like is for an entry or comment
+            if '/entries/' in objectFQID and '/comments/' in objectFQID:
+                # This is a comment like
+                try:
+                    # Parse the comment FQID to extract entry and comment info
+                    # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
+                    parts = objectFQID.split('/')
+                    entry_author_serial = parts[-4]  # author serial
+                    entry_serial = parts[-2]  # entry serial
+                    comment_serial = parts[-1]  # comment serial
+                    
+                    # Find the local entry
+                    entry = Entry.objects.get(serial=entry_serial)
+                    
+                    # Find the existing comment
+                    comment = Comment.objects.get(id=comment_serial)
+                    
+                    # Check if like already exists
+                    if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
+                        return Response({"failed to save Inbox item": "Comment like already exists"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    # Create the comment like
+                    comment_like = CommentLike.objects.create(
+                        comment=comment,
+                        user=requester,
+                        is_local=False
+                    )
+                    
+                    # Serialize the like for the inbox
+                    like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
+                    body = like_serializer.data
+                    type = "Like"
+                    
+                except Comment.DoesNotExist:
+                    return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+                except Exception as e:
+                    return Response({"failed to save Inbox item": f"Error processing comment like: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+            elif '/entries/' in objectFQID:
+                # This is an entry like
+                try:
+                    # Parse the entry FQID to extract entry info
+                    # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
+                    parts = objectFQID.split('/')
+                    entry_author_serial = parts[-2]  # author serial
+                    entry_serial = parts[-1]  # entry serial
+                    
+                    # Find the local entry
+                    entry = Entry.objects.get(serial=entry_serial)
+                    
+                    # Check if like already exists
+                    if Like.objects.filter(entry=entry, user=requester, is_deleted=False).exists():
+                        return Response({"failed to save Inbox item": "Like already exists"}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    # Create the entry like
+                    entry_like = Like.objects.create(
+                        entry=entry,
+                        user=requester,
+                        is_local=False
+                    )
+                    
+                    # Serialize the like for the inbox
+                    like_serializer = LikeSummarySerializer(entry_like, context={'request': request})
+                    body = like_serializer.data
+                    type = "Like"
+                    
+                except Entry.DoesNotExist:
+                    return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
+                except Exception as e:
+                    return Response({"failed to save Inbox item": f"Error processing entry like: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"failed to save Inbox item": "Invalid object FQID format"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            ################TEST##############
+            print('\n\n\n',body,'\n\n\n')
+            ################TEST##############
+            
+        ##################################### END OF LIKE PROCESSING ######################################################################################################################################
+        
+        ############## PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
+        
+        elif type == "comment" or type == "Comment":
+            
+            try:
+                body = request.data
+                authorFQID = request.data['author']['id']
+                comment_content = request.data.get('comment', '')
+                contentType = request.data.get('contentType', 'text/plain')
+                entryFQID = request.data.get('entry', '')
+            except Exception as e:
+                return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print("COMMENT REQUEST BODY:", "\n\n\n", request.data, '\n\n\n')
+            remoteAuthorObject = remote_author_fetched(authorFQID)
+
+            if not remoteAuthorObject or not authorFQID:
+                return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # CHECK FOR THE EXISTENCE OF THE AUTHOR
+            if not author_exists(authorFQID):
+                
+                # SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                
+                # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                if not requesting_account_serialized.is_valid():
+                    return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
+                requester = requesting_account_serialized.save()
+                requester.is_local=False
+                requester.save()
+                   
+            # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
+            else:
+                requester = Author.objects.get(id=authorFQID)
+            
+            # Parse the entry FQID to extract entry info
+            # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
+            try:
+                parts = entryFQID.split('/')
+                entry_author_serial = parts[-2]  # author serial
+                entry_serial = parts[-1]  # entry serial
+                
+                # Find the local entry
+                entry = Entry.objects.get(serial=entry_serial)
+                
+                # Create the comment
+                comment = Comment.objects.create(
+                    entry=entry,
+                    author=requester,  # The comment is by the remote author
+                    content=comment_content,
+                    contentType=contentType,
+                    is_local=False
+                )
+                
+                # Serialize the comment for the inbox
+                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
+                body = comment_serializer.data
+                type = "Comment"
+                
+            except Entry.DoesNotExist:
+                return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({"failed to save Inbox item": f"Error processing comment: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            ################TEST##############
+            print('\n\n\n',body,'\n\n\n')
+            ################TEST##############
+            
+        ##################################### END OF COMMENT PROCESSING ######################################################################################################################################
         else:
             return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK) 
         
@@ -2023,6 +2238,33 @@ def add_comment(request, entry_serial):
             author=author,
             content=content
         )
+        
+        # Check if the entry is remote (not local) and send comment to remote inbox
+        if not entry.author.is_local:
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = entry.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the comment object to send
+                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
+                comment_data = comment_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=comment_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending comment to remote inbox: {str(e)}")
+    
     return redirect('wiki:entry_detail', entry_serial=entry_serial)
 
 
@@ -2033,6 +2275,33 @@ def like_comment(request, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     author = Author.objects.get(user=request.user)
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
+
+    if created:
+        # Check if the comment is remote (not local) and send like to remote inbox
+        if not comment.author.is_local:
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = comment.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the like object to send
+                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
+                like_data = like_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=like_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending comment like to remote inbox: {str(e)}")
 
     if not created:
         like.delete()  # Toggle like off
@@ -2125,6 +2394,33 @@ def like_entry_api(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
+        # Check if the entry is remote (not local)
+        if not entry.author.is_local:
+            # Send the like to the remote author's inbox
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = entry.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the like object to send
+                like_serializer = LikeSummarySerializer(like, context={'request': request})
+                like_data = like_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=like_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent like to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending like to remote inbox: {str(e)}")
+        
         # Return the properly formatted like object
         serializer = LikeSummarySerializer(like, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -2169,8 +2465,34 @@ def like_comment_api(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
     
     if created:
+        # Check if the comment is remote (not local) and send like to remote inbox
+        if not comment.author.is_local:
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = comment.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the like object to send
+                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
+                like_data = like_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=like_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending comment like to remote inbox: {str(e)}")
+        
         # Return the properly formatted like object
-        serializer = CommentLikeSummarySerializer(like)
+        serializer = CommentLikeSummarySerializer(like, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response({
@@ -2574,6 +2896,32 @@ def get_author_comments_api(request, author_serial):
             content=content,
             contentType=content_type
         )
+        
+        # Check if the entry is remote (not local) and send comment to remote inbox
+        if not entry.author.is_local:
+            try:
+                # Get the remote author's inbox URL
+                remote_author_id = entry.author.id
+                inbox_url = f"{remote_author_id}/inbox"
+                
+                # Create the comment object to send
+                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
+                comment_data = comment_serializer.data
+                
+                # Send POST request to remote inbox
+                response = requests.post(
+                    inbox_url,
+                    json=comment_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
+                else:
+                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
+                    
+            except Exception as e:
+                print(f"Error sending comment to remote inbox: {str(e)}")
         
         # Return the properly formatted comment object
         serializer = CommentSummarySerializer(comment, context={'request': request})
