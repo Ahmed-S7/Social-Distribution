@@ -1229,11 +1229,12 @@ def user_inbox_api(request, author_serial):
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
-        #########################################################################'''
+        #########################################################################
         type = request.data.get("type")
         
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
+<<<<<<< HEAD
         
         
         
@@ -1241,6 +1242,49 @@ def user_inbox_api(request, author_serial):
         
         ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
         
+=======
+        # Handle remote entry
+        if type.lower() == "entry":
+            entry_data = request.data.get("body")
+            if not entry_data:
+                return Response({"error": "No entry data provided"}, status=status.HTTP_400_BAD_REQUEST)
+            origin_url = entry_data.get("id")
+            # Find or create the remote author
+            author_data = entry_data.get("author")
+            if not author_data:
+                return Response({"error": "No author data in entry"}, status=status.HTTP_400_BAD_REQUEST)
+            from .models import Author
+            remote_author, _ = Author.objects.get_or_create(
+                id=author_data["id"],
+                defaults={
+                    "displayName": author_data.get("displayName", ""),
+                    "host": author_data.get("host", ""),
+                    "web": author_data.get("web", ""),
+                    "github": author_data.get("github", ""),
+                    "profileImage": author_data.get("profileImage", ""),
+                }
+            )
+            # Find or create the entry
+            from .models import Entry
+            entry, created = Entry.objects.update_or_create(
+                origin_url=origin_url,
+                defaults={
+                    "author": remote_author,
+                    "title": entry_data.get("title", ""),
+                    "content": entry_data.get("content", ""),
+                    "contentType": entry_data.get("contentType", "text/plain"),
+                    "description": entry_data.get("description", ""),
+                    "visibility": entry_data.get("visibility", "PUBLIC"),
+                    "web": entry_data.get("web", ""),
+                    "is_deleted": False,
+                    "is_local": False,
+                }
+            )
+           
+
+            return Response({"success": "Entry received and stored", "created": created}, status=status.HTTP_200_OK)
+        #for follow requests
+>>>>>>> 704330b (Handle receiving remote entries)
         if type == "follow" or type == "Follow":
             
             try:
