@@ -284,6 +284,7 @@ class Like(BaseModel):
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, )
+    is_local = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -302,6 +303,7 @@ class Comment(BaseModel):
     created_at = models.DateTimeField(default=get_mst_time)
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
+    is_local = models.BooleanField(default=True)
     
     
     
@@ -316,6 +318,7 @@ class CommentLike(BaseModel):
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=get_mst_time)
+    is_local = models.BooleanField(default=True)
     
     def get_like_url(self):
         # Extract numeric author ID from the author's URL

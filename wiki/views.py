@@ -1261,8 +1261,14 @@ def user_inbox_api(request, author_serial):
         
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
-    
-    
+
+
+        
+        
+        
+        ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
+        
+
         # Handle remote entry
         if type.lower() == "entry":
             entry_data = request.data.get("body")
@@ -1849,7 +1855,6 @@ def get_local_followers(request, author_serial):
         followers_list=[]
                 
         follower_relations = current_author.followers.all()
-        remote_follower_relations = current_author.remotefollowers.all() 
                   
         if follower_relations:
             for followers in follower_relations:
@@ -1857,11 +1862,6 @@ def get_local_followers(request, author_serial):
                 follower = followers.follower
                 followers_list.append(follower)
             #print(followers_list)
-            
-        if remote_follower_relations:
-            for followers in remote_follower_relations:
-                follower = followers.follower  
-                followers_list.append(follower)
         
         try:
             serialized_followers = AuthorSerializer( followers_list, many=True)

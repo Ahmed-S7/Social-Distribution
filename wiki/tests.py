@@ -561,9 +561,11 @@ class LikeEntryTesting(TestCase):
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['status'], 'liked')
-        self.assertEqual(response.data['message'], 'Entry liked successfully')
-        self.assertEqual(response.data['likes_count'], 1)
+        # Check that the response contains the like object structure
+        self.assertIn('type', response.data)
+        self.assertIn('author', response.data)
+        self.assertIn('object', response.data)
+        self.assertEqual(response.data['type'], 'like')
         
         # Verify like was created in database
         like = Like.objects.filter(entry=self.entry, user=self.author2).first()
@@ -583,8 +585,7 @@ class LikeEntryTesting(TestCase):
         # Second like attempt
         response2 = self.client.post(url)
         self.assertEqual(response2.status_code, 400)
-        self.assertEqual(response2.data['status'], 'already_liked')
-        self.assertEqual(response2.data['message'], 'You have already liked this entry')
+        self.assertEqual(response2.data['error'], 'Entry already liked')
         
         # Verify only one like exists
         likes = Like.objects.filter(entry=self.entry, user=self.author2)
