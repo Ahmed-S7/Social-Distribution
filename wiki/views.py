@@ -2075,11 +2075,11 @@ def create_entry(request):
             description=description,
             visibility=visibility
         )
-        '''
+        
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
             send_entry_to_remote_followers(entry, request)
-        '''
+        
         return redirect('wiki:entry_detail', entry_serial=entry.serial)
 
     return render(request, 'create_entry.html')
