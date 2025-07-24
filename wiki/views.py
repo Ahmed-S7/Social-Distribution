@@ -2629,3 +2629,109 @@ def get_comment_likes_by_fqid(request, author_serial, entry_serial, comment_fqid
         return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": f"Error fetching comment likes: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_author_likes_by_fqid(request, author_fqid):
+    """
+    Get all likes by an author using the author's FQID.
+    URL: /api/authors/{AUTHOR_FQID}/liked
+    "Things Liked By Author"
+    """
+    # URL decode the FQID
+    decoded_author_fqid = urllib.parse.unquote(author_fqid)
+    
+    print(f"DEBUG: Received author FQID: {decoded_author_fqid}")
+
+    # Extract the author serial from the FQID
+    author_serial = decoded_author_fqid.split('/api/authors/')[-1].rstrip('/')
+    
+    print(f"DEBUG: Extracted author serial: {author_serial}")
+    
+    try:
+        # Find the author by serial
+        author = Author.objects.get(serial=author_serial)
+        
+        # Get all likes by this author (both entry likes and comment likes)
+        entry_likes = Like.objects.filter(user=author, is_deleted=False)
+        comment_likes = CommentLike.objects.filter(user=author, is_deleted=False)
+        
+        # Serialize the likes
+        likes_data = []
+        
+        # Add entry likes
+        for like in entry_likes:
+            likes_data.append(LikeSummarySerializer(like, context={'request': request}).data)
+        
+        # Add comment likes
+        for like in comment_likes:
+            likes_data.append(CommentLikeSummarySerializer(like, context={'request': request}).data)
+        
+        # Sort by creation date (most recent first)
+        likes_data.sort(key=lambda x: x.get('published', ''), reverse=True)
+        
+        # Pagination logic
+        PAGE_SIZE = 5
+        page_number = int(request.GET.get('page', 1))
+        offset = (page_number - 1) * PAGE_SIZE
+        limit = offset + PAGE_SIZE
+        
+        paginated_likes = likes_data[offset:limit]
+        
+        # Build the request host for URLs
+        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        
+        response_data = {
+            "type": "likes",
+            "web": f"{request_host}/authors/{author.serial}",
+            "id": f"{request_host}/api/authors/{author.serial}/liked",
+            "page_number": page_number,
+            "size": PAGE_SIZE,
+            "count": len(likes_data),
+            "src": paginated_likes
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error fetching likes: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def get_single_like_by_fqid(request, like_fqid):
+    """
+    Get a single like by its FQID.
+    URL: /api/liked/{LIKE_FQID}
+    """
+    # URL decode the FQID
+    decoded_like_fqid = urllib.parse.unquote(like_fqid)
+    
+    print(f"DEBUG: Received like FQID: {decoded_like_fqid}")
+    
+    # Extract the like ID from the FQID
+    # Split by '/liked/' and take the last part
+    if '/liked/' in decoded_like_fqid:
+        like_id = decoded_like_fqid.split('/liked/')[-1].rstrip('/')
+        
+        print(f"DEBUG: Extracted like ID: {like_id}")
+        
+        try:
+            # Try to find the like in both entry likes and comment likes
+            entry_like = Like.objects.filter(id=like_id, is_deleted=False).first()
+            comment_like = CommentLike.objects.filter(id=like_id, is_deleted=False).first()
+            
+            if entry_like:
+                # Return entry like
+                serializer = LikeSummarySerializer(entry_like, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            elif comment_like:
+                # Return comment like
+                serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Like not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            return Response({"error": f"Error fetching like: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"error": "Invalid like FQID format."}, status=status.HTTP_400_BAD_REQUEST)
