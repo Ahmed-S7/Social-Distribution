@@ -147,6 +147,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 #adjusting time fields
-USE_TZ = True  
 TIME_ZONE = 'America/Edmonton' 
+
+
 

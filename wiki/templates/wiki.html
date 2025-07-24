@@ -14,11 +14,15 @@
         border-radius: 50%;
         transition: background 0.2s, color 0.2s;
       }
+      .comment-btn-custom {
+        color: #6c757d !important;
+        border-color: #6c757d !important;
+      }
       .comment-btn-custom:hover {
-        color: #0d6efd !important;
-        background: #eaf1ff;
-        border-radius: 50%;
-        transition: background 0.2s, color 0.2s;
+        color: #fff !important;
+        background: #6c757d !important;
+        border-radius: 6px !important;
+        transition: background 0.2s, color 0.2s, border-radius 0.2s !important;
       }
       .top-nav-btns .btn {
         margin-left: 0.5em;
@@ -60,7 +64,7 @@
           <a href="{% url 'wiki:entry_detail' entry.serial %}" style="text-decoration:none;color:inherit;">
             <div class="d-flex align-items-center mb-2 post-header">
               {% if entry.author.profileImage %}
-                <img class="profile_image" src="{{ entry.author.profileImage.url }}" alt="Profile image">
+                <img class="profile_image" src="{{ entry.author.profileImage }}" alt="Profile image">
               {% else %}
                 <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
               {% endif %}
@@ -104,6 +108,7 @@
             <a href="{% url 'wiki:entry_detail' entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
               💬 Comment ({{ entry.comments.count }})
             </a>
+            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
           </div>
         </div>
       </div>
@@ -113,4 +118,19 @@
     {% endif %}
   </div>
 </body>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.share-link-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const link = btn.getAttribute('data-link');
+        navigator.clipboard.writeText(link).then(function() {
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => { btn.textContent = '🔗 Share Link'; }, 1200);
+        }, function() {
+          alert('Failed to copy link');
+        });
+      });
+    });
+  });
+</script>
 </html>

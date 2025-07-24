@@ -557,7 +557,7 @@ class LikeEntryTesting(TestCase):
     def test_like_entry_success(self):
         """Test successful like of an entry"""
         self.client.force_authenticate(user=self.user2)
-        url = f'{BASE_PATH}/entry/{self.entry.serial}/like/'
+        url = f'{BASE_PATH}/entries/{self.entry.serial}/like/'
         response = self.client.post(url)
         
         self.assertEqual(response.status_code, 201)
@@ -576,7 +576,7 @@ class LikeEntryTesting(TestCase):
         self.client.force_authenticate(user=self.user2)
         
         # First like
-        url = f'{BASE_PATH}/entry/{self.entry.serial}/like/'
+        url = f'{BASE_PATH}/entries/{self.entry.serial}/like/'
         response1 = self.client.post(url)
         self.assertEqual(response1.status_code, 201)
         
@@ -1263,10 +1263,10 @@ class VisibilityTestCase(TestCase):
     # Visibility 4.7 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
         self.client.logout()
-        url = f'{BASE_URL_PATH}/entry/{self.publicEntry.serial}/'
+        url = f'{BASE_URL_PATH}/entries/{self.publicEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        url = f'{BASE_URL_PATH}/entry/{self.unlistedEntry.serial}/'
+        url = f'{BASE_URL_PATH}/entries/{self.unlistedEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
      # Visibility 4.8 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
@@ -1455,7 +1455,7 @@ And a landscape:
             contentType="image/jpeg",  
         )
         entry.image.save(uploaded_image.name, uploaded_image, save=True)
-        url = f'{BASE_PATH}/authors/{self.author.serial}/entry/{entry.serial}/image/'
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{entry.serial}/image/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'image/jpeg')
@@ -1550,7 +1550,7 @@ class SharingTestCase(TestCase):
         )
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
     def test_public_unlisted_link(self):
-        url = f'{BASE_URL_PATH}/entry/{self.publicEntry.serial}/'
+        url = f'{BASE_URL_PATH}/entries/{self.publicEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 

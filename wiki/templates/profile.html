@@ -23,6 +23,17 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     display: block;
   }
+  .comment-btn-custom {
+    color: #6c757d !important;
+    border-color: #6c757d !important;
+  }
+  .comment-btn-custom:hover,
+  a.comment-btn-custom:hover {
+    color: #fff !important;
+    background: #6c757d !important;
+    border-radius: 6px !important;
+    transition: background 0.2s, color 0.2s, border-radius 0.2s !important;
+  }
   
 </style>
 
@@ -52,7 +63,7 @@
                                 <!--Make profile picture lead to pfp editing-->
                                 {% if author.profileImage %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="{{ author.profileImage.url }}" alt="Profile Picture">
+                                    <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
                                 </a>
                                 {% else %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
@@ -170,6 +181,7 @@
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
                                 <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
+                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
                                 </div>
                             </div>
                     {% endfor %}
@@ -187,7 +199,7 @@
         {% if request.user.username == author.displayName %}
                <div class="profile_buttons d-flex justify-content-between align-items-center p-2" style="background:#89c6e1; position:fixed; bottom:0; left:0; width:100%; z-index:1000;">
                         <a href="{% url 'wiki:check_follow_requests' request.user.username %}" class="btn btn-bottom-primary flex-fill mx-1">Check Follow Requests</a>
-                        <a href="{% url 'wiki:view_authors' %}" class="btn btn-bottom-primary flex-fill mx-1">Browse Authors</a>
+                        <a href="{% url 'wiki:view_local_authors' %}" class="btn btn-bottom-primary flex-fill mx-1">Browse Authors</a>
                         <a href="{% url 'wiki:create_entry' %}" class="btn btn-bottom-primary flex-fill mx-1">Create New Entry</a>
                         <a href="{% url 'wiki:edit_profile' user.username %}" class="btn btn-bottom-primary flex-fill mx-1">Edit Profile</a>
                 </div>
@@ -196,4 +208,22 @@
     </section>               
                     
                     
+
+
+</body>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.share-link-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const link = btn.getAttribute('data-link');
+        navigator.clipboard.writeText(link).then(function() {
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => { btn.textContent = '🔗 Share Link'; }, 1200);
+        }, function() {
+          alert('Failed to copy link');
+        });
+      });
+    });
+  });
+</script>
 
