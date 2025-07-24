@@ -280,6 +280,7 @@ class Like(BaseModel):
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, )
+    is_local = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -298,12 +299,7 @@ class Comment(BaseModel):
     created_at = models.DateTimeField(default=get_mst_time)
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
-    
-    
-    
-    def get_web_url(self):
-        return f"http://s25-project-white/api/authors/{self.author.serial}/entries/{self.serial}"
-    
+    is_local = models.BooleanField(default=True)
     
     def __str__(self):
         return f"Comment by {self.author.displayName} on {self.entry.title}"
@@ -312,16 +308,7 @@ class CommentLike(BaseModel):
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='likes')
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=get_mst_time)
-    
-    def get_like_url(self):
-        # Extract numeric author ID from the author's URL
-        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
-        author_id = self.user.id.split('/')[-1]  # Get the last part of the URL
-        return f"http://s25-project-white/api/authors/{author_id}/liked/{self.pk}"
-    
-    @property
-    def id(self):
-        return self.get_like_url()
+    is_local = models.BooleanField(default=True)
     
     class Meta:
         constraints = [

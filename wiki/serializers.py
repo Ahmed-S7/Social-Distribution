@@ -133,6 +133,8 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
         return None
     def get_github(self,obj):
         return obj.github or None
+    
+
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
     author = AuthorSummarySerializer(source='user')
@@ -228,13 +230,12 @@ class CommentSummarySerializer(serializers.Serializer):
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
-        comment_id = obj.id
 
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id": f"{host}/api/authors/{author_id}/commented/{comment_id}/likes",
-            "web": f"{host}/authors/{obj.author.displayName}/comments/{comment_id}/likes",
+            "id":  f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}",
+            "web": f"{host}/s25-project-white/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
             "count": likes.count(),
