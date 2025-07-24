@@ -879,7 +879,7 @@ def follow_profile(request, author_serial):
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
     
-            
+    #if the author is not following or friends with the receiving author:        
     try:
         serialized_follow_request = FollowRequestSerializer(
         follow_request, data={
@@ -887,13 +887,48 @@ def follow_profile(request, author_serial):
         },partial=True
 
         )
-
-        # Valid follow requests will lead to an attempted saving of the correspondin respective inbox item
+         # Valid follow requests will lead to an attempted saving of the correspondin respective inbox item
         if serialized_follow_request.is_valid():
+            
+            follow_request.status=RequestState.ACCEPTED
             #print("Follow Request serializer is valid")
+            
+            #remote profiles will automatically send a following
+            if not requested_account.is_local:
+                
+                
+                inbox_url = requested_account.id+"/inbox"
+                
+                try:
+                    
+                    remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                    remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
-            # Save follow request to DB
-            saved_follow_request = serialized_follow_request.save()
+                    #attempt to save the follow request
+                    try:
+        
+                        follow_request_response = requests.post(
+                        inbox_url,
+                        json=remote_serialized_request.data,  
+                        auth=AUTHTOKEN,
+                        timeout=1
+                        )
+                        if follow_request_response.status_code == 500:
+                            print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code)
+                            follow_request.save()
+                            saved_following = AuthorFollowing(follower=requesting_account, following=requested_account)
+                            saved_following.save()
+                            print("valid follow request, saved following for remote node.")
+                
+                    except Exception as e:
+                        print(remote_serialized_request.data)
+                        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+                    
+                    
+                    
+                except Exception as e:
+                    raise
+           
 
 
         else:
@@ -901,16 +936,8 @@ def follow_profile(request, author_serial):
 
     except Exception as e:
                 return HttpResponseServerError(f"Failed to save follow request: {e}")
-
-
-
-    if requested_account:
-
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-
-    else:
        
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
         
 @api_view(['GET']) 
 def get_profile_api(request, username):
