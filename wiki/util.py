@@ -1,5 +1,5 @@
 import requests
-from .models import Author, RemoteNode, AuthorFollowing, RemoteFollowing
+from .models import Author, RemoteNode, AuthorFollowing
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -158,11 +158,5 @@ def send_entry_to_remote_followers(entry, request=None):
             response.raise_for_status()
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
-
-def get_remote_author_followers(foreign_author):
-    all_followings = RemoteFollowing.objects.filter(following=foreign_author)
-    return all_followings
-    
-def get_remote_author_followings(foreign_author):
-    all_followings = RemoteFollowing.objects.filter(follower=foreign_author)
-    return all_followings
+            
+            
