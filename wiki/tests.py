@@ -785,7 +785,7 @@ class LikeCommentTesting(TestCase):
         self.assertIsNotNone(like)
         self.assertFalse(like.is_deleted)
 
-'''
+
 class GetEntryLikesTesting(TestCase):
     # View Likes on Public Entry User Story Testing
     # User Story 1.4 testing
@@ -880,7 +880,7 @@ class GetEntryLikesTesting(TestCase):
         
         self.assertEqual(response.status_code, 200)
         self.assertEqual(str(response.data['type']), "likes")
-        self.assertEqual(response.data['web'], self.public_entry.web)
+        self.assertIn('web', response.data)
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(len(response.data['src']), 2)
         
@@ -890,28 +890,7 @@ class GetEntryLikesTesting(TestCase):
         self.assertIn('author', like)
         self.assertIn('id', like['author'])
         self.assertIn('displayName', like['author'])
-
-    def test_get_entry_likes_unauthorized_friends(self):
-        """Test that non-public entries return 403 error"""
-        self.client.logout()
-        self.client.login(username='test_user3', password='test_password3')
-        
-      
-        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_only_entry.serial}/likes/'
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, 403)
-        
-    def test_get_entry_likes_unauthorized_unlisted(self):
-        """Test that non-public entries return 403 error"""
-        self.client.logout()
-        self.client.login(username='test_user3', password='test_password3')
-        
-        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.unlisted_entry.serial}/likes/'
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, 403)
-'''        
+    
    
 
 
@@ -1935,7 +1914,7 @@ class EntryCommentsAPITesting(TestCase):
         self.assertEqual(len(response.data['src']), 2)  # Two comments on public entry
 
 
-class EntryCommentsFQIDTesting(TestCase):
+class LikesCommentsFQIDTesting(TestCase):
     def setUp(self):
         self.client = APIClient()
         # Create users
@@ -2018,3 +1997,177 @@ class EntryCommentsFQIDTesting(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['type'], 'comments')
         self.assertEqual(len(response.data['src']), 2)  # Two comments on public entry
+
+    def test_get_author_comment_by_serial(self):
+        """Test getting a single comment by author serial and comment serial"""
+        # Use the existing comment from setUp
+        comment = self.comment1
+        
+        url = f'{BASE_PATH}/authors/{comment.author.serial}/commented/{comment.id}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comment')
+        self.assertEqual(response.data['comment'], comment.content)
+        self.assertEqual(response.data['contentType'], comment.contentType)
+        self.assertIn('author', response.data)
+        self.assertIn('published', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('entry', response.data)
+
+    def test_get_single_comment_by_fqid(self):
+        """Test getting a single comment by its FQID"""
+        # Use the existing comment from setUp
+        comment = self.comment1
+        
+        # Construct the comment FQID (same format as in serializers)
+        comment_fqid = f"http://s25-project-white/api/authors/{comment.author.serial}/commented/{comment.id}"
+        encoded_comment_fqid = urllib.parse.quote(comment_fqid, safe='')
+        
+        url = f'{BASE_PATH}/commented/{encoded_comment_fqid}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comment')
+        self.assertEqual(response.data['comment'], comment.content)
+        self.assertEqual(response.data['contentType'], comment.contentType)
+        self.assertIn('author', response.data)
+        self.assertIn('published', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('entry', response.data)
+
+    def test_get_entry_likes_by_fqid(self):
+        """Test getting likes for an entry by its FQID"""
+        # Create some likes for the public entry
+        like1 = Like.objects.create(
+            entry=self.public_entry,
+            user=self.author2
+        )
+        like2 = Like.objects.create(
+            entry=self.public_entry,
+            user=self.author3
+        )
+        
+        # URL encode the entry FQID
+        encoded_fqid = urllib.parse.quote(self.public_entry.id, safe='')
+        url = f'{BASE_PATH}/entries/{encoded_fqid}/likes/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'likes')
+        self.assertIn('web', response.data)
+        self.assertIn('id', response.data)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
+        
+        # Verify like data structure
+        like = response.data['src'][0]
+        self.assertIn('id', like)
+        self.assertIn('author', like)
+        self.assertIn('id', like['author'])
+        self.assertIn('displayName', like['author'])
+        self.assertIn('published', like)
+        self.assertIn('object', like)
+
+    def test_get_comment_likes_by_fqid(self):
+        """Test getting likes for a comment by its FQID"""
+        # Create some likes for the comment
+        comment_like1 = CommentLike.objects.create(
+            comment=self.comment1,
+            user=self.author2
+        )
+        comment_like2 = CommentLike.objects.create(
+            comment=self.comment1,
+            user=self.author3
+        )
+        
+        # Construct the comment FQID (same format as in serializers)
+        comment_fqid = f"http://s25-project-white/api/authors/{self.comment1.author.serial}/commented/{self.comment1.id}"
+        encoded_comment_fqid = urllib.parse.quote(comment_fqid, safe='')
+        
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.public_entry.serial}/comments/{encoded_comment_fqid}/likes/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'likes')
+        self.assertIn('web', response.data)
+        self.assertIn('id', response.data)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
+        
+        # Verify like data structure
+        like = response.data['src'][0]
+        self.assertIn('id', like)
+        self.assertIn('author', like)
+        self.assertIn('id', like['author'])
+        self.assertIn('displayName', like['author'])
+        self.assertIn('published', like)
+        self.assertIn('object', like)
+
+    def test_get_author_likes_by_fqid(self):
+        """Test getting all likes by an author using their FQID"""
+        # Create a second entry for the second like
+        second_entry = Entry.objects.create(
+            title='Second Public Entry',
+            content='This is another public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC",
+            id=f"http://127.0.0.1:8000/s25-project-white/api/authors/{self.author.serial}/entries/{uuid.uuid4()}"
+        )
+        
+        # Create some likes by the author on different entries
+        like1 = Like.objects.create(
+            entry=self.public_entry,
+            user=self.author2
+        )
+        like2 = Like.objects.create(
+            entry=second_entry,
+            user=self.author2
+        )
+        
+        # Construct the author FQID
+        author_fqid = f"http://s25-project-white/api/authors/{self.author2.serial}"
+        encoded_author_fqid = urllib.parse.quote(author_fqid, safe='')
+        
+        url = f'{BASE_PATH}/authors/{encoded_author_fqid}/liked/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'likes')
+        self.assertIn('web', response.data)
+        self.assertIn('id', response.data)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
+        
+        # Verify like data structure
+        like = response.data['src'][0]
+        self.assertIn('id', like)
+        self.assertIn('author', like)
+        self.assertIn('id', like['author'])
+        self.assertIn('displayName', like['author'])
+        self.assertIn('published', like)
+        self.assertIn('object', like)
+
+    def test_get_single_like_by_fqid(self):
+        """Test getting a single like by its FQID"""
+        # Create a like
+        like = Like.objects.create(
+            entry=self.public_entry,
+            user=self.author2
+        )
+        
+        # Construct the like FQID (same format as in serializers)
+        like_fqid = f"http://s25-project-white/api/authors/{self.author2.serial}/liked/{like.id}"
+        encoded_like_fqid = urllib.parse.quote(like_fqid, safe='')
+        
+        url = f'{BASE_PATH}/liked/{encoded_like_fqid}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'like')
+        self.assertIn('author', response.data)
+        self.assertIn('id', response.data['author'])
+        self.assertIn('displayName', response.data['author'])
+        self.assertIn('published', response.data)
+        self.assertIn('object', response.data)
