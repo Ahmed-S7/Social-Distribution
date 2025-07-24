@@ -75,14 +75,14 @@ h2, h3, .entry_details{
     margin-right:auto;
 }
 .comment-content{
-    max-width:30em;
+    max-width:70em;
     text-overflow:ellipsis;
     overflow:hidden;
 }
 div.comment-section{
     justify-content: center;
     text-align: left;
-    width:30em;
+    width:70em;
 }
 .default_buttons{
     display: inline-flex;
