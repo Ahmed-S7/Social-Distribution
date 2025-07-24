@@ -135,6 +135,7 @@ def get_remote_followers(author):
     ]
 
 
+
 def send_entry_to_remote_followers(entry, request=None):
     from .models import AuthorFollowing
     from .serializers import EntrySerializer
@@ -167,6 +168,7 @@ def send_entry_to_remote_followers(entry, request=None):
                 print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
         except Exception as e:
             print(f"Exception sending entry to {inbox_url}: {e}")
+
 
 def send_entry_to_remote_followers(entry, request=None):
     # Find all remote followers (not local)
