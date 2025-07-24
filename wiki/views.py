@@ -940,7 +940,7 @@ def follow_profile(request, author_serial):
                         auth=AUTHTOKEN,
                         timeout=1
                         )
-                        if follow_request_response.status_code == 500:
+                        if follow_request_response.status_code == 200:
                             print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code)
                             follow_request.save()
                             saved_following = AuthorFollowing(follower=requesting_account, following=requested_account)
