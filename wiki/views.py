@@ -2576,7 +2576,7 @@ Response:
 
     """
     entry = get_object_or_404(Entry, serial=entry_serial)
-    serialized_entry = EntrySerializer(entry)
+    serialized_entry = EntrySerializer(entry, context={'request': request})
     current_author = get_object_or_404(Author, user=request.user)
     author_in_request = get_object_or_404(Author, serial=author_serial)
     
@@ -3145,37 +3145,34 @@ def get_comment_fqid(request, comment_fqid):
 def get_single_comment_fqid(request, comment_fqid):
     """
     Get a single comment by its FQID.
-    URL: /api/commented/{COMMENT_FQID}
     """
     # URL decode the FQID
     decoded_comment_fqid = urllib.parse.unquote(comment_fqid)
     
-    print(f"DEBUG: Received comment FQID: {decoded_comment_fqid}")
-    
     # Parse the FQID to extract the comment ID
     
     # Extract the comment ID from the FQID
-    # Split by '/comments/' and take the last part
-    if '/comments/' in decoded_comment_fqid:
-        comment_id = decoded_comment_fqid.split('/comments/')[-1].rstrip('/')
-        
-        print(f"DEBUG: Extracted comment ID: {comment_id}")
-        
-        try:
-            # Find the comment by ID
-            comment = Comment.objects.get(id=comment_id)
-            
-            # Serialize the comment
-            serializer = CommentSummarySerializer(comment, context={'request': request})
-            
-            return Response(serializer.data, status=status.HTTP_200_OK)
-            
-        except Comment.DoesNotExist:
-            return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    if '/commented/' in decoded_comment_fqid:
+        comment_id = decoded_comment_fqid.split('/commented/')[-1].rstrip('/')
     else:
         return Response({"error": "Invalid comment FQID format."}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    
+    try:
+        # Find the comment by ID
+        comment = Comment.objects.get(id=comment_id)
+        
+        # Serialize the comment
+        serializer = CommentSummarySerializer(comment, context={'request': request})
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error fetching comment: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def get_author_comment_by_serial(request, author_serial, comment_serial):
@@ -3183,7 +3180,6 @@ def get_author_comment_by_serial(request, author_serial, comment_serial):
     Get a single comment by author serial and comment serial.
     URL: /api/authors/{AUTHOR_SERIAL}/commented/{COMMENT_SERIAL}
     """
-    print(f"DEBUG: Received author_serial: {author_serial}, comment_serial: {comment_serial}")
     
     try:
         # Find the author by serial
