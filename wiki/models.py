@@ -103,12 +103,11 @@ class Author(BaseModel):
     profileImage = models.URLField(blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
-  
+    
+    is_local = models.URLField(default=True)
     
     
-    @property
-    def is_local(self):
-        return self.host == "http://127.0.0.1:8000/" 
+
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()

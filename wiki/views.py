@@ -27,6 +27,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse, unquote
 import requests
+import uuid
 import json
 import base64
 import markdown
@@ -234,6 +235,8 @@ def register(request):
 
 @api_view(['POST'])
 def register_api(request):
+    
+    is_local = is_local_url(request.get_host(), request.data.get("id"))
     '''Allows users to register through POST requests'''
     username = request.data.get('username')
     password = request.data.get('password')
@@ -254,7 +257,7 @@ def register_api(request):
 
     user = User.objects.create_user(username=username, password=password, is_active=False)
 
-    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None)
+    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None, is_local=is_local)
     if not author:
         return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1189,7 +1192,7 @@ def user_inbox_api(request, author_serial):
         serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
-    
+        
     #sends an inbox object to a specific author
     elif request.method =="POST": 
         
@@ -1240,6 +1243,8 @@ def user_inbox_api(request, author_serial):
                 
                 #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
+                requester.is_local=False
+                requester.save()
                    
             #OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
@@ -1363,11 +1368,22 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     if request.method=="PUT":
         if current_user != current_author.user:
             return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_401_UNAUTHORIZED)
-      
-        current_author_serialized = AuthorSerializer(current_author)
-        print(current_author_serialized)
-        newRemoteFollowing= RemoteFollowing(local_profile=current_author,follower=remote_author_object,following=current_author_serialized.data,followerId=remote_author_object['id'])
-        newFollowingSerialized = RemoteFollowingSerializer(newRemoteFollowing, 
+        if is_local_url(request,remote_author_object['id']):
+            return Response({"Unauthorized": "You do not have permission to use this method, local authors cannot be added as followers through this endpoint"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        remote_author = Author.objects.get_or_create(id=remote_author_object['id'], 
+                                                     displayName=remote_author_object['displayName'],
+                                                     github=remote_author_object['github'],
+                                                     is_local=False,
+                                                     host=get_host_and_scheme(decodedId),
+                                                     description = remote_author_object['description'],
+                                                     serial=uuid.uuid4(),
+                                                     profileImage=remote_author_object["profileImage"],
+                                                     web=remote_author_object['web']              
+                                                    )
+        
+        newRemoteFollowing= AuthorFollowing(follower=remote_author,following=current_author)
+        newFollowingSerialized = AuthorFollowingSerializer(newRemoteFollowing, 
                                                             data={
                                                                 "follower":newRemoteFollowing.follower,
                                                                 "following":newRemoteFollowing.following,
@@ -3019,3 +3035,10 @@ def get_single_like_by_fqid(request, like_fqid):
     else:
         return Response({"error": "Invalid like FQID format."}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+def is_local_url(request, url):
+    current_host = request.get_host()
+    url_host = urlparse(url).netloc
+    return current_host == url_host
+     
