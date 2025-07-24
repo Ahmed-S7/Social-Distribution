@@ -1213,8 +1213,12 @@ def user_inbox_api(request, author_serial):
         
         if type == "follow" or type == "Follow":
             
-            body = request.data
-            authorFQID = request.data['actor']['id']
+            try:
+                body = request.data
+                authorFQID = request.data['actor']['id']
+            except Exception as e:
+                return Response({"failed to save Inbox item": "could not fetch author object, improperly formatted author"}, status=status.HTTP_400_BAD_REQUEST)
+            
             print("AUTHOR FQID IS:")
             remoteAuthorObject = remote_author_fetched(authorFQID)
 
