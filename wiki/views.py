@@ -27,6 +27,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
 from urllib.parse import urlparse, unquote
 import requests
+import uuid
 import json
 import base64
 import markdown
@@ -234,6 +235,8 @@ def register(request):
 
 @api_view(['POST'])
 def register_api(request):
+    
+    is_local = is_local_url(request.get_host(), request.data.get("id"))
     '''Allows users to register through POST requests'''
     username = request.data.get('username')
     password = request.data.get('password')
@@ -254,7 +257,7 @@ def register_api(request):
 
     user = User.objects.create_user(username=username, password=password, is_active=False)
 
-    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None)
+    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None, is_local=is_local)
     if not author:
         return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1189,7 +1192,7 @@ def user_inbox_api(request, author_serial):
         serializedInboxItems = InboxItemSerializer(inboxItems, many=True)
         return Response(serializedInboxItems.data, status=status.HTTP_200_OK)
    
-    
+        
     #sends an inbox object to a specific author
     elif request.method =="POST": 
         
@@ -1240,6 +1243,8 @@ def user_inbox_api(request, author_serial):
                 
                 #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
+                requester.is_local=False
+                requester.save()
                    
             #OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
@@ -1363,11 +1368,22 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     if request.method=="PUT":
         if current_user != current_author.user:
             return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_401_UNAUTHORIZED)
-      
-        current_author_serialized = AuthorSerializer(current_author)
-        print(current_author_serialized)
-        newRemoteFollowing= RemoteFollowing(local_profile=current_author,follower=remote_author_object,following=current_author_serialized.data,followerId=remote_author_object['id'])
-        newFollowingSerialized = RemoteFollowingSerializer(newRemoteFollowing, 
+        if is_local_url(request,remote_author_object['id']):
+            return Response({"Unauthorized": "You do not have permission to use this method, local authors cannot be added as followers through this endpoint"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        remote_author = Author.objects.get_or_create(id=remote_author_object['id'], 
+                                                     displayName=remote_author_object['displayName'],
+                                                     github=remote_author_object['github'],
+                                                     is_local=False,
+                                                     host=get_host_and_scheme(decodedId),
+                                                     description = remote_author_object['description'],
+                                                     serial=uuid.uuid4(),
+                                                     profileImage=remote_author_object["profileImage"],
+                                                     web=remote_author_object['web']              
+                                                    )
+        
+        newRemoteFollowing= AuthorFollowing(follower=remote_author,following=current_author)
+        newFollowingSerialized = AuthorFollowingSerializer(newRemoteFollowing, 
                                                             data={
                                                                 "follower":newRemoteFollowing.follower,
                                                                 "following":newRemoteFollowing.following,
@@ -1734,16 +1750,18 @@ def create_entry(request):
         text_content = request.POST.get('content', '').strip()
         content_type_input = request.POST.get('contentType', '').strip()
         description = request.POST.get('description', '').strip()
-        image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
         use_markdown = request.POST.get('use_markdown') == 'on'
         content_type = "text/markdown" if use_markdown else "text/plain"
+        image = request.FILES.get('image')
 
 
         if not title:
             return HttpResponse("Title is required.")
 
-
+        if image and text_content:
+            return HttpResponse("Please provide either an image or text content, not both.")
+        
         author = get_object_or_404(Author, user=request.user)
 
         # Determine content type
@@ -1773,6 +1791,7 @@ def create_entry(request):
             description=description,
             visibility=visibility
         )
+
         '''
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
@@ -1830,24 +1849,33 @@ def edit_entry(request, entry_serial):
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
-        image = request.FILES.get('image')
+        content_type = request.POST.get('contentType')
         visibility = request.POST.get('visibility')
+        image = request.FILES.get('image')
         if visibility in dict(Entry.VISIBILITY_CHOICES):
             entry.visibility = visibility
         if (title and content) or (title and image):
             entry.title = title
-            if content:
-                entry.content = content
             if image:
-                entry.image = image
-            if request.POST.get('remove_image'):
-               entry.image.delete(save=False)
-               entry.image = None
+                image_data = image.read()            
+                encoded = base64.b64encode(image_data).decode('utf-8')
+                if image.content_type == 'image/png':
+                    entry.contentType = 'image/png;base64'
+                elif image.content_type == 'image/jpeg':
+                    entry.contentType = 'image/jpeg;base64'
+                else:
+                    entry.contentType = 'application/base64'
+                entry.content = encoded
+            elif content:
+                entry.content = content
+                entry.contentType = content_type
+
             entry.save()
             #print(entry.serial)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
-            return HttpResponse("Title and content required.")
+            return HttpResponse("Either text content or an image is required.")
+        
         
     return render(request, 'edit_entry.html', {'entry': entry})
 
@@ -2598,14 +2626,25 @@ def get_entry_image_api(request, entry_serial):
 def get_author_image_api(request, author_serial, entry_serial):
     author = get_object_or_404(Author, serial=author_serial)
     entry = get_object_or_404(Entry, serial=entry_serial, author=author)
-    if not entry.image:
+    if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
-    image_path = entry.image.path
-    mime_type, _ = mimetypes.guess_type(image_path)
-    with open(image_path, 'rb') as image_file:
-        image_data = image_file.read()
-        response = HttpResponse(image_data, content_type=mime_type)
-        return response
+
+    # Determine MIME type from contentType
+    if entry.contentType.startswith('image/png'):
+        mime_type = 'image/png'
+    elif entry.contentType.startswith('image/jpeg'):
+        mime_type = 'image/jpeg'
+    else:
+        mime_type = 'application/octet-stream'  # fallback
+
+    # Decode the base64 image data
+    try:
+        image_data = base64.b64decode(entry.content)
+    except Exception:
+        return HttpResponse("Failed to decode image.", status=500)
+
+    # Return as binary response
+    return HttpResponse(image_data, content_type=mime_type)
     
 
 @api_view(['GET'])
@@ -3019,3 +3058,10 @@ def get_single_like_by_fqid(request, like_fqid):
     else:
         return Response({"error": "Invalid like FQID format."}, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+def is_local_url(request, url):
+    current_host = request.get_host()
+    url_host = urlparse(url).netloc
+    return current_host == url_host
+     

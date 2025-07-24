@@ -292,11 +292,7 @@ class EntrySerializer(serializers.ModelSerializer):
     content = serializers.SerializerMethodField()
 
     def get_content(self, obj):
-        if obj.contentType.startswith("image/") and obj.image:
-            with obj.image.open('rb') as img_file:
-                encoded = base64.b64encode(img_file.read()).decode('utf-8')
-                return encoded
-        return obj.content
+        return obj.content  
 
     def get_comments(self, obj):
         author_id = obj.author.serial
