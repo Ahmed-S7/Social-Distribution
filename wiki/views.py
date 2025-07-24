@@ -914,7 +914,7 @@ def follow_profile(request, author_serial):
         },partial=True
 
         )
-         # Valid follow requests will lead to an attempted saving of the correspondin respective inbox item
+         # Valid follow requests will lead to an attempted saving of the corresponding respective inbox item
         if serialized_follow_request.is_valid():
             
             follow_request.status=RequestState.ACCEPTED
@@ -922,9 +922,10 @@ def follow_profile(request, author_serial):
             
             #remote profiles will automatically send a following
             if not requested_account.is_local:
+                print("requested isn't local")
                 
                 
-                inbox_url = requested_account.id+"/inbox"
+                inbox_url = str(requested_account.id)+"/inbox/"
                 
                 try:
                     
@@ -940,6 +941,7 @@ def follow_profile(request, author_serial):
                         auth=AUTHTOKEN,
                         timeout=1
                         )
+                        
                         if follow_request_response.status_code == 200:
                             print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code)
                             follow_request.save()
@@ -955,7 +957,13 @@ def follow_profile(request, author_serial):
                     
                 except Exception as e:
                     raise
-           
+            else:
+                
+                try:
+                    follow_request.save()
+                except Exception as e:
+                        print(remote_serialized_request.data)
+                        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
 
         else:
@@ -1254,7 +1262,7 @@ def user_inbox_api(request, author_serial):
         if is_local:
             print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
-        #################################TEST##################################### 
+        #################################TEST#################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
         type = request.data.get("type")
