@@ -122,13 +122,18 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
-'''
-def get_remote_recipients(author):
-    """
-    Returns RemoteFollowing objects for authors following this local author.
-    These contain JSON for remote followers.
-    """
-    return author.remotefollowers.all()
+
+def get_remote_followers(author):
+    """Return a list of FQIDs of remote authors following the given local author"""
+    from .models import AuthorFollowing
+    # filter followers whose host is not local
+    return [
+        follower.follower.id
+        for follower in author.followers.all()
+        if not follower.follower.is_local
+    ]
+
+
 def send_entry_to_remote_followers(entry, request=None):
     """
     Sends the serialized entry to every remote follower's inbox.
@@ -158,7 +163,7 @@ def send_entry_to_remote_followers(entry, request=None):
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
             
-'''            
+            
             
 def author_exists(id):
     '''

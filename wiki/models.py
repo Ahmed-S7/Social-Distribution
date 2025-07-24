@@ -230,6 +230,9 @@ class Entry(BaseModel):
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
     
+    @property
+    def is_local(self):
+        return self.author.is_local
     def get_entry_url(self):
         return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
     
