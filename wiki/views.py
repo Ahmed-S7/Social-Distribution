@@ -1192,13 +1192,14 @@ def user_inbox_api(request, author_serial):
     
     #sends an inbox object to a specific author
     elif request.method =="POST": 
+        
         is_local = request.get_host() == requested_author.host
         if is_local:
             print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
-        #########################################################################
+        #########################################################################'''
         type = request.data.get("type")
         
         if not type:
@@ -1209,16 +1210,21 @@ def user_inbox_api(request, author_serial):
             
             body = request.data
             authorFQID = request.data['actor']['id']
+            print("AUTHOR FQID IS:")
             remoteAuthorObject = remote_author_fetched(authorFQID)
 
-            if not remoteAuthorObject:
+            if not remoteAuthorObject or not authorFQID:
                  return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
              ################################################################TEST#####################################################################################################
             print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
              ####################################################################################################################################################################
             requested_account_serialized = AuthorSerializer(requested_author)
-            if requested_account_serialized.is_valid() and not author_exists(authorFQID):
-                requested_account_serialized.save()
+            
+            
+            if not requested_account_serialized.is_valid():
+                return Response({"failed to save Inbox item":f"dev notes: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            requested_account_serialized.save()
               
             remote_follow_request = FollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_account_serialized.data, local_profile=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = FollowRequestSerializer(remote_follow_request, data={
@@ -1230,26 +1236,25 @@ def user_inbox_api(request, author_serial):
             
             if not remote_serialized_request.is_valid():
                 return Response({"failed to save Inbox item":f"dev notes: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)    
+
+          
+            type="Follow"
+            print("valid serializer")
+            #attempt to save the follow request
+            try:
+                remote_serialized_request.save()
+            except Exception as e:
+                print(remote_serialized_request.data)
+                return Response({"Unable to save follow request" : f"dev notes:{e}, serializer errors: {remote_serialized_request.errors or None}"}, status=status.HTTP_400_BAD_REQUEST)
                 
-            else:
-                type="Follow"
-                print("valid serializer")
-                #attempt to save the follow request
-                try:
-                    remote_serialized_request.save()
-                except Exception as e:
-                    print(remote_serialized_request.data)
-                    return Response({"Unable to save follow request" : f"dev notes:{e}, serializer errors: {remote_serialized_request.errors or None}"}, status=status.HTTP_400_BAD_REQUEST)
-                
-                #set the inbox body to the validated inbox object 
-                #This goes in the inbox item body now so WE can retrieve it later wherever need be
-                body = remote_serialized_request.data
-                ################TEST##############
-                #print('\n\n\n',body,'\n\n\n')
-                ################TEST##############
-        
-        
-        
+            #set the inbox body to the validated inbox object 
+            #This goes in the inbox item body now so WE can retrieve it later wherever need be
+            body = remote_serialized_request.data
+            ################TEST##############
+            print('\n\n\n',body,'\n\n\n')
+            ################TEST##############
+        else:
+            return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK) 
         
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
@@ -1260,13 +1265,13 @@ def user_inbox_api(request, author_serial):
             "author":requested_author.id,
             "body":body
         }, partial=True)
-        
+                
         #TODO: ADD VALIDATION FOR DIFFERENT TYPES OF INBOX OBJECTS:
         # likes
         # comments
         # follows
         # entry items
-        
+                
         #This will be the final save once the specific type of inbox item is validated
         #validates general Inbox item structure
         if newItemSerializer.is_valid():
@@ -1281,8 +1286,7 @@ def user_inbox_api(request, author_serial):
             return Response({f"FAILED TO SAVE INBOX ITEM":f"{newItemSerializer.errors}"} ,status=status.HTTP_400_BAD_REQUEST)
         
         
-    else:
-        return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK)    
+       
         
         
         
