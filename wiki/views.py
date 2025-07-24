@@ -1636,13 +1636,19 @@ def get_local_followers(request, author_serial):
         followers_list=[]
                 
         follower_relations = current_author.followers.all()
-                
+        remote_follower_relations = current_author.remotefollowers.all() 
+                  
         if follower_relations:
             for followers in follower_relations:
                 #print(followers.follower)
                 follower = followers.follower
                 followers_list.append(follower)
             #print(followers_list)
+            
+        if remote_follower_relations:
+            for followers in remote_follower_relations:
+                follower = followers.follower  
+                followers_list.append(follower)
         
         try:
             serialized_followers = AuthorSerializer( followers_list, many=True)
