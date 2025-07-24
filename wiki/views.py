@@ -1253,7 +1253,7 @@ def user_inbox_api(request, author_serial):
             author_data = entry_data.get("author")
             if not author_data:
                 return Response({"error": "No author data in entry"}, status=status.HTTP_400_BAD_REQUEST)
-            from .models import Author
+            
             remote_author, _ = Author.objects.get_or_create(
                 id=author_data["id"],
                 defaults={
@@ -1265,7 +1265,7 @@ def user_inbox_api(request, author_serial):
                 }
             )
             # Find or create the entry
-            from .models import Entry
+            
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
                 defaults={
