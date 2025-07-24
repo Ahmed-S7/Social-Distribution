@@ -1257,13 +1257,13 @@ def user_inbox_api(request, author_serial):
     #sends an inbox object to a specific author
     elif request.method =="POST": 
         print("Processing a POST request to the inbox")
-        if not is_remote_authenticated(request):
-            print("This is an unauthorized remote request, returning 403")
-            return Response({"failed to save Inbox item": "Unauthorized remote request"}, status=status.HTTP_403_FORBIDDEN)
-        # is_local = request.get_host() == requested_author.host
-        # if is_local:
-        #     print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
-        #     return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        # if not is_remote_authenticated(request):
+        #     print("This is an unauthorized remote request, returning 403")
+        #     return Response({"failed to save Inbox item": "Unauthorized remote request"}, status=status.HTTP_403_FORBIDDEN)
+        is_local = request.get_host() == requested_author.host
+        if is_local:
+            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
+            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
