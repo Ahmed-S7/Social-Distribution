@@ -897,6 +897,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #print(followRequest.data)
     print("AUTH TOKEN:", AUTHTOKEN)
     #send the request to the remote endpoint along with the basic auth
+    
     follow_request_response = requests.post(
     inbox_url,
     json=followRequestSerial.data,  

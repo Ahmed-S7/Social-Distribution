@@ -16,7 +16,8 @@ from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer
 
 #AUTH TOKEN TO BE USED WITH REQUESTS
-AUTH = {"username":"white",
+#YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
+AUTH =  {"username":"white",
         "password":"uniquepass"}
 
 AUTHTOKEN = HTTPBasicAuth(AUTH['username'],AUTH['password'])
