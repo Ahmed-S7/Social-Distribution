@@ -104,7 +104,7 @@ class Author(BaseModel):
     
     web = models.URLField(blank=True, null=False, default=None)
     
-    is_local = models.URLField(default=True)
+    is_local = models.BooleanField(default=True)
     
     
 
