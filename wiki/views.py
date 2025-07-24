@@ -1255,10 +1255,8 @@ def user_inbox_api(request, author_serial):
    
         
     #sends an inbox object to a specific author
-    elif request.method =="POST": 
-        if is_local_url(request, requested_author.id):
-            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
-            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+    elif request.method =="POST":
+        
         #################################TEST#################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
@@ -2257,7 +2255,7 @@ def add_comment(request, entry_serial):
                     headers={"Content-Type": "application/json"}
                 )
                 
-                if response.status_code == 200:
+                if response.status_code in [200, 201, 301, 302]:
                     print(f"Successfully sent comment to remote inbox: {inbox_url}")
                 else:
                     print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
