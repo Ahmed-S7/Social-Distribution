@@ -1249,11 +1249,12 @@ def user_inbox_api(request, author_serial):
         
     #sends an inbox object to a specific author
     elif request.method =="POST": 
-        
-        is_local = request.get_host() == requested_author.host
-        if is_local:
-            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
-            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        if not is_remote_authenticated(request):
+            return Response({"failed to save Inbox item": "Unauthorized remote request"}, status=status.HTTP_403_FORBIDDEN)
+        # is_local = request.get_host() == requested_author.host
+        # if is_local:
+        #     print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
+        #     return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
@@ -1594,7 +1595,17 @@ def user_inbox_api(request, author_serial):
             return Response({f"FAILED TO SAVE INBOX ITEM":f"{newItemSerializer.errors}"} ,status=status.HTTP_400_BAD_REQUEST)
         
         
-       
+def is_remote_authenticated(request):
+    auth = request.META.get("HTTP_AUTHORIZATION", "")
+    if not auth.startswith("Basic "):
+        return False
+    try:
+        encoded = auth.split(" ")[1]
+        decoded = base64.b64decode(encoded).decode()
+        username, password = decoded.split(":")
+        return RemoteNode.objects.filter(username=username, password=password, is_active=True).exists()
+    except Exception:
+        return False
         
         
         
