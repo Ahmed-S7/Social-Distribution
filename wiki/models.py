@@ -217,7 +217,7 @@ class Entry(BaseModel):
 
     objects = AppManager()
     all_objects = models.Manager()
-
+    origin_url = models.URLField(null=True, blank=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -228,7 +228,12 @@ class Entry(BaseModel):
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
+    is_local = models.BooleanField(default=True)
     
+    
+    @property
+    def is_local(self):
+        return self.author.is_local
     def get_entry_url(self):
         return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
     
@@ -299,6 +304,16 @@ class CommentLike(BaseModel):
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=get_mst_time)
     is_local = models.BooleanField(default=True)
+    
+    def get_like_url(self):
+        # Extract numeric author ID from the author's URL
+        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
+        author_id = self.user.id.split('/')[-1]  # Get the last part of the URL
+        return f"http://s25-project-white/api/authors/{author_id}/liked/{self.pk}"
+    
+    @property
+    def id(self):
+        return self.get_like_url()
     
     class Meta:
         constraints = [

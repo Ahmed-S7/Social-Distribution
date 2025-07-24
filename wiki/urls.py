@@ -76,7 +76,7 @@ urlpatterns = [
 
     # Image Entries API
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/image/', get_author_image_api, name='get_author_image_api'),
-    path('api/entries/<uuid:entry_serial>/image/', get_entry_image_api, name='get_entry_image_api'),
+    path('api/entries/<path:entry_fqid>/image/', get_entry_image_api, name='get_entry_image_api'),
 
     #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),

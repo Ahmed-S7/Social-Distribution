@@ -268,16 +268,17 @@ class EntrySerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     published = serializers.DateTimeField(source='created_at')
     visibility = serializers.ChoiceField(required=True, choices=VISIBILITY_CHOICES)
-
+    is_local = serializers.SerializerMethodField(read_only=True)
+    origin_url = serializers.CharField(read_only=True)
     class Meta:
         model = Entry
         fields = [
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
-            'author', 'comments', 'likes', 'published', 'visibility'
+            'author', 'comments', 'likes', 'published', 'visibility', 'is_local', 'origin_url' 
         ]
     def get_id(self, obj):
         request = self.context.get('request')
-        if request is None:
+        if request is None: 
             return None
         host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
         return f"{host}/api/authors/{obj.author.serial}/entries/{obj.serial}"
@@ -290,7 +291,8 @@ class EntrySerializer(serializers.ModelSerializer):
         return f"entry by {obj.author}, titled: '{obj.title}"
     
     content = serializers.SerializerMethodField()
-
+    def get_is_local(self, obj):
+        return obj.is_local
     def get_content(self, obj):
         return obj.content  
 
