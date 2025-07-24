@@ -1,4 +1,5 @@
 import base64
+import urllib.parse
 from django.test import TestCase
 from rest_framework.test import APIClient
 from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like, Comment, CommentLike
@@ -987,6 +988,55 @@ class FriendsOnlyCommentsTesting(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn('error', response.data)
         self.assertEqual(response.data['error'], 'Only friends can view comments on friends-only entries')
+
+    def test_get_comment_fqid_api(self):
+        """Test the single comment API endpoint"""
+        # Use the existing comment from setUp
+        comment = self.comment1
+        
+        # Construct the comment FQID (same format as in serializers)
+        comment_fqid = f"http://s25-project-white/api/authors/{comment.author.serial}/commented/{comment.id}"
+        encoded_comment_fqid = urllib.parse.quote(comment_fqid, safe='')
+        
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comment/{encoded_comment_fqid}/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comment')
+        self.assertEqual(response.data['comment'], 'This is a comment from a friend.')
+        self.assertEqual(response.data['contentType'], 'text/plain')
+        self.assertIn('author', response.data)
+        self.assertIn('published', response.data)
+        self.assertIn('id', response.data)
+        self.assertIn('entry', response.data)
+
+    def test_author_comments_fqid_api(self):
+        """Test the author comments by FQID API endpoint"""
+        # Create another comment by the same author
+        comment2 = Comment.objects.create(
+            entry=self.friends_entry,
+            author=self.author2,
+            content="Another comment from the same author",
+            contentType="text/plain"
+        )
+        
+        # Construct the author FQID
+        author_fqid = f"http://s25-project-white/api/authors/{self.author2.serial}"
+        encoded_author_fqid = urllib.parse.quote(author_fqid, safe='')
+        
+        url = f'{BASE_PATH}/authors/{encoded_author_fqid}/commented/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comments')
+        self.assertIn('src', response.data)
+        self.assertIn('count', response.data)
+        self.assertIn('page_number', response.data)
+        self.assertIn('size', response.data)
+        
+        # Should have 2 comments from this author
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['src']), 2)
 
 
 class ReadingTestCase(TestCase):

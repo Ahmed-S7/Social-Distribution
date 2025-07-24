@@ -202,8 +202,8 @@ class CommentSummarySerializer(serializers.Serializer):
     contentType = serializers.CharField()
     published = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
-    entry = serializers.CharField(source='entry.id')
-    web = serializers.CharField()
+    entry = serializers.SerializerMethodField()
+    web = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     
     def get_type(self, obj):
@@ -240,6 +240,19 @@ class CommentSummarySerializer(serializers.Serializer):
             "count": likes.count(),
             "src": [CommentLikeSummarySerializer(like, context=self.context).data for like in likes[:50]]
         }
+    
+    def get_web(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+
+        return f"{host}/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+    
+    def get_entry(self, obj):
+        request = self.context.get('request')
+        host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+
+        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+
 
 VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
@@ -306,7 +319,7 @@ class EntrySerializer(serializers.ModelSerializer):
             "page_number": 1,
             "size": 5,
             "count": total_comments,
-            "src": [CommentSummarySerializer(comment).data for comment in comments]
+            "src": [CommentSummarySerializer(comment, context=self.context).data for comment in comments]
         }
 
 

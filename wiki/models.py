@@ -300,6 +300,7 @@ class Comment(BaseModel):
     web = models.URLField(blank=True, null=True, default=None)
     
     
+    
     def get_web_url(self):
         return f"http://s25-project-white/api/authors/{self.author.serial}/entries/{self.serial}"
     
