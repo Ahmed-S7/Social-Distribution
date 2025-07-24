@@ -166,6 +166,36 @@ def send_entry_to_remote_followers(entry, request=None):
                 print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
         except Exception as e:
             print(f"Exception sending entry to {inbox_url}: {e}")
+
+def send_entry_to_remote_followers(entry, request=None):
+    # Find all remote followers (not local)
+    remote_followers = [
+        rel.follower
+        for rel in AuthorFollowing.objects.filter(following=entry.author)
+        if not rel.follower.is_local
+    ]
+
+    for follower in remote_followers:
+        inbox_url = follower.id.rstrip('/') + '/inbox/'
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+
+       
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
+
+        try:
+            response = requests.post(
+                inbox_url,
+                json=payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
+        except Exception as e:
+            print(f"Exception sending entry to {inbox_url}: {e}")
             
             
             
