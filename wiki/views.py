@@ -651,7 +651,6 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        "follower_count": len(followers),
                        "is_local":False,
                        "FQID":decoded_FOREIGN_AUTHOR_FQID,
-                       "following": following,
                        "following_count":len(following)
                        }
                       )
@@ -844,7 +843,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     if(local_requesting_account.is_remotely_requesting(requested_author_object)):
          base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-         query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
+         query_with_follow_status= f"{base_URL}?status=requesting&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
     
@@ -889,7 +888,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
    
     #save the request
     if followRequestSerial.is_valid():
-        print("\n\n\n\n\"the serializer is valid!\n\n\n\n\n")
+        print("\n\n\n\n\"the follow request serializer is valid!\n\n\n\n\n")
         followRequestSerial.save()
         
     #print(followRequest)
