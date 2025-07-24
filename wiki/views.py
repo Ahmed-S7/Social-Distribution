@@ -1249,7 +1249,9 @@ def user_inbox_api(request, author_serial):
         
     #sends an inbox object to a specific author
     elif request.method =="POST": 
+        print("Processing a POST request to the inbox")
         if not is_remote_authenticated(request):
+            print("This is an unauthorized remote request, returning 403")
             return Response({"failed to save Inbox item": "Unauthorized remote request"}, status=status.HTTP_403_FORBIDDEN)
         # is_local = request.get_host() == requested_author.host
         # if is_local:
@@ -1597,6 +1599,7 @@ def user_inbox_api(request, author_serial):
         
 def is_remote_authenticated(request):
     auth = request.META.get("HTTP_AUTHORIZATION", "")
+    print(auth)
     if not auth.startswith("Basic "):
         return False
     try:
