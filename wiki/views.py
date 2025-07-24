@@ -26,8 +26,8 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
-from urllib.parse import urlparse
+from .util import AUTHTOKEN, get_remote_author_followers,get_remote_author_followings, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from urllib.parse import urlparse, unquote
 import requests
 import json
 import base64
@@ -566,10 +566,9 @@ def view_external_profile(request, author_serial):
 def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
     ''' path: 'authors/remote/<path:FOREIGN_AUTHOR_FQID>', view_remote_profile, name='view_remote_profile' '''
     
-    #doubly decode the fqid and  retrieve necessary info
-    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
-    
+    print("AUTH TOKEN:", AUTHTOKEN)
+    #decode the fqid and  retrieve necessary info
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     
     #Ensure a proper response or redirect
     remote_author_fetch = requests.get(decoded_FOREIGN_AUTHOR_FQID)
@@ -636,9 +635,11 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
         
         
     #store the author followers 
-    remote_followers_json = remote_followers_fetch
     
-    followers = remote_followers_json['followers']
+    followers = get_remote_author_followers(remote_author_json)
+    following = get_remote_author_followings(remote_author_json)
+    print(followers)
+    print(len(followers))
     print(f"\n\nFOLLOWERS: {followers}\n\n\n")
    
     return render(request, "remote_profile.html", 
@@ -650,6 +651,8 @@ def view_remote_profile(request, FOREIGN_AUTHOR_FQID):
                        "follower_count": len(followers),
                        "is_local":False,
                        "FQID":decoded_FOREIGN_AUTHOR_FQID,
+                       "following": following,
+                       "following_count":len(following)
                        }
                       )
          
@@ -797,9 +800,7 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     localNode = "s25-project-white" in FOREIGN_AUTHOR_FQID
     
     #decode the fqid and  retrieve necessary info
-    #doubly decode the fqid and  retrieve necessary info
-    part_decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(part_decoded_FOREIGN_AUTHOR_FQID)
+    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
     remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
     remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
     current_user = request.user
@@ -825,26 +826,29 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
         return redirect(query_with_follow_status)
     '''
     
-    
     if ("http://127.0.0.1" in local_requesting_account.host):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
-         return render(request, "remote_profile.html", 
-                      {
-                       "not_authorized":True,
-                       }
-                      )
+        base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
+        return(render(request, "remote_profile.html", {
+            "FQID": decoded_FOREIGN_AUTHOR_FQID,
+            "valid_node":False,
+            "not_authorized":True
+        }
+            
+            
+        ))
     
     if(local_requesting_account.is_remotely_following(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
     if(local_requesting_account.is_remotely_requesting(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
          query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
          return (redirect(query_with_follow_status))
     
-        
+    
+       
     
     
     #api/authors/<str:author_serial>/inbox/
@@ -855,16 +859,9 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     
     serializedAuthor = AuthorSerializer(local_requesting_account)
     
-    
-    auth = {"username":"white",
-            "password":"uniquepass"}
-    headers = {
-            "Content-Type": "application/json"
-        }
-    
     #ensure an author exists or redirect
     if not requested_author_object:
-        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(FOREIGN_AUTHOR_FQID)})
+        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
         print(url)
         return redirect(url)
         
@@ -898,13 +895,13 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
     #print(followRequest)
     #print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
     #print(followRequest.data)
-
-    
+    print("AUTH TOKEN:", AUTHTOKEN)
     #send the request to the remote endpoint along with the basic auth
+    
     follow_request_response = requests.post(
     inbox_url,
     json=followRequestSerial.data,  
-    auth=HTTPBasicAuth(auth['username'],auth['password']),
+    auth=AUTHTOKEN,
     timeout=2
     )
     
@@ -916,15 +913,19 @@ def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
                                              following=followRequestObject.requested_account,
                                              local_profile=local_requesting_account,
                                              follower=serializedAuthor.data,
-                                             )
-        print(newRemoteFollowing)
+        )
+        print(newRemoteFollowing)                                   
         newRemoteFollowing.save()
  
+    print("FOLLOW REQUEST STATUS CODE:",follow_request_response.status_code)
+    print("FOLLOW REQUEST CONTENT:", follow_request_response.text)
+        
     node_url = remote_author_scheme+'://'+remote_author_host
     
     
     print(f"HOST AND SCHEME {node_url}")
     valid_node = node_valid(remote_author_host)
+    print("NODE VALIDITY:", valid_node)
     
     followers = remote_followers_fetched(decoded_FOREIGN_AUTHOR_FQID)
     
@@ -1300,6 +1301,7 @@ def user_inbox_api(request, author_serial):
     elif request.method =="POST": 
         is_local = request.get_host() == requested_author.host
         if is_local:
+            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
@@ -1403,7 +1405,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
          return Response({"NOT FOUND": "We could not locate an author with this specific serial"}, status=status.HTTP_404_NOT_FOUND)
     
     #decode the foreign author's ID
-    decodedId = urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    decodedId = decoded_fqid(FOREIGN_AUTHOR_FQID)
      
 
     remote_author_object = remote_author_fetched(decodedId)

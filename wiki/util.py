@@ -1,12 +1,12 @@
 import requests
-from .models import Author, RemoteNode, AuthorFollowing
+from .models import Author, RemoteNode, AuthorFollowing, RemoteFollowing
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
 import traceback
 from rest_framework.response import Response
 import urllib
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
@@ -14,6 +14,15 @@ from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer
+
+#AUTH TOKEN TO BE USED WITH REQUESTS
+#YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
+AUTH =  {"username":"white",
+        "password":"uniquepass"}
+
+AUTHTOKEN = HTTPBasicAuth(AUTH['username'],AUTH['password'])
+
+
 def validUserName(username):
     '''Checks the username to ensure validity using a serializer'''
     from .serializers import AuthorSerializer  
@@ -96,7 +105,11 @@ def encoded_fqid(FOREIGN_AUTHOR_FQID):
  
 def decoded_fqid(FOREIGN_AUTHOR_FQID):
     '''percent decodes and author's fqid'''
-    return urllib.parse.unquote(FOREIGN_AUTHOR_FQID)
+    fqid = FOREIGN_AUTHOR_FQID 
+    for _ in range(5): 
+        decoded = unquote(fqid)
+        fqid = decoded
+    return fqid
 
 def get_host_and_scheme(FOREIGN_AUTHOR_FQID):
     '''gets the scheme and host name for a DECODED foreign author FQID'''
@@ -145,3 +158,11 @@ def send_entry_to_remote_followers(entry, request=None):
             response.raise_for_status()
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
+
+def get_remote_author_followers(foreign_author):
+    all_followings = RemoteFollowing.objects.filter(following=foreign_author)
+    return all_followings
+    
+def get_remote_author_followings(foreign_author):
+    all_followings = RemoteFollowing.objects.filter(follower=foreign_author)
+    return all_followings
