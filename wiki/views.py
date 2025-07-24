@@ -1253,13 +1253,14 @@ def user_inbox_api(request, author_serial):
             if requester.is_already_requesting(requested_author):
                 return Response({"failed to save Inbox item":f"dev notes: you have already requested to follow this author."}, status=status.HTTP_400_BAD_REQUEST)    
 
-
+            remote_following=AuthorFollowing(follower=requester, following=requested_author)
             remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author,  state=RequestState.REQUESTING)
             remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
           
             #attempt to save the follow request
             try:
+                remote_following.save()
                 remote_follow_request.save()
                 type="Follow"
                 print("valid follow request")
