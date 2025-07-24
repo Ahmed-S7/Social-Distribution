@@ -3085,40 +3085,44 @@ def get_author_comments_api(request, author_serial):
 
 @api_view(['GET'])
 def get_entry_image_api(request, entry_fqid):
-    entry_fqid = unquote(entry_fqid) 
-    entry = None
-    try:
-        entry = Entry.objects.get(id=entry_fqid)
-    except Entry.DoesNotExist:
-        pass
+    pass
+#     entry_fqid = unquote(entry_fqid) 
+#     entry = None
+#     try:
+#         entry = Entry.objects.get(id=entry_fqid)
+#     except Entry.DoesNotExist:
+#         pass
     
-    # REMOTE
-    if entry is None:
-        try:
-            response = requests.get(entry_fqid, headers={"Accept": "application/json"})
-            if response.status_code != 200:
-                return HttpResponse("Entry not found or remote entry does not exist.", status=404)
+#     # REMOTE
+#     if entry is None:
+#         try:
+#             response = requests.get(entry_fqid, headers={"Accept": "application/json"})
+#             if response.status_code != 200:
+#                 return HttpResponse("Entry not found or remote entry does not exist.", status=404)
             
-            data = response.json()
-            content_type = data.get("contentType", "")
-            content = data.get("content", "")
-            if not content_type.startswith('image/'):
-                return HttpResponse("Content is not an image.", status=400)
-            image_data = base64.b64decode(content)
-            return HttpResponse(image_data, content_type=content_type)
-        except Exception as e:
-            print("Response content:", response.text)
-            print("Content-Type:", response.headers.get("Content-Type"))
-            return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
+#             try:
+#                 data = response.json()
+#             except Exception:
+#                 return HttpResponse(f"Remote did not return valid JSON: {response.text}", status=502)
+#             content_type = data.get("contentType", "")
+#             content = data.get("content", "")
+#             if not content_type.startswith('image/'):
+#                 return HttpResponse("Content is not an image.", status=400)
+#             image_data = base64.b64decode(content)
+#             return HttpResponse(image_data, content_type=content_type)
+#         except Exception as e:
+#             print("Response content:", response.text)
+#             print("Content-Type:", response.headers.get("Content-Type"))
+#             return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
         
-    # LOCAL
-    if not entry.contentType.startswith('image/'):
-        return HttpResponse("Content is not an image.", status=400)
-    try:
-        image_data = base64.b64decode(entry.content)
-        return HttpResponse(image_data, content_type=entry.contentType)
-    except Exception as e:
-        return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
+#     # LOCAL
+#     if not entry.contentType.startswith('image/'):
+#         return HttpResponse("Content is not an image.", status=400)
+#     try:
+#         image_data = base64.b64decode(entry.content)
+#         return HttpResponse(image_data, content_type=entry.contentType)
+#     except Exception as e:
+#         return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
 
 @api_view(['GET'])
 def get_author_image_api(request, author_serial, entry_serial):
@@ -3126,15 +3130,15 @@ def get_author_image_api(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
-    
+        
     content_type = entry.contentType.split(";")[0]
-    # # Determine MIME type from contentType
-    # if entry.contentType.startswith('image/png'):
-    #     mime_type = 'image/png'
-    # elif entry.contentType.startswith('image/jpeg'):
-    #     mime_type = 'image/jpeg'
-    # else:
-    #     mime_type = 'application/octet-stream'  # fallback
+    # Determine MIME type from contentType
+    if entry.contentType.startswith('image/png'):
+        mime_type = 'image/png'
+    elif entry.contentType.startswith('image/jpeg'):
+        mime_type = 'image/jpeg'
+    else:
+        mime_type = 'application/octet-stream'  # fallback
 
     # Decode the base64 image data
     try:
@@ -3143,7 +3147,7 @@ def get_author_image_api(request, author_serial, entry_serial):
         return HttpResponse("Failed to decode image.", status=500)
 
     # Return as binary response
-    return HttpResponse(image_data, content_type=content_type)
+    return HttpResponse(image_data, content_type=mime_type)
     
 
 @api_view(['GET'])
