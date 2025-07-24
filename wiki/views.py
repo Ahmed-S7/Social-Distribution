@@ -1,6 +1,4 @@
 import mimetypes
-import aiohttp
-import asyncio
 from django.db.models import Q
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
@@ -2112,16 +2110,12 @@ def like_entry_api(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
-        return Response({
-            "status": "liked",
-            "message": "Entry liked successfully",
-            "likes_count": entry.likes.count()
-        }, status=status.HTTP_201_CREATED)
+        # Return the properly formatted like object
+        serializer = LikeSummarySerializer(like, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     else:
         return Response({
-            "status": "already_liked", 
-            "message": "You have already liked this entry",
-            "likes_count": entry.likes.count()
+            "error": "Entry already liked"
         }, status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -638,6 +638,14 @@ class CommentEntryTesting(TestCase):
             serial=uuid.uuid4(),
             visibility="PUBLIC"
         )
+        
+        # Create a comment by author2 on the public entry for testing
+        self.comment = Comment.objects.create(
+            entry=self.entry,
+            author=self.author2,
+            content='Comment on public entry',
+            contentType='text/plain'
+        )
 
     def test_add_comment_success(self):
         """Test successful comment addition to an entry"""
@@ -660,10 +668,24 @@ class CommentEntryTesting(TestCase):
         self.assertEqual(response.data['contentType'], 'text/plain')
         
         # Verify comment was created in database
-        comment = Comment.objects.filter(entry=self.entry, author=self.author2).first()
+        comment = Comment.objects.filter(entry=self.entry, author=self.author2, content='This is a witty reply!').first()
         self.assertIsNotNone(comment)
         self.assertEqual(comment.content, 'This is a witty reply!')
         self.assertFalse(comment.is_deleted)
+
+
+    def test_get_author_comments_public_access(self):
+        """Test that anyone can see comments on public entries"""
+        # No authentication - simulating remote node request
+        url = f'{BASE_PATH}/authors/{self.author2.serial}/commented/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comments')
+        self.assertEqual(response.data['count'], 1)  # Only public comment visible
+        self.assertEqual(len(response.data['src']), 1)
+        self.assertEqual(response.data['src'][0]['comment'], 'Comment on public entry')
+
 
     def test_add_comment_nonexistent_entry(self):
         """Test commenting on a non-existent entry"""
@@ -681,9 +703,10 @@ class CommentEntryTesting(TestCase):
         
         self.assertEqual(response.status_code, 404)
         
-        # Verify no comment was created
+        # Verify no new comment was created (should still have the original comment from setUp)
         comments = Comment.objects.filter(author=self.author2)
-        self.assertEqual(comments.count(), 0)
+        self.assertEqual(comments.count(), 1)  # The original comment from setUp
+        self.assertEqual(comments.first().content, 'Comment on public entry')
 
 
 class LikeCommentTesting(TestCase):
@@ -1831,3 +1854,168 @@ class AuthorLikesAPITesting(TestCase):
         self.assertEqual(response.data['count'], 0)
         self.assertEqual(len(response.data['src']), 0)
 
+
+class EntryCommentsAPITesting(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        # Create users
+        self.user = User.objects.create_user(
+            username='test_author',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_author2',
+            password='test_password2'
+        )
+        self.user3 = User.objects.create_user(
+            username='test_author3',
+            password='test_password3'
+        )
+        
+        # Create authors
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        self.author3 = Author.objects.create(
+            id=3,
+            user=self.user3,
+            displayName='test_author3',
+            description='test_description3',
+            github='https://github.com/test_author3',
+            serial=uuid.uuid4(),
+            web='https://example.com/3'
+        )
+        
+        # Create entry
+        self.public_entry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a public entry.',
+            author=self.author,
+            serial=uuid.uuid4(),
+            visibility="PUBLIC"
+        )
+        
+        # Create comments
+        self.comment1 = Comment.objects.create(
+            entry=self.public_entry,
+            author=self.author2,
+            content='This is a comment on public entry',
+            contentType='text/plain'
+        )
+        
+        self.comment2 = Comment.objects.create(
+            entry=self.public_entry,
+            author=self.author3,
+            content='This is another comment on public entry',
+            contentType='text/plain'
+        )
+    
+    def test_get_public_entry_comments(self):
+        """Test that local authenticated users can access public entry comments"""
+        self.client.force_authenticate(user=self.user2)
+        url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{self.public_entry.serial}/comments/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comments')
+        self.assertEqual(len(response.data['src']), 2)  # Two comments on public entry
+
+
+class EntryCommentsFQIDTesting(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        # Create users
+        self.user = User.objects.create_user(
+            username='test_author',
+            password='test_password',
+        )
+        self.user2 = User.objects.create_user(
+            username='test_author2',
+            password='test_password2'
+        )
+        self.user3 = User.objects.create_user(
+            username='test_author3',
+            password='test_password3'
+        )
+        
+        # Create authors
+        self.author = Author.objects.create(
+            id=1,
+            user=self.user,
+            displayName='test_author',
+            description='test_description',
+            github='https://github.com/test_author',
+            serial=uuid.uuid4(),
+            web='https://example.com/',
+            profileImage = 'https://cdn-icons-png.flaticon.com/256/3135/3135823.png'
+        )
+        self.author2 = Author.objects.create(
+            id=2,
+            user=self.user2,
+            displayName='test_author2',
+            description='test_description2',
+            github='https://github.com/test_author2',
+            serial=uuid.uuid4(),
+            web='https://example.com/2'
+        )
+        self.author3 = Author.objects.create(
+            id=3,
+            user=self.user3,
+            displayName='test_author3',
+            description='test_description3',
+            github='https://github.com/test_author3',
+            serial=uuid.uuid4(),
+            web='https://example.com/3'
+        )
+        
+        # Create entries with proper FQIDs
+        entry_serial = uuid.uuid4()
+        self.public_entry = Entry.objects.create(
+            title='Public Entry',
+            content='This is a public entry.',
+            author=self.author,
+            serial=entry_serial,
+            visibility="PUBLIC",
+            id=f"http://127.0.0.1:8000/s25-project-white/api/authors/{self.author.serial}/entries/{entry_serial}"
+        )
+    
+        # Create comments
+        self.comment1 = Comment.objects.create(
+            entry=self.public_entry,
+            author=self.author2,
+            content='This is a comment on public entry',
+            contentType='text/plain'
+        )
+        
+        self.comment2 = Comment.objects.create(
+            entry=self.public_entry,
+            author=self.author3,
+            content='This is another comment on public entry',
+            contentType='text/plain'
+        )
+
+    def test_get_public_entry_comments_by_fqid_local_access(self):
+        """Test that local authenticated users can access public entry comments by FQID"""
+        self.client.force_authenticate(user=self.user2)
+        # URL encode the entry FQID
+        encoded_fqid = urllib.parse.quote(self.public_entry.id, safe='')
+        url = f'{BASE_PATH}/entries/{encoded_fqid}/comments/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['type'], 'comments')
+        self.assertEqual(len(response.data['src']), 2)  # Two comments on public entry
