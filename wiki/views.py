@@ -1262,8 +1262,7 @@ def user_inbox_api(request, author_serial):
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
 
-        
-        
+
         
         
         
@@ -1310,8 +1309,10 @@ def user_inbox_api(request, author_serial):
            
 
             return Response({"success": "Entry received and stored", "created": created}, status=status.HTTP_200_OK)
+        
+        ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
+                
         #for follow requests
-
         if type == "follow" or type == "Follow":
             
             try:
