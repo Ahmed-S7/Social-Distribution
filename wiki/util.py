@@ -122,8 +122,7 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
-
-
+'''
 def get_remote_recipients(author):
     """
     Returns RemoteFollowing objects for authors following this local author.
@@ -158,6 +157,8 @@ def send_entry_to_remote_followers(entry, request=None):
             response.raise_for_status()
         except Exception as e:
             print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
+            
+'''            
             
 def author_exists(id):
     '''

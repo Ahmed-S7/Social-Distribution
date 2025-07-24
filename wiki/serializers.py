@@ -58,6 +58,16 @@ class AuthorSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+    def create(self, validated_data):
+        displayName = validated_data.get("id")
+        user = User.objects.create(username=displayName, password="whitepass")
+
+        # Now create the Author and link the new user
+        author = Author.objects.create(user=user, **validated_data)
+        return author
+       
+        
+        
 class FollowRequestSerializer(serializers.ModelSerializer):
     actor = AuthorSerializer(source="requester")
     object = AuthorSerializer(source="requested_account")
@@ -65,6 +75,12 @@ class FollowRequestSerializer(serializers.ModelSerializer):
         model= FollowRequest
         fields = ["type","state","summary", "actor", "object"]
         
+class FollowRequestReadingSerializer(serializers.ModelSerializer):
+    actor = AuthorSerializer(source="requester", read_only=True)
+    object = AuthorSerializer(source="requested_account", read_only=True)
+    class Meta:
+        model= FollowRequest
+        fields = ["type","state","summary", "actor", "object"]        
 class AuthorFriendSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuthorFriend

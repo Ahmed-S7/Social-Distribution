@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
 from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+from .serializers import FollowRequestReadingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes
 from django.views.decorators.http import require_http_methods
@@ -1205,7 +1205,12 @@ def user_inbox_api(request, author_serial):
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
         
-        #for follow requests
+        
+        
+        
+        
+        ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
+        
         if type == "follow" or type == "Follow":
             
             body = request.data
@@ -1216,36 +1221,42 @@ def user_inbox_api(request, author_serial):
             if not remoteAuthorObject or not authorFQID:
                  return Response({"failed to save Inbox item": "could not fetch author object"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
              ################################################################TEST#####################################################################################################
-            print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
+             #print("FOLLOW REQUEST BODY:","\n\n\n",body,'\n\n\n',"REQUESTER FQID:\n\n\n",authorFQID,'\n\n\n',"REQUESTED AUTHOR (LOCAL) FQID:\n\n\n",requested_author.id,'\n\n\n')
              ####################################################################################################################################################################
-            requested_account_serialized = AuthorSerializer(requested_author)
             
-            
-            if not requested_account_serialized.is_valid():
-                return Response({"failed to save Inbox item":f"dev notes: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            requested_account_serialized.save()
-              
-            remote_follow_request = FollowRequest(requesterId=authorFQID, requester=remote_author_fetched(authorFQID), requested_account=requested_account_serialized.data, local_profile=requested_author, state=RequestState.REQUESTING)
-            remote_serialized_request = FollowRequestSerializer(remote_follow_request, data={
-                "actor":remote_follow_request.requester,
-                "object": remote_follow_request.requested_account
+            #CHECK FOR THE EXISTENCE OF THE AUTHOR
+            if not author_exists(authorFQID):
                 
-                  
-            }, partial=True)
-            
-            if not remote_serialized_request.is_valid():
-                return Response({"failed to save Inbox item":f"dev notes: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)    
+                #SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                
+                #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                if not requesting_account_serialized.is_valid():
+                    return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
+                requester = requesting_account_serialized.save()
+                   
+            #OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
+            else:
+                requester = Author.objects.get(id=authorFQID)
+              
+            if requester.is_already_requesting(requested_author):
+                return Response({"failed to save Inbox item":f"dev notes: you have already requested to follow this author.: {remote_serialized_request.errors}"}, status=status.HTTP_400_BAD_REQUEST)    
+
+
+            remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author,  state=RequestState.REQUESTING)
+            remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
           
-            type="Follow"
-            print("valid serializer")
             #attempt to save the follow request
             try:
-                remote_serialized_request.save()
+                remote_follow_request.save()
+                type="Follow"
+                print("valid follow request")
             except Exception as e:
                 print(remote_serialized_request.data)
-                return Response({"Unable to save follow request" : f"dev notes:{e}, serializer errors: {remote_serialized_request.errors or None}"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"Unable to save follow request" : f"dev notes:{e}"}, status=status.HTTP_400_BAD_REQUEST)
                 
             #set the inbox body to the validated inbox object 
             #This goes in the inbox item body now so WE can retrieve it later wherever need be
@@ -1253,6 +1264,8 @@ def user_inbox_api(request, author_serial):
             ################TEST##############
             print('\n\n\n',body,'\n\n\n')
             ################TEST##############
+            
+        ##################################### END OF FOLLOW REQUEST PROCESSING ######################################################################################################################################
         else:
             return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK) 
         
@@ -1756,9 +1769,11 @@ def create_entry(request):
             description=description,
             visibility=visibility
         )
+        '''
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
             send_entry_to_remote_followers(entry, request)
+        '''
         return redirect('wiki:entry_detail', entry_serial=entry.serial)
 
     return render(request, 'create_entry.html')
