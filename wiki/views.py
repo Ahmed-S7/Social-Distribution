@@ -917,7 +917,7 @@ def follow_profile(request, author_serial):
          # Valid follow requests will lead to an attempted saving of the corresponding respective inbox item
         if serialized_follow_request.is_valid():
             
-            follow_request.status=RequestState.ACCEPTED
+            #follow_request.status=RequestState.ACCEPTED
             #print("Follow Request serializer is valid")
             
             #remote profiles will automatically send a following
@@ -952,7 +952,6 @@ def follow_profile(request, author_serial):
                     except Exception as e:
                         print(remote_serialized_request.data)
                         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-                    
                     
                     
                 except Exception as e:
@@ -1257,9 +1256,7 @@ def user_inbox_api(request, author_serial):
         
     #sends an inbox object to a specific author
     elif request.method =="POST": 
-        
-        is_local = request.get_host() == requested_author.host
-        if is_local:
+        if is_local_url(request, requested_author.id):
             print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
             return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
         #################################TEST#################################### 
