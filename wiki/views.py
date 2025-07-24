@@ -917,7 +917,7 @@ def follow_profile(request, author_serial):
          # Valid follow requests will lead to an attempted saving of the corresponding respective inbox item
         if serialized_follow_request.is_valid():
             
-            follow_request.status=RequestState.ACCEPTED
+            #follow_request.status=RequestState.ACCEPTED
             #print("Follow Request serializer is valid")
             
             #remote profiles will automatically send a following
@@ -952,7 +952,6 @@ def follow_profile(request, author_serial):
                     except Exception as e:
                         print(remote_serialized_request.data)
                         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-                    
                     
                     
                 except Exception as e:
@@ -2345,7 +2344,7 @@ def add_comment(request, entry_serial):
                     headers={"Content-Type": "application/json"}
                 )
                 
-                if response.status_code == 200:
+                if response.status_code in [200, 201, 301, 302]:
                     print(f"Successfully sent comment to remote inbox: {inbox_url}")
                 else:
                     print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
