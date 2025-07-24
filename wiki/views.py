@@ -1948,6 +1948,65 @@ def entry_detail_api(request, entry_serial, author_serial):
         except Exception as e:
             return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@login_required
+@api_view(['GET'])
+def entry_detail_fqid_api(request, entry_fqid):
+    """
+    GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    
+    """
+
+    decoded_entry_fqid = urllib.parse.unquote(entry_fqid)
+    entry = get_object_or_404(Entry, id=decoded_entry_fqid)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_id = entry.author.id
+    entry_author=get_object_or_404(Author, id=author_id)
+    
+   #checks if the current author isn't the one getting the entry information, if so there will be visibility restrictions
+    if current_author == entry_author:
+        pass
+    else:
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(entry_author):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(entry_author):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+   
+
+    if request.method == 'GET':
+        serializer = EntrySerializer(entry, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    elif request.method == 'PUT':
+        serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
+        if serializer and serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        if current_author!=entry.author:
+            return Response({
+                "error": "You are not authorized to delete this entry."
+            })
+        try:
+            entry.delete()
+            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
+            deleted_entry.visibility='DELETED'
+            serializer = EntrySerializer(deleted_entry, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         
 @require_POST
 @login_required
