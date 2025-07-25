@@ -621,3 +621,6 @@ class RemoteNode(BaseModel):
         status = "active" if not self.is_deleted and self.is_active else "inactive"
         return f"{self.url} ({status})"
         
+class NodeConnectionCredentials(BaseModel):
+    username = models.CharField()
+    password = models.CharField()

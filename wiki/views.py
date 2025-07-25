@@ -1106,6 +1106,23 @@ def process_follow_request(request, author_serial, request_id):
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
+
+
+
+def decoded_auth_token(auth_header):
+    
+    auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded}"]
+    print(f"AUTH INFO SPLIT: {auth_header_split}")
+    auth = auth_header_split[1]# -> [takes the last part of ^^ (auth_encoded) and stores it as the auth token] -> {auth_encoded}
+    print(f"ENCODED AUTH INFO: {auth}")
+    decoded_auth = base64.b64decode(auth).split(":")# -> decodes the auth so that we can retrieve the username and password individually -> [{"decoded username"}, {"decoded password"}]
+    print(f"DECODED AUTH : {decoded_auth}")
+    decoded_username, decoded_pass = decoded_auth[0], decoded_auth[1]# -> username, password
+    print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
+    
+    return decoded_username, decoded_pass
+    
+    
 @csrf_exempt
 @api_view(['GET','POST'])
 def user_inbox_api(request, author_serial):
@@ -1237,20 +1254,37 @@ def user_inbox_api(request, author_serial):
     }
     
     '''
-    current_user=request.user
     
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
+    
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+   
+    username, password = decoded_auth_token(auth_header)
+    
+    
+    print("")
     currentNodes = RemoteNode.objects.all()
     print(currentNodes)
     
     requested_author = get_object_or_404(Author, serial=author_serial)
-    
+    #TODO
     #check the node validity
+    #populate the local node with all of the foreign node's users
     
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
-        if current_user!=requested_author.user:
+        if not request.user.is_authenticated:
             return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
         
         inboxItems = requested_author.inboxItems.order_by('-created_at')
@@ -1320,7 +1354,7 @@ def user_inbox_api(request, author_serial):
         ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
                 
         #for follow requests
-        if type == "follow" or type == "Follow":
+        if type.lower() == "follow":
             
             try:
                 body = request.data
