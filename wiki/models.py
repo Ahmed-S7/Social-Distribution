@@ -98,7 +98,7 @@ class Author(BaseModel):
     
     github = models.URLField(blank=True, null=True, default=None)
     
-    serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
+    serial = models.UUIDField(default=uuid.uuid4(), null=False, unique=True)
     
     profileImage = models.URLField(blank=True, null=True)
     

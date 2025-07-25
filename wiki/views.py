@@ -6,7 +6,7 @@ from rest_framework import viewsets, permissions, status
 from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import FollowRequestReadingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -1110,21 +1110,28 @@ def process_follow_request(request, author_serial, request_id):
 
 
 def decoded_auth_token(auth_header):
-    
-    auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded}"]
+    if isinstance(auth_header, str):
+        print("AUTH ENCODED IN UTF-8")
+        print("AUTH ENCODED AS BYTES, DECODED TO STRING")
+        auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
+        auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
+        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
+        decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
+    else:
+        return False
+        
     print(f"AUTH INFO SPLIT: {auth_header_split}")
-    auth = auth_header_split[1]# -> [takes the last part of ^^ (auth_encoded) and stores it as the auth token] -> {auth_encoded}
-    print(f"ENCODED AUTH INFO: {auth}")
-    decoded_auth = base64.b64decode(auth).split(":")# -> decodes the auth so that we can retrieve the username and password individually -> [{"decoded username"}, {"decoded password"}]
-    print(f"DECODED AUTH : {decoded_auth}")
-    decoded_username, decoded_pass = decoded_auth[0], decoded_auth[1]# -> username, password
-    print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
+    #print(f"ENCODED AUTH INFO: {auth}")
+    #print(f"DECODED AUTH : {decoded_auth}")
+    #print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
     
     return decoded_username, decoded_pass
     
     
 @csrf_exempt
 @api_view(['GET','POST'])
+@authentication_classes([]) #DJANGO was causing most of our problems. the 403 was caused by django enforcing a user object to exist for every request that gets sent
+@permission_classes([]) 
 def user_inbox_api(request, author_serial):
     '''
     Used to get a User's inbox items, is able to accomodate all types of inbox items
@@ -1267,11 +1274,19 @@ def user_inbox_api(request, author_serial):
     if not auth_header.startswith("Basic"):
         return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
     print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-   
+    
+    #Gets the user and pass using basic auth
     username, password = decoded_auth_token(auth_header)
     
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
     
-    print("")
+    #NEXT IMPLEMENTATION WILL CHECK AGAINST OUR AGREED UPON CREDENTIALS AND THE VALIDITY OF THE REMOTE NODE
     currentNodes = RemoteNode.objects.all()
     print(currentNodes)
     
@@ -1704,7 +1719,6 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
                                                      is_local=False,
                                                      host=get_host_and_scheme(decodedId),
                                                      description = remote_author_object['description'],
-                                                     serial=uuid.uuid4(),
                                                      profileImage=remote_author_object["profileImage"],
                                                      web=remote_author_object['web']              
                                                     )
