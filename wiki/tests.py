@@ -13,7 +13,7 @@ from django.db.models.signals import post_save
 
 from rest_framework import status
 BASE_PATH = "/api"
-BASE_URL_PATH = '/'
+
 
 from .serializers import CommentSummarySerializer, CommentLikeSummarySerializer
 

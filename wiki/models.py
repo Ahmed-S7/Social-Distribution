@@ -99,7 +99,7 @@ class Author(BaseModel):
     
     github = models.URLField(blank=True, null=True, default=None)
     
-    serial = models.UUIDField(default=uuid.uuid4(), null=True, unique=True)
+    serial = models.UUIDField(default=uuid.uuid4, null=False, unique=True)
     
     profileImage = models.URLField(blank=True, null=True)
     
@@ -215,7 +215,7 @@ class Entry(BaseModel):
     image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
     created_at = models.DateTimeField(default=get_mst_time)
     id = models.URLField(unique=True, primary_key=True) 
-    serial = models.UUIDField(default=uuid.uuid4(), unique=True) 
+    serial = models.UUIDField(default=uuid.uuid4, unique=True) 
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default='PUBLIC')
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
