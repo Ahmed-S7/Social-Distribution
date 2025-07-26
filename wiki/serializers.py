@@ -239,7 +239,7 @@ class CommentSummarySerializer(serializers.Serializer):
         request = self.context.get('request')
         host = request.build_absolute_uri("/").rstrip("/")
 
-        return f"{host}/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+        return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
         request = self.context.get('request')
@@ -310,7 +310,7 @@ class EntrySerializer(serializers.ModelSerializer):
 
         return {
             "type": "comments",
-            "web": f"{host}/entry/{entry_id}/",
+            "web": f"{host}/entries/{entry_id}/",
             "id": f"{host}/api/authors/{author_id}/entries/{entry_id}/comments",
             "page_number": 1,
             "size": 5,
