@@ -13,6 +13,7 @@ from datetime import datetime
 from django.utils.safestring import mark_safe
 import markdown
 import requests
+from urllib.parse import urlparse
 
 # Create your models here.
 
@@ -98,7 +99,7 @@ class Author(BaseModel):
     
     github = models.URLField(blank=True, null=True, default=None)
     
-    serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
+    serial = models.UUIDField(default=uuid.uuid4, null=False, unique=True)
     
     profileImage = models.URLField(blank=True, null=True)
     
@@ -136,10 +137,6 @@ class Author(BaseModel):
         '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
-    def is_remotely_requesting(self, remote_author):
-        '''checks if an author is actively requesting a specific author'''
-        return RemoteFollowRequest.objects.filter(requesterId=self.id, requested_account=remote_author, state=RequestState.REQUESTING).exists()
-    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
@@ -169,12 +166,6 @@ class Author(BaseModel):
             return None
         
         return friendship.id
-        
-    def is_remotely_following(self,remote_author):
-        return RemoteFollowing.objects.filter(followerId=self.id, following=remote_author).exists()
-    
-       
-        #return requests.get('GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}')   
     
      
     def get_following_id_with(self, other_author):
@@ -236,10 +227,12 @@ class Entry(BaseModel):
     def is_local(self):
         return self.author.is_local
     def get_entry_url(self):
-        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
     
     def get_web_url(self):
-        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
       
 
     def save(self, *args, **kwargs):
@@ -308,7 +301,8 @@ class Comment(BaseModel):
     
     
     def get_web_url(self):
-        return f"http://s25-project-white/api/authors/{self.author.serial}/entries/{self.serial}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"
     
     
     def __str__(self):
@@ -322,9 +316,10 @@ class CommentLike(BaseModel):
     
     def get_like_url(self):
         # Extract numeric author ID from the author's URL
-        # Author ID format: "http://s25-project-white/api/authors/{author_id}"
+        # Author ID format: "http://localhost:8000/api/authors/{author_id}"
         author_id = self.user.id.split('/')[-1]  # Get the last part of the URL
-        return f"http://s25-project-white/api/authors/{author_id}/liked/{self.pk}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/api/authors/{author_id}/liked/{self.pk}"
     
     @property
     def id(self):
@@ -621,3 +616,6 @@ class RemoteNode(BaseModel):
         status = "active" if not self.is_deleted and self.is_active else "inactive"
         return f"{self.url} ({status})"
         
+class NodeConnectionCredentials(BaseModel):
+    username = models.CharField()
+    password = models.CharField()
