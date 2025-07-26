@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PageViewSet, RemotePostReceiver,follow_remote_profile, edit_profile, entry_detail, entry_detail_api, profile_view, get_profile_api, view_external_profile, get_or_edit_author_api
+from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, entry_detail_api, profile_view, get_profile_api, view_external_profile, get_or_edit_author_api
 from .views import MyLoginView, user_wiki, register,user_inbox_api,foreign_followers_api,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_local_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api, get_entry_comments_fqid_api, get_comment_fqid_api, author_comments_fqid, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api, get_single_comment_fqid, get_author_comment_by_serial, get_entry_likes_by_fqid, get_comment_likes_by_fqid, get_author_likes_by_fqid, get_single_like_by_fqid
@@ -87,7 +87,6 @@ urlpatterns = [
    
    #Follow Requests/Followers URLS 
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
-    path('authors/remotefollow/<path:FOREIGN_AUTHOR_FQID>', follow_remote_profile, name="follow_remote_profile"),
     path('authors/<str:username>/follow_requests/', check_follow_requests, name='check_follow_requests' ),
     path('authors/<str:author_serial>/<str:request_id>/', process_follow_request, name='process_follow_request' ),
     path('authors/<str:author_serial>/<str:request_id>/cancel_request', cancel_follow_request, name='cancel_follow_request' ),

@@ -12,8 +12,8 @@ from django.http import HttpResponse
 from django.db.models.signals import post_save
 
 from rest_framework import status
-BASE_PATH = "/s25-project-white/api"
-BASE_URL_PATH = '/s25-project-white'
+BASE_PATH = "/api"
+BASE_URL_PATH = '/'
 
 from .serializers import CommentSummarySerializer, CommentLikeSummarySerializer
 
@@ -690,8 +690,7 @@ class CommentEntryTesting(TestCase):
 
     def test_add_comment_nonexistent_entry(self):
         """Test commenting on a non-existent entry"""
-        self.client.force_authenticate(user=self.user2)
-        
+             
         fake_serial = uuid.uuid4()
         url = f'{BASE_PATH}/authors/{self.author2.serial}/commented/'
         data = {
@@ -1001,9 +1000,11 @@ class FriendsOnlyCommentsTesting(TestCase):
         comment_fqid = f"http://s25-project-white/api/authors/{comment.author.serial}/commented/{comment.id}"
         encoded_comment_fqid = urllib.parse.quote(comment_fqid, safe='')
         
-        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comment/{encoded_comment_fqid}/'
+        url = f'{BASE_PATH}/authors/{self.author1.serial}/entries/{self.friends_entry.serial}/comment/{encoded_comment_fqid}'
+        self.client.force_authenticate(user=self.user2)
         response = self.client.get(url)
         
+       
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['type'], 'comment')
         self.assertEqual(response.data['comment'], 'This is a comment from a friend.')
@@ -1266,10 +1267,10 @@ class VisibilityTestCase(TestCase):
     # Visibility 4.7 As an author, I want everyone to be able to see my public and unlisted entries, if they have a link to it.
     def test_public_unlisted_entry_link(self):
         self.client.logout()
-        url = f'{BASE_URL_PATH}/entries/{self.publicEntry.serial}/'
+        url = f'/entries/{self.publicEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        url = f'{BASE_URL_PATH}/entries/{self.unlistedEntry.serial}/'
+        url = f'/entries/{self.unlistedEntry.serial}/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
      # Visibility 4.8 As an author, I don't anyone who isn't a friend to be able to see my friends-only entries and images, so I can feel safe about writing.
@@ -1490,7 +1491,7 @@ And a landscape:
         """User Story: As an author, other authors cannot modify my entries."""
         entry = Entry.objects.create(title='Protected', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
         user2 = User.objects.create_user(username='author2', password='testpass2')
-        author2 = Author.objects.create(user=user2, displayName='author2', id='http://localhost:8000/api/authors/2', host='http://localhost:8000/api/', web='http://localhost:8000/authors/2')
+        author2 = Author.objects.create(user=user2, displayName='author2', id='http://localhost:8000/api/authors/2', serial=uuid.uuid4(), host='http://localhost:8000/api/', web='http://localhost:8000/authors/2')
         self.client.logout()
         self.client.login(username='author2', password='testpass2')
         response = self.client.post(reverse('wiki:edit_entry', args=[entry.serial]), {
@@ -1553,7 +1554,7 @@ class SharingTestCase(TestCase):
         )
     # Sharing 5.1 As a reader, I can get a link to a public or unlisted entry, so I can send it to my friends over email, discord, slack, etc.
     def test_public_unlisted_link(self):
-        url = f'{BASE_URL_PATH}/entries/{self.publicEntry.serial}/'
+        url = f"/entries/{self.publicEntry.serial}/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
@@ -1565,7 +1566,7 @@ class SharingTestCase(TestCase):
         # Note: this should include all local public entries and all public entries received in any inbox.
     def test_browse_public_entries(self):
         self.client.force_authenticate(user=self.user2)
-        url = f'{BASE_PATH}/test_author2/wiki/'
+        url = f'/api/test_author2/wiki/'
         response = self.client.get(url)
         titles = [entry["title"] for entry in response.json()]
         self.assertIn("Public Entry", titles)
@@ -1971,7 +1972,7 @@ class LikesCommentsFQIDTesting(TestCase):
             author=self.author,
             serial=entry_serial,
             visibility="PUBLIC",
-            id=f"http://127.0.0.1:8000/s25-project-white/api/authors/{self.author.serial}/entries/{entry_serial}"
+            id=f"http://127.0.0.1:8000/api/authors/{self.author.serial}/entries/{entry_serial}"
         )
     
         # Create comments
@@ -2115,7 +2116,7 @@ class LikesCommentsFQIDTesting(TestCase):
             author=self.author,
             serial=uuid.uuid4(),
             visibility="PUBLIC",
-            id=f"http://127.0.0.1:8000/s25-project-white/api/authors/{self.author.serial}/entries/{uuid.uuid4()}"
+            id=f"http://127.0.0.1:8000/api/authors/{self.author.serial}/entries/{uuid.uuid4()}"
         )
         
         # Create some likes by the author on different entries

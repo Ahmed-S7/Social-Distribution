@@ -39,7 +39,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(request, user, username, github, profileImage, web):
+def saveNewAuthor(request, user, username, github, profileImage):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
@@ -52,8 +52,8 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
 
         host = request.get_host()
 
-        base_id = f"{port}://{host}/s25-project-white/api/authors/{string_serial}"
-        base_web = f"{port}://{host}/s25-project-white/authors/{string_serial}"
+        base_id = f"{port}://{host}/api/authors/{string_serial}"
+        base_web = f"{port}://{host}/authors/{string_serial}"
 
         newAuthor = Author(
                     
@@ -65,7 +65,7 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         
         serial = serial_id,
         
-        host=port+'://'+host,
+        host=port+'://'+host+'/api',
 
         github=github,
     
