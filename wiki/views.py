@@ -24,7 +24,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, get_remote_entries
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -34,6 +34,7 @@ import markdown
 from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 from .gethub import create_entries
+from django.core.paginator import Paginator
 # Create your views here.
 
 
@@ -298,6 +299,8 @@ class MyLoginView(LoginView):
         active_nodes = RemoteNode.objects.filter(is_active=True)
         print("ACTIVE REMOTE NODES:", active_nodes)
         for node in active_nodes:
+
+            get_remote_entries(node)
             
             normalized_url = node.url.rstrip("/")
             print(requests.get(normalized_url+"/api/authors/"))
@@ -1133,7 +1136,7 @@ def user_inbox_api(request, author_serial):
     Vary: Accept
     
     {
-    "Error": "We were unable to locate the user who made this request, dev notes: ['“99f5-a05e-497f-afd4-5af96cf3b0b4” is not a valid UUID.']"
+    "Error": "We were unable to locate the user who made this request, dev notes: ['"99f5-a05e-497f-afd4-5af96cf3b0b4" is not a valid UUID.']"
     }
     
     POST:
@@ -3437,3 +3440,103 @@ def is_local_url(current_host, url):
     print("CURRENT HOST", current_host)
     return current_host == url_host
      
+
+@api_view(['GET'])
+def get_author_entries_api(request, author_serial):
+    """
+    GET /api/authors/{AUTHOR_SERIAL}/entries/
+    
+    Get the recent entries from author AUTHOR_SERIAL (paginated)
+    
+    Authentication scenarios:
+    - Not authenticated: only public entries
+    - Authenticated locally as author: all entries
+    - Authenticated locally as follower of author: public + unlisted entries
+    - Authenticated locally as friend of author: all entries
+    - Authenticated as remote node: should not happen (entries are sent via inbox)
+    
+    Query parameters:
+    - page: page number (default: 1)
+    - size: items per page (default: 10, max: 50)
+    """
+    from django.core.paginator import Paginator
+    
+    # Get the author
+    try:
+        author = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 10)), 50)  # Cap at 50 items per page
+    
+    # Get base queryset (exclude deleted entries)
+    entries_queryset = Entry.objects.filter(
+        author=author,
+        is_deleted=False
+    ).order_by('-created_at')
+    
+    # Determine which entries to show based on authentication and relationship
+    if not request.user.is_authenticated:
+        # Not authenticated: only public entries
+        entries_queryset = entries_queryset.filter(visibility='PUBLIC')
+        print(f"Unauthenticated user: showing {entries_queryset.count()} public entries")
+        
+    elif hasattr(request.user, 'author'):
+        # Authenticated locally
+        current_author = request.user.author
+        
+        if current_author == author:
+            # Authenticated as the author: show all entries
+            print(f"Author viewing own entries: showing {entries_queryset.count()} entries")
+            
+        elif current_author.is_friends_with(author):
+            # Authenticated as friend: show all entries
+            print(f"Friend viewing entries: showing {entries_queryset.count()} entries")
+            
+        elif current_author.is_following(author):
+            # Authenticated as follower: show public + unlisted entries
+            entries_queryset = entries_queryset.filter(
+                visibility__in=['PUBLIC', 'UNLISTED']
+            )
+            print(f"Follower viewing entries: showing {entries_queryset.count()} public/unlisted entries")
+            
+        else:
+            # Authenticated but not related: only public entries
+            entries_queryset = entries_queryset.filter(visibility='PUBLIC')
+            print(f"Authenticated user viewing entries: showing {entries_queryset.count()} public entries")
+    else:
+        # Remote node authentication (should not happen for this endpoint)
+        return Response(
+            {"error": "Remote nodes should not access this endpoint directly"}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Paginate the results
+    paginator = Paginator(entries_queryset, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the entries
+    entries_data = []
+    for entry in page_obj:
+        serializer = EntrySerializer(entry, context={'request': request})
+        entries_data.append(serializer.data)
+    
+    # Build response
+    response_data = {
+        "type": "entries",
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "src": entries_data
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
