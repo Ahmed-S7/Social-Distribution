@@ -1,5 +1,5 @@
 import requests
-from .models import Author, RemoteNode, AuthorFollowing
+from .models import Author, Entry, RemoteNode, AuthorFollowing, AuthorFriend
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -10,6 +10,7 @@ from urllib.parse import urlparse, unquote
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
+from django.db.models import Q
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
@@ -210,6 +211,7 @@ def author_exists(id):
     
     '''
     return Author.objects.filter(id=id)
+
 def send_all_entries_to_follower(local_author, remote_follower, request=None):
     """
     Send all appropriate entries (public, unlisted, and friends-only if applicable)
