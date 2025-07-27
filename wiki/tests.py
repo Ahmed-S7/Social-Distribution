@@ -1461,27 +1461,27 @@ And a landscape:
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'image/jpeg')
 
-#     # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
-#     def test_delete_entry(self):
-#         """User Story: As an author, I want to delete my own entries locally."""
-#         entry = Entry.objects.create(title='To Delete', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
-#         response = self.client.post(reverse('wiki:delete_entry', args=[entry.serial]))
-#         entry.refresh_from_db()
-#         self.assertTrue(entry.is_deleted)
+    # US 2.9: As an author, I want to delete my own entries locally, so I can remove entries that are out of date or made by mistake.
+    def test_delete_entry(self):
+        """User Story: As an author, I want to delete my own entries locally."""
+        entry = Entry.objects.create(title='To Delete', content='...', author=self.author, contentType='text/plain', visibility='PUBLIC')
+        response = self.client.post(reverse('wiki:delete_entry', args=[entry.serial]))
+        entry.refresh_from_db()
+        self.assertTrue(entry.is_deleted)
         
 
-#     # US 2.10: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to, so I know remote users don't keep seeing my deleted entries forever.
-#     def test_resend_deleted_entry_to_remote(self):
-#         """User Story: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to."""
-#         # Part 3 - 5
-#         pass
+    # US 2.10: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to, so I know remote users don't keep seeing my deleted entries forever.
+    def test_resend_deleted_entry_to_remote(self):
+        """User Story: As an author, I want my node to re-send entries I've deleted to everyone they were already sent to."""
+        # Part 3 - 5
+        pass
 
-#     # US 2.11: As an author, I want to be able to use my web-browser to manage/author my entries, so I don't have to use a clunky API.
-#     def test_web_ui_entry_creation(self):
-#         """User Story: As an author, I want to use my web-browser to manage/author my entries."""
-#         response = self.client.get(reverse('wiki:create_entry'))
-#         self.assertEqual(response.status_code, 200)
-#         self.assertIn(b'<form', response.content)
+    # US 2.11: As an author, I want to be able to use my web-browser to manage/author my entries, so I don't have to use a clunky API.
+    def test_web_ui_entry_creation(self):
+        """User Story: As an author, I want to use my web-browser to manage/author my entries."""
+        response = self.client.get(reverse('wiki:create_entry'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<form', response.content)
 
     # US 2.12: As an author, other authors cannot modify my entries, so that I don't get impersonated.
     def test_other_author_cannot_edit(self):
