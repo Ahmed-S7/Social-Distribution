@@ -1950,7 +1950,62 @@ def get_local_follow_requests(request, author_serial):
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
     
+
+def friends_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    friendships = AuthorFriend.objects.filter(
+        Q(friending=author) | Q(friended=author),
+        is_deleted=False
+    )
+
+    friends = []
+    for friendship in friendships:
+        if friendship.friending == author:
+            friends.append(friendship.friended)
+        else:
+
+            friends.append(friendship.friending)
+    return render(request, "relationship_list.html", {
+        "title": "Friends",
+        "people": friends,
+    })
+
+def followers_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    follower_relationships = AuthorFollowing.objects.filter(
+        following=author,
+        is_deleted=False
+    )
+
+    followers = []
+    for relationship in follower_relationships:
+        follower = relationship.follower
+        followers.append(follower)
+
+    return render(request, "relationship_list.html", {
+        "title": "Followers",
+        "people": followers,
+    })
+
+def following_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    # Get all people this author is following
+    following_relationships = AuthorFollowing.objects.filter(
+        follower=author,
+        is_deleted=False
+    )
     
+    following = []
+    for relationship in following_relationships:
+        followed_author = relationship.following
+        following.append(followed_author)
+
+    return render(request, "relationship_list.html", {
+        "title": "Following",
+        "people": following,
+    })
 
 
 def profile_view(request, username):

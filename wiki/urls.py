@@ -5,6 +5,7 @@ from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, 
 from .views import MyLoginView, user_wiki, register,user_inbox_api,foreign_followers_api,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_local_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api, get_entry_comments_fqid_api, get_comment_fqid_api, author_comments_fqid, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api, get_single_comment_fqid, get_author_comment_by_serial, get_entry_likes_by_fqid, get_comment_likes_by_fqid, get_author_likes_by_fqid, get_single_like_by_fqid
+from .views import friends_list, followers_list, following_list
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -28,6 +29,9 @@ urlpatterns = [
     
     # Author URLS
     path('authors/', view_local_authors, name='view_local_authors'),
+    path('authors/<str:author_serial>/friends/', friends_list, name='friends_list'),
+    path('authors/<str:author_serial>/followers/', followers_list, name='followers_list'),
+    path('authors/<str:author_serial>/following/', following_list, name='following_list'),
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
    
   
@@ -92,5 +96,10 @@ urlpatterns = [
     path('authors/<str:author_serial>/<str:request_id>/cancel_request', cancel_follow_request, name='cancel_follow_request' ),
     path('authors/<str:author_serial>/<str:following_id>/unfollow', unfollow_profile, name='unfollow_profile'),
    
-   
+
+    # Remote Post Receiver
+    path('remote_post_receiver/', RemotePostReceiver.as_view(), name='remote_post_receiver'),
+
+    # Include the router URLs
+    path('', include(router.urls)),
 ]
