@@ -92,21 +92,27 @@
                     <p class="follow_and_entry_title"> Entries</p>
                 </section>    
 
-                 <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{friend_count}} </p>
-                    <p class="follow_and_entry_title"> Friends</p>
-                </section>    
+                <a href="{% url 'wiki:friends_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ friend_count }}</p>
+                      <p class="follow_and_entry_title">Friends</p>
+                  </section>
+                </a>    
 
 
-                <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{follower_count}} </p>
-                    <p class="follow_and_entry_title"> Followers</p>
-                </section>     
+                <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ follower_count }}</p>
+                      <p class="follow_and_entry_title">Followers</p>
+                  </section>
+                </a>    
                     
-                <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{following_count}} </p>
-                    <p class="follow_and_entry_title"> Following</p>
-                </section> 
+                <a href="{% url 'wiki:following_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ following_count }}</p>
+                      <p class="follow_and_entry_title">Following</p>
+                  </section>
+                </a>
 
             </section>
 
