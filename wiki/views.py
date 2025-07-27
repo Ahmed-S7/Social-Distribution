@@ -1,5 +1,6 @@
 import mimetypes
 from django.db.models import Q
+from django.core.paginator import Paginator
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
@@ -294,16 +295,63 @@ class MyLoginView(LoginView):
         login(self.request, form.get_user())
         username = self.request.user.username
         
-        #Populate the db with users from other valid nodes
+        #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
-        print("ACTIVE REMOTE NODES:", active_nodes)
+        print("ACTIVE REMOTE NODES:", active_nodes,'\n')
+        remote_authors_lists = []
         for node in active_nodes:
             
             normalized_url = node.url.rstrip("/")
-            print(requests.get(normalized_url+"/api/authors/"))
+            try:
+                
+                #get the response from pulling another node's authors
+                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/")
+                
+                #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
+                if node_authors_pull_attempt.status_code == 200:
+                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
+                    
+                    #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
+                    try:
+                        node_authors = requests.get(normalized_url+"/api/authors/").json()
+                    except Exception as e:
+                        raise e
+                    
+                    #add the json list of the authors to the complete list of authors
+                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
+                    
+                print("\n")
+                
+            except Exception as e:
+                raise e
+            
+        all_remote_authors = []
+        for remote_author_list in remote_authors_lists:
+            for author_json in remote_author_list:
+                all_remote_authors.append(author_json)#contains a json of all of the remote authors 
+             
+        for remote_author in all_remote_authors:
+            if remote_author.get("id"):
+                author_id = remote_author.get("id")
+                try:
+                    #SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                    new_account_serialized = AuthorSerializer(data=remote_author)
+                    
+                    if not author_exists(author_id): 
+                           
+                        #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                        if not new_account_serialized.is_valid():
+                            print("AUTHOR OBJECT STRUCTURE INVALID")
+                            
+                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
+                        new_profile = new_account_serialized.save()
+                        new_profile.is_local=False
+                        new_profile.save()
+                        print(f"NEW AUTHOR {new_profile} SAVED TO DATABASE")
+                except Exception as e:
+                    print(e)     
             
             
-        remote_authors = []
         
         return redirect('wiki:user-wiki', username=username)
 
