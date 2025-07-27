@@ -3,6 +3,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('login_button').addEventListener('click', function(){
+            document.getElementById('loadingtext').hidden = false;
+        });
+     });
+    </script>
     <title>Login</title>
 </head>
 <body>
@@ -11,11 +18,12 @@
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
-            <button type="submit" class="login_button">Log In</button>
+            <button type="submit" id="login_button" class="login_button">Log In</button>
             <a href="{% url 'wiki:register' %}"> 
                 <p>Don't have an account? Register here.</p>
             </a>
         </form>
-    </div>
+    </div> 
+    <h2 id='loadingtext' hidden>Loading...</h2>
 </body>
 </html>
