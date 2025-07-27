@@ -1,5 +1,5 @@
 import requests
-from .models import Author, RemoteNode, AuthorFollowing
+from .models import Author, Entry, RemoteNode, AuthorFollowing, AuthorFriend
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -10,6 +10,7 @@ from urllib.parse import urlparse, unquote
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
 import traceback
 import sys
+from django.db.models import Q
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
@@ -21,6 +22,7 @@ AUTH =  {"username":"white",
         "password":"uniquepass"}
 
 AUTHTOKEN = HTTPBasicAuth(AUTH['username'],AUTH['password'])
+
 
 
 def validUserName(username):
@@ -38,7 +40,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(request, user, username, github, profileImage, web):
+def saveNewAuthor(request, user, username, github, profileImage):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
@@ -51,8 +53,8 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
 
         host = request.get_host()
 
-        base_id = f"{port}://{host}/s25-project-white/api/authors/{string_serial}"
-        base_web = f"{port}://{host}/s25-project-white/authors/{string_serial}"
+        base_id = f"{port}://{host}/api/authors/{string_serial}"
+        base_web = f"{port}://{host}/authors/{string_serial}"
 
         newAuthor = Author(
                     
@@ -64,7 +66,7 @@ def saveNewAuthor(request, user, username, github, profileImage, web):
         
         serial = serial_id,
         
-        host=port+'://'+host,
+        host=port+'://'+host+'/api',
 
         github=github,
     
@@ -122,43 +124,84 @@ def get_serial(FOREIGN_AUTHOR_FQID):
     '''gets the serial of a DECODED foreign author FQID'''
     author_serial = FOREIGN_AUTHOR_FQID.split('/')[-1]
     return author_serial
-'''
-def get_remote_recipients(author):
-    """
-    Returns RemoteFollowing objects for authors following this local author.
-    These contain JSON for remote followers.
-    """
-    return author.remotefollowers.all()
+
+def get_remote_followers(author):
+    """Return a list of FQIDs of remote authors following the given local author"""
+    from .models import AuthorFollowing
+    # filter followers whose host is not local
+    return [
+        follower.follower.id
+        for follower in author.followers.all()
+        if not follower.follower.is_local
+    ]
+
+
+
 def send_entry_to_remote_followers(entry, request=None):
-    """
-    Sends the serialized entry to every remote follower's inbox.
-    Assumes remote follower's inbox URL is under their JSON 'id' + '/inbox'
-    """
-    recipients = get_remote_recipients(entry.author)
+    from .models import AuthorFollowing
+    from .serializers import EntrySerializer
+    from .util import AUTHTOKEN
 
-    for rel in recipients:
+    # Find all remote followers (not local)
+    remote_followers = AuthorFollowing.objects.filter(
+        following=entry.author
+    ).exclude(follower__host="http://127.0.0.1:8000/")
+
+    for rel in remote_followers:
         follower = rel.follower
-        inbox_url = follower.get('id', '').rstrip('/') + '/inbox'
+        inbox_url = follower.id.rstrip('/') + '/inbox/'
 
-        if not inbox_url:
-            continue
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
 
         try:
-            serialized = EntrySerializer(entry, context={"request": request}).data
             response = requests.post(
                 inbox_url,
-                json={
-                    "type": "entry",
-                    "author": entry.author.get_web_url(),
-                    "body": serialized
-                },
+                json=payload,
+                auth=AUTHTOKEN,
                 headers={"Content-Type": "application/json"}
             )
-            response.raise_for_status()
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
         except Exception as e:
-            print(f"Failed to send entry to remote inbox {inbox_url}: {e}")
+            print(f"Exception sending entry to {inbox_url}: {e}")
+
+
+def send_entry_to_remote_followers(entry, request=None):
+    # Find all remote followers (not local)
+    remote_followers = [
+        rel.follower
+        for rel in AuthorFollowing.objects.filter(following=entry.author)
+        if not rel.follower.is_local
+    ]
+
+    for follower in remote_followers:
+        inbox_url = follower.id.rstrip('/') + '/inbox/'
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+
+       
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
+
+        try:
+            response = requests.post(
+                inbox_url,
+                json=payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
+        except Exception as e:
+            print(f"Exception sending entry to {inbox_url}: {e}")
             
-'''            
+            
             
 def author_exists(id):
     '''
@@ -168,3 +211,45 @@ def author_exists(id):
     
     '''
     return Author.objects.filter(id=id)
+
+def send_all_entries_to_follower(local_author, remote_follower, request=None):
+    """
+    Send all appropriate entries (public, unlisted, and friends-only if applicable)
+    from local_author to remote_follower's inbox.
+    """
+
+    # Determine if the remote follower is a friend (mutual following)
+    is_friend = AuthorFriend.objects.filter(
+        (Q(friending=local_author, friended=remote_follower) | Q(friending=remote_follower, friended=local_author)),
+        is_deleted=False
+    ).exists()
+
+    # Get all entries the remote follower should see
+    entries = Entry.objects.filter(
+        author=local_author,
+        is_deleted=False
+    ).filter(
+        Q(visibility="PUBLIC") |
+        Q(visibility="UNLISTED") |
+        (Q(visibility="FRIENDS") & is_friend)
+    ).order_by('created_at')
+
+    inbox_url = remote_follower.id.rstrip('/') + '/inbox/'
+
+    for entry in entries:
+        serialized_entry = EntrySerializer(entry, context={"request": request}).data
+        payload = {
+            "type": "entry",
+            "body": serialized_entry
+        }
+        try:
+            response = requests.post(
+                inbox_url,
+                json=payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"}
+            )
+            if response.status_code >= 400:
+                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
+        except Exception as e:
+            print(f"Exception sending entry to {inbox_url}: {e}")

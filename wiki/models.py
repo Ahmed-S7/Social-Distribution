@@ -13,6 +13,7 @@ from datetime import datetime
 from django.utils.safestring import mark_safe
 import markdown
 import requests
+from urllib.parse import urlparse
 
 # Create your models here.
 
@@ -98,13 +99,13 @@ class Author(BaseModel):
     
     github = models.URLField(blank=True, null=True, default=None)
     
-    serial = models.UUIDField(default=uuid.uuid4, null=True, unique=True)
+    serial = models.UUIDField(default=uuid.uuid4, null=False, unique=True)
     
     profileImage = models.URLField(blank=True, null=True)
     
     web = models.URLField(blank=True, null=False, default=None)
     
-    is_local = models.URLField(default=True)
+    is_local = models.BooleanField(default=True)
     
     
 
@@ -136,10 +137,6 @@ class Author(BaseModel):
         '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
     
-    def is_remotely_requesting(self, remote_author):
-        '''checks if an author is actively requesting a specific author'''
-        return RemoteFollowRequest.objects.filter(requesterId=self.id, requested_account=remote_author, state=RequestState.REQUESTING).exists()
-    
     def get_friends(self):
         '''
         retrieves a list of a user's friends
@@ -148,7 +145,7 @@ class Author(BaseModel):
       
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
-        if AuthorFollowing.objects.filter(follower=self, following=other_author).exists():
+        if AuthorFollowing.objects.filter(follower__id=self.id, following__id=other_author.id).exists():
             return True
         return False
         
@@ -169,12 +166,6 @@ class Author(BaseModel):
             return None
         
         return friendship.id
-        
-    def is_remotely_following(self,remote_author):
-        return RemoteFollowing.objects.filter(followerId=self.id, following=remote_author).exists()
-    
-       
-        #return requests.get('GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}')   
     
      
     def get_following_id_with(self, other_author):
@@ -217,7 +208,7 @@ class Entry(BaseModel):
 
     objects = AppManager()
     all_objects = models.Manager()
-
+    origin_url = models.URLField(null=True, blank=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -228,12 +219,19 @@ class Entry(BaseModel):
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
+    is_local = models.BooleanField(default=True)
     
+    
+    @property
+    def is_local(self):
+        return self.author.is_local
     def get_entry_url(self):
-        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
     
     def get_web_url(self):
-        return f"http://s25-project-white/authors/{self.author.serial}/entries/{self.serial}"
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
       
 
     def save(self, *args, **kwargs):
@@ -291,6 +289,13 @@ class Comment(BaseModel):
     web = models.URLField(blank=True, null=True, default=None)
     is_local = models.BooleanField(default=True)
     
+    
+    
+    def get_web_url(self):
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"
+    
+    
     def __str__(self):
         return f"Comment by {self.author.displayName} on {self.entry.title}"
 
@@ -299,6 +304,17 @@ class CommentLike(BaseModel):
     user = models.ForeignKey(Author, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=get_mst_time)
     is_local = models.BooleanField(default=True)
+    
+    def get_like_url(self):
+        # Extract numeric author ID from the author's URL
+        # Author ID format: "http://localhost:8000/api/authors/{author_id}"
+        author_id = self.user.id.split('/')[-1]  # Get the last part of the URL
+        host = urlparse(self.author.host).netloc
+        return f"http://{host}/api/authors/{author_id}/liked/{self.pk}"
+    
+    @property
+    def id(self):
+        return self.get_like_url()
     
     class Meta:
         constraints = [
@@ -591,3 +607,6 @@ class RemoteNode(BaseModel):
         status = "active" if not self.is_deleted and self.is_active else "inactive"
         return f"{self.url} ({status})"
         
+class NodeConnectionCredentials(BaseModel):
+    username = models.CharField()
+    password = models.CharField()

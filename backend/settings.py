@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-15_5^o*=oewa!v5c&d5zw2r^av+$%pza5uh%(^0$742o&s_(p@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -150,4 +150,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 TIME_ZONE = 'America/Edmonton' 
 
 
-
+#normalize urls
+APPEND_SLASH = True

@@ -23,7 +23,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path ('', MyLoginView.as_view(template_name='login.html'), name='login'),
-    path('s25-project-white/', include('wiki.urls', namespace='wiki')),
+    path('', include('wiki.urls', namespace='wiki')),
     path('admin/', admin.site.urls),
 ]
 
