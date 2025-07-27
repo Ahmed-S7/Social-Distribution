@@ -6,7 +6,7 @@ from rest_framework import viewsets, permissions, status
 from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import FollowRequestReadingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from django.views.decorators.http import require_http_methods
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -238,7 +238,7 @@ def register(request):
             user = User.objects.create_user(username=username, password=password, is_active=False)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(request, user, username, github, profileImage, web=None)
+            newAuthor = saveNewAuthor(request, user, username, github, profileImage)
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -263,7 +263,6 @@ def register(request):
 @api_view(['POST'])
 def register_api(request):
     
-    is_local = is_local_url(request.get_host(), request.data.get("id"))
     '''Allows users to register through POST requests'''
     username = request.data.get('username')
     password = request.data.get('password')
@@ -284,7 +283,7 @@ def register_api(request):
 
     user = User.objects.create_user(username=username, password=password, is_active=False)
 
-    author = saveNewAuthor(request, user, username, github, profileImage=None, web=None, is_local=is_local)
+    author = saveNewAuthor(request, user, username, github, profileImage=None)
     if not author:
         return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -294,6 +293,18 @@ class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
         username = self.request.user.username
+        
+        #Populate the db with users from other valid nodes
+        active_nodes = RemoteNode.objects.filter(is_active=True)
+        print("ACTIVE REMOTE NODES:", active_nodes)
+        for node in active_nodes:
+            
+            normalized_url = node.url.rstrip("/")
+            print(requests.get(normalized_url+"/api/authors/"))
+            
+            
+        remote_authors = []
+        
         return redirect('wiki:user-wiki', username=username)
 
     def form_invalid(self, form):
@@ -359,9 +370,12 @@ def get_authors(request):
     """
   
     authors = Author.objects.all()
-    serializer =AuthorSerializer(authors, many=True) 
-    return Response({"type": "authors",
-                        "authors":serializer.data})  
+    if authors:
+        serializer =AuthorSerializer(authors, many=True) 
+        return Response({"type": "authors",
+                            "authors":serializer.data}, status=status.HTTP_200_OK)  
+    else:
+        return Response({"type":"authors", "authors": []}, status=status.HTTP_200_OK)
 
 
 
@@ -567,6 +581,9 @@ def view_external_profile(request, author_serial):
             else entry.content
          )
          rendered_entries.append((entry, rendered)) 
+         print(logged_in_author)
+         print(profile_viewing)
+         print(is_following)
         
         return render(request, "external_profile.html", 
                       {
@@ -586,6 +603,7 @@ def view_external_profile(request, author_serial):
                        "friendship_id":friendship_id ,
                        }
                       )
+
     else:
         return HttpResponseRedirect("wiki:view_local_authors")
 
@@ -719,150 +737,7 @@ def view_entry_author(request, entry_serial):
     author_id = entry.author.id
     entry_author=get_object_or_404(Author, id=author_id)
     return HttpResponseRedirect(reverse("wiki:view_external_profile", kwargs={"author_serial": entry_author.serial}))
-   
-@login_required  
-@require_http_methods(["GET","POST"])  
-def follow_remote_profile(request, FOREIGN_AUTHOR_FQID):
-    
-    if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
-    
-    #determine if the node is local
-   
-    
-    #decode the fqid and  retrieve necessary info
-    decoded_FOREIGN_AUTHOR_FQID = decoded_fqid(FOREIGN_AUTHOR_FQID)
-    remote_author_host, remote_author_scheme = get_host_and_scheme(decoded_FOREIGN_AUTHOR_FQID)
-    remote_author_serial = get_serial(decoded_FOREIGN_AUTHOR_FQID)
-    current_user = request.user
-   
-    #set the local account making the request and the remote author recieving the request
-    local_requesting_account = get_object_or_404(Author, user=current_user)
-    #requested_author_object = remote_author_fetched(decoded_FOREIGN_AUTHOR_FQID)
-    #requested_author_id = requested_author_object['id']
-    
-    #print(local_requesting_account.is_remotely_following(requested_author_id))
-    #check if the user already follows this account, redirect to viewing the profile if they do
-    '''
-    if requesting_account.is_friends_with(requested_account):
-        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-        query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
-        return redirect(query_with_friend_status)
-    
-    
-    if requesting_account.is_following(requested_account):
-        base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
-        query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
-        return redirect(query_with_follow_status)
-    '''
-    
-    '''
-    if ("http://127.0.0.1" in local_requesting_account.host):
-        base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-        return(render(request, "remote_profile.html", {
-            "FQID": decoded_FOREIGN_AUTHOR_FQID,
-            "valid_node":False,
-            "not_authorized":True
-        }
-            
-            
-        ))
-    '''
-    
-    '''
-    if(local_requesting_account.is_remotely_following(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-         query_with_follow_status= f"{base_URL}?status=following&user={local_requesting_account}"
-         return (redirect(query_with_follow_status))
-    
-    if(local_requesting_account.is_remotely_requesting(requested_author_object)):
-         base_URL = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-         query_with_follow_status= f"{base_URL}?status=requesting&user={local_requesting_account}"
-         return (redirect(query_with_follow_status))
-    '''
-    
-       
-    
-    
-    #api/authors/<str:author_serial>/inbox/
-    '''
-    if localNode:
-        inbox_url = f"{remote_author_scheme}://{remote_author_host}/s25-project-white/api/authors/{remote_author_serial}/inbox/"
-    else:
-        inbox_url = f"{remote_author_scheme}://{remote_author_host}/api/authors/{remote_author_serial}/inbox/"
-    
-    serializedAuthor = AuthorSerializer(local_requesting_account)
-    '''
-    
-    
-    #ensure an author exists or redirect
-    '''
-    if not requested_author_object:
-        url = reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-        print(url)
-        return redirect(url)
-        
-    '''    
-        
-       
-    #create the follow request to the remote author
 
-    '''
-    #serialize request
-    followRequestSerial = FollowRequestSerializer(followRequestObject, data={
-        "requesterId":local_requesting_account.id,
-        "requester":serializedAuthor.data,
-        "local_profile":local_requesting_account,
-        "requested_account":requested_author_object,
-        "state":RequestState.REQUESTING
-    }, partial=True) 
-    
-   
-    #save the request
-    if followRequestSerial.is_valid():
-        print("\n\n\n\n\"the follow request serializer is valid!\n\n\n\n\n")
-        followRequestSerial.save()
-        
-    #print(followRequest)
-    #print(f"\n\nTHIS IS THE FOLLOW REQUEST\n\n{followRequest}\n\n")
-    #print(followRequest.data)
-    print("AUTH TOKEN:", AUTHTOKEN)
-    #send the request to the remote endpoint along with the basic auth
-    
-    follow_request_response = requests.post(
-    inbox_url,
-    json=followRequestSerial.data,  
-    auth=AUTHTOKEN,
-    timeout=2
-    )
-    
-    #create following requesting (local) author to the remote author to track the followings
-    #these are automatically generated on the sender's side (they will automatically set as followed)
-    #the remote endpoint has the ability to accept the request and create a friendship or following on their node
-    if follow_request_response.status_code == 200:
-        newRemoteFollowing = RemoteFollowing(followerId=local_requesting_account.id,
-                                             following=followRequestObject.requested_account,
-                                             local_profile=local_requesting_account,
-                                             follower=serializedAuthor.data,
-        )
-        print(newRemoteFollowing)                                   
-        newRemoteFollowing.save()
- '''
- 
-   # print("FOLLOW REQUEST STATUS CODE:",follow_request_response.status_code)
-   # print("FOLLOW REQUEST CONTENT:", follow_request_response.text)
-    
-    '''   
-    node_url = remote_author_scheme+'://'+remote_author_host
-    
-    
-    print(f"HOST AND SCHEME {node_url}")
-    valid_node = node_valid(remote_author_host)
-    print("NODE VALIDITY:", valid_node)
-    
-    #Back to the profile view after processing the information
-    reverse("wiki:view_remote_profile", kwargs={"FOREIGN_AUTHOR_FQID": encoded_fqid(decoded_fqid(FOREIGN_AUTHOR_FQID))})
-    ''' 
             
         
 def node_valid(host_and_scheme):
@@ -887,6 +762,10 @@ def follow_profile(request, author_serial):
     
     requesting_account = get_object_or_404(Author, user=current_user)
     requested_account = get_object_or_404(Author, serial=author_serial)
+    print("FOLLOW REQUEST DATA:")
+    print("Follower:", requesting_account)
+    print("Following:", requested_account)
+
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
     
@@ -925,33 +804,68 @@ def follow_profile(request, author_serial):
                 print("requested isn't local")
                 
                 
-                inbox_url = str(requested_account.id)+"/inbox/"
+                inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
+                print(f"sending request to {inbox_url}")
                 
                 try:
                     
                     remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                    requesting = remote_follow_request.requester
+                    requested = remote_follow_request.requested_account
                     remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
                     #attempt to save the follow request
                     try:
-        
+                        print("act like a successful post  request was made")#for testing with local host 
+                        success = True
+                        '''
                         follow_request_response = requests.post(
                         inbox_url,
                         json=remote_serialized_request.data,  
                         auth=AUTHTOKEN,
                         timeout=1
                         )
-                        
-                        if follow_request_response.status_code == 200:
-                            print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code)
-                            follow_request.save()
-                            saved_following = AuthorFollowing(follower=requesting_account, following=requested_account)
-                            saved_following.save()
+                        '''
+                        if success:#follow_request_response.status_code == 200:
+                            #print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code, f"THE REMOTE FOLLOW REQUEST BEING SAVED IS: {remote_follow_request}, {remote_follow_request.state}")
+                            local_request = remote_follow_request
+                            local_request.set_request_state(RequestState.ACCEPTED)
+                            try:
+                                local_request.save()    
+                            except Exception as e:
+                                raise e
+                            print("remote follow request was saved")
+                            print(f"{requesting} is attempting to follow {requested}")
+                            saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
+                            print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")
+                            
+                            #save the new following
+                            print("TRYING TO SAVE NEW FOLLOWING...")
+                            saved_following_to_remote.save()
                             print("valid follow request, saved following for remote node.")
-                
+                            print(saved_following_to_remote)
+                            
+                            
+                            
+
+                            #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
+                            print(f"requesting author: {requesting}, requested author: {requested}")
+                            
+                            if requesting.is_following(requested) and requested.is_following(requesting): 
+                                newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)
+                                print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
+                                try:
+                                    newRemoteFriendship.save()
+                                    print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
+                                except Exception as e:
+                                    raise e
+                            
+                            
+                            
                     except Exception as e:
                         print(remote_serialized_request.data)
-                        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+                        raise e
+                       
                     
                     
                 except Exception as e:
@@ -961,7 +875,7 @@ def follow_profile(request, author_serial):
                 try:
                     follow_request.save()
                 except Exception as e:
-                        print(remote_serialized_request.data)
+                        print(e)
                         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
 
 
@@ -1034,39 +948,55 @@ def process_follow_request(request, author_serial, request_id):
         
         #if follow request gets accepted, 
         follow_request = FollowRequest.objects.filter(id=request_id).first()
+        print(f"THE STATE OF THE SELECTED FOLLOW REQUEST IS: {follow_request.state}")
     
         try:
+            #set the following accoun, and store whether they are local or not
+            
             follower = follow_request.requester
-                
+            new_follower_local = follower.is_local
+            followed_account_remote = follow_request.requested_account.is_local == False
+            print("succeeded in setting follower and followed account")
+            print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
         except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-        #set the follow  request state to accepted
-        follow_request.set_request_state(RequestState.ACCEPTED)
-        
-        #create a following from requester to requested
-        new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
-        new_following_serializer = AuthorFollowingSerializer(new_following, data={
-            "follower":new_following.follower.id,
-            "following":new_following.following.id,
-        }, partial=True)
-        
-        if new_following_serializer.is_valid():
-            try:
-                new_following_serializer.save()
-            except Exception as e:
-                print(e)
-                return check_follow_requests(request, request.user.username)
-
-        else:
+        #set the follow request state to accepted (only if the requested author is isn't remote, otherwise it will be accepted by default so the state is already accepted)
+        #followings are also only newly made when we don't have any type of account making a follow request to a remote account, otherwise the normal flow of logic applies
+        #if a remote account follows a local account, everything should work as normal
+        if not (followed_account_remote): # -> NOT (any type of account FOLLOWING remote account)
             
-            return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
+            #create a following from requester to requested (for local author object, because remote author objects will already have an automatic following once requested)
+            follow_request.set_request_state(RequestState.ACCEPTED)
+            new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
+            new_following_serializer = AuthorFollowingSerializer(new_following, data={
+                "follower":new_following.follower.id,
+                "following":new_following.following.id,
+            }, partial=True)
+            
+            
+            if new_following_serializer.is_valid():
+                try:
+                    new_following_serializer.save()
+                    # Send all appropriate entries to new remote follower
+                    # from .util import send_all_entries_to_follower
+                    # send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
+                        
+                except Exception as e:
+                    print(e)
+                    return check_follow_requests(request, request.user.username)
+
+            else:
+                
+                return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
            
         # check if there is now a mutual following
         if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
+            print("there is a mutual following between these authors")
 
             #if there is, add these two users as friends using the author friends object
             new_friendship = AuthorFriend(friending=requestedAuthor, friended=follower)
+            print("new friendship")
             
             try:
                 new_friendship.save()  
@@ -1095,15 +1025,39 @@ def process_follow_request(request, author_serial, request_id):
          except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-         #Reject the follow request and delete (soft) it 
+         #Reject the follow request and delete it 
          follow_request.set_request_state(RequestState.REJECTED)
          
          follow_request.delete()
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
+
+
+
+def decoded_auth_token(auth_header):
+    if isinstance(auth_header, str):
+        print("AUTH ENCODED IN UTF-8")
+        print("AUTH ENCODED AS BYTES, DECODED TO STRING")
+        auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
+        auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
+        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
+        decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
+    else:
+        return False
+        
+    #print(f"AUTH INFO SPLIT: {auth_header_split}")
+    #print(f"ENCODED AUTH INFO: {auth}")
+    #print(f"DECODED AUTH : {decoded_auth}")
+    #print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
+    
+    return decoded_username, decoded_pass
+    
+    
 @csrf_exempt
 @api_view(['GET','POST'])
+@authentication_classes([]) #DJANGO was causing most of our problems. the 403 was caused by django enforcing a user object to exist for every request that gets sent
+@permission_classes([]) 
 def user_inbox_api(request, author_serial):
     '''
     Used to get a User's inbox items, is able to accomodate all types of inbox items
@@ -1141,29 +1095,29 @@ def user_inbox_api(request, author_serial):
     [
         {
         "type": "Follow",
-        "author": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+        "author": "http://127.0.0.1:8000/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
         "body": {
             "type": "follow",
             "state": "requesting",
             "summary": "b has requested to follow GUTS",
             "actor": {
                 "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
-                "host": "http://s25-project-white/api/",
+                "id": "http://127.0.0.1:8000/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "host": "http://127.0.0.1:8000/api/",
                 "displayName": "b",
                 "github": "",
                 "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
+                "web": "http://127.0.0.1:8000/authors/57790772-f318-42bd-bb0c-838da9562720",
                 "description": ""
             },
             "object": {
                 "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
-                "host": "http://s25-project-white/api/",
+                "id": "http://127.0.0.1:8000/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "host": "http://127.0.0.1:8000/api/",
                 "displayName": "GUTS",
                 "github": "",
                 "profileImage": "/media/profile_images/gutspfp.jpg",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+                "web": "http://127.0.0.1:8000/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
                 "description": ""
             }
         },
@@ -1201,22 +1155,22 @@ def user_inbox_api(request, author_serial):
         "summary": "b has requested to follow GUTS",
         "actor": {
             "type": "author",
-            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
-            "host": "http://s25-project-white/api/",
+            "id": "http://127.0.0.1:8000/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+            "host": "http://127.0.0.1:8000/api/",
             "displayName": "b",
             "github": "",
             "profileImage": "/media/profile_images/aliceinwonderlandcover.jpg",
-            "web": "http://127.0.0.1:8000/s25-project-white/authors/57790772-f318-42bd-bb0c-838da9562720",
+            "web": "http://127.0.0.1:8000/authors/57790772-f318-42bd-bb0c-838da9562720",
             "description": ""
         },
         "object": {
             "type": "author",
-            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
-            "host": "http://s25-project-white/api/",
+            "id": "http://127.0.0.1:8000/api/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+            "host": "http://127.0.0.1:8000/api/",
             "displayName": "GUTS",
             "github": "",
             "profileImage": "/media/profile_images/gutspfp.jpg",
-            "web": "http://127.0.0.1:8000/s25-project-white/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
+            "web": "http://127.0.0.1:8000/authors/99f75995-a05e-497f-afd4-5af96cf3b0b4",
             "description": ""
         }
     }
@@ -1233,20 +1187,45 @@ def user_inbox_api(request, author_serial):
     }
     
     '''
-    current_user=request.user
     
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
+    
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+    
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
+    
+    #NEXT IMPLEMENTATION WILL CHECK AGAINST OUR AGREED UPON CREDENTIALS AND THE VALIDITY OF THE REMOTE NODE
     currentNodes = RemoteNode.objects.all()
     print(currentNodes)
     
     requested_author = get_object_or_404(Author, serial=author_serial)
-    
+    #TODO
     #check the node validity
+    #populate the local node with all of the foreign node's users
     
     
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
-        if current_user!=requested_author.user:
+        if not request.user.is_authenticated:
             return Response({"Error":f"You are unauthorized to view this user's inbox"}, status=status.HTTP_401_UNAUTHORIZED)
         
         inboxItems = requested_author.inboxItems.order_by('-created_at')
@@ -1323,7 +1302,7 @@ def user_inbox_api(request, author_serial):
         ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
                 
         #for follow requests
-        if type == "follow" or type == "Follow":
+        if type.lower() == "follow":
             
             try:
                 body = request.data
@@ -1684,7 +1663,6 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
                                                      is_local=False,
                                                      host=get_host_and_scheme(decodedId),
                                                      description = remote_author_object['description'],
-                                                     serial=uuid.uuid4(),
                                                      profileImage=remote_author_object["profileImage"],
                                                      web=remote_author_object['web']              
                                                     )
@@ -1737,19 +1715,19 @@ def add_local_follower(request, author_serial, new_follower_serial):
                         
                         "follow summary": 
                         {
-                            "follower": "http://127.0.0.1:8000/s25-project-white/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
-                            "following": "http://127.0.0.1:8000/s25-project-white/api/authors/57790772-f318-42bd-bb0c-838da9562720",
+                            "follower": "http://127.0.0.1:8000/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "following": "http://127.0.0.1:8000/api/authors/57790772-f318-42bd-bb0c-838da9562720",
                             "date_followed": "2025-07-03T22:36:30.094650-06:00"
                         },
                         
                         "follower": {
                             "type": "author",
-                            "id": "http://127.0.0.1:8000/s25-project-white/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
-                            "host": "http://s25-project-white/api/",
+                            "id": "http://127.0.0.1:8000/api/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "host": "http://127.0.0.1:8000/api/",
                             "displayName": "v",
                             "github": null,
                             "profileImage": "/media/https%3A/cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
-                            "web": "http://127.0.0.1:8000/s25-project-white/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
+                            "web": "http://127.0.0.1:8000/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
                             "description": ""
                         }
                     }
@@ -1808,6 +1786,10 @@ def add_local_follower(request, author_serial, new_follower_serial):
                     try:
                         new_following = AuthorFollowing.objects.create(follower=pending_follower, following=current_author)
                         new_following.save()
+                        # Send all appropriate entries to new remote follower
+                        if not pending_follower.is_local:
+                            from .util import send_all_entries_to_follower
+                            send_all_entries_to_follower(local_author=current_author, remote_follower=pending_follower, request=request)
                         return Response({"follower addition status":"successful","type": "new follower", "follow summary": AuthorFollowingSerializer(new_following).data, "follower": AuthorSerializer(pending_follower).data}, status=status.HTTP_200_OK)
                     except Exception as e:
                         return Response({"Follow creation failed": f"{e}"}, status= status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1826,7 +1808,7 @@ def get_local_followers(request, author_serial):
     """
         Get a specific author's followers list requests in the application
         
-        Use: "GET /s25-project-white/api/authors/{author_serial}/followers/"
+        Use: "GET /api/authors/{author_serial}/followers/"
 
         returns Json in the following format upon a successful request: 
             
@@ -2092,12 +2074,11 @@ def create_entry(request):
             description=description,
             visibility=visibility
         )
-
-        '''
+        
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
             send_entry_to_remote_followers(entry, request)
-        '''
+        
         return redirect('wiki:entry_detail', entry_serial=entry.serial)
 
     return render(request, 'create_entry.html')
@@ -2618,8 +2599,8 @@ Response:
 {
  
     "type": "likes",
-    "web": "http://s25-project-white/authors/201fc5b1-38f8-451d-8807-fbe326fd0f5e/entries/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b",
-    "id": "http://s25-project-white/entry/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b/likes",
+    "web": "http://authors/201fc5b1-38f8-451d-8807-fbe326fd0f5e/entries/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b",
+    "id": "http://127.0.0.1:8000/entry/5a720bf2-3d55-4007-a5e7-3dcf9eabdc4b/likes",
     "page_number": 1,
     "size": 50,
     "count": 4,
@@ -2628,10 +2609,10 @@ Response:
             "type": "like",
             "author": {
                 "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
-                "host": "http://s25-project-white/api/",
+                "id": "http://127.0.0.1:8000/api/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
+                "host": "http://127.0.0.1:8000/api/",
                 "displayName": "AB",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
+                "web": "http://127.0.0.1:8000/authors/f802fa6a-c7e5-40e5-907f-6ff25b63ff80",
                 "github": null,
                 "profileImage": "/media/profile_images/90s_background_e8A8ndq.jpg"
             },
@@ -2643,10 +2624,10 @@ Response:
             "type": "like",
             "author": {
                 "type": "author",
-                "id": "http://127.0.0.1:8000/s25-project-white/api/authors/e025f287-059d-47ae-8201-e6be03082102",
-                "host": "http://s25-project-white/api/",
+                "id": "http://127.0.0.1:8000/api/authors/e025f287-059d-47ae-8201-e6be03082102",
+                "host": "http://127.0.0.1:8000/api/",
                 "displayName": "author_2",
-                "web": "http://127.0.0.1:8000/s25-project-white/authors/e025f287-059d-47ae-8201-e6be03082102",
+                "web": "http://127.0.0.1:8000/authors/e025f287-059d-47ae-8201-e6be03082102",
                 "github": null,
                 "profileImage": "/media/profile_images/90s_background.jpg"
             },
@@ -2743,7 +2724,7 @@ def get_entry_comments_fqid_api(request, entry_fqid):
     ]
 
     # Build the request host for URLs
-    request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+    request_host = request.build_absolute_uri("/").rstrip("/")
     
     # URL encode the entry FQID for the path
     encoded_entry_fqid = urllib.parse.quote(entry.id, safe='')
@@ -2776,8 +2757,8 @@ def get_comment_fqid_api(request, author_serial, entry_serial, remote_comment_fq
     # Check if this is a local comment (stored in our database)
     try:
         # Parse the FQID to extract the comment ID
-        # FQID format: http://s25-project-white/api/authors/{author_serial}/commented/{comment_id}
-        if decoded_comment_fqid.startswith('http://s25-project-white/api/authors/'):
+        # FQID format: http://127.0.0.1:8000/api/authors/{author_serial}/commented/{comment_id}
+        if decoded_comment_fqid.startswith(f'http://{request.get_host()}/api/authors/'):
             # Extract the comment ID from the FQID
             comment_id = decoded_comment_fqid.split('/commented/')[-1]
             comment = Comment.objects.get(id=comment_id)
@@ -2834,7 +2815,7 @@ def author_comments_fqid(request, author_fqid):
         ]
         
         # Build the request host for URLs
-        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        request_host = request.build_absolute_uri("").rstrip("/")
         
         response_data = {
             "type": "comments",
@@ -3079,8 +3060,8 @@ def get_author_comments_api(request, author_serial):
         
         response_data = {
             "type": "comments",
-            "web": f"{request_host}/s25-project-white/authors/{author_serial}/commented",
-            "id": f"{request_host}/s25-project-white/api/authors/{author_serial}/commented",
+            "web": f"{request_host}/authors/{author_serial}/commented",
+            "id": f"{request_host}/api/authors/{author_serial}/commented",
             "page_number": page_number,
             "size": PAGE_SIZE,
             "count": len(visible_comments),
@@ -3222,10 +3203,10 @@ def get_comment_fqid(request, comment_fqid):
     print(f"DEBUG: Received comment FQID: {decoded_comment_fqid}")
     
     # Parse the FQID to extract the comment ID
-    # FQID format: http://s25-project-white/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
-    # or http://127.0.0.1:8000/s25-project-white/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
-    if (decoded_comment_fqid.startswith('http://s25-project-white/api/authors/') or 
-        decoded_comment_fqid.startswith('http://127.0.0.1:8000/s25-project-white/api/authors/')):
+    # FQID format: http://{host}/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
+    # or http://127.0.0.1:8000/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_id}
+    if (decoded_comment_fqid.startswith(f'http://{request.get_host()}/api/authors/') or 
+        decoded_comment_fqid.startswith('http://127.0.0.1:8000/api/authors/')):
         
         # Extract the comment ID from the FQID
         # Split by '/comments/' and take the last part
@@ -3353,7 +3334,7 @@ def get_entry_likes_by_fqid(request, entry_fqid):
             ]
             
             # Build the request host for URLs
-            request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+            request_host = request.build_absolute_uri("/").rstrip("/")
 
             response_data = {
                 "type": "likes",
@@ -3439,7 +3420,7 @@ def get_comment_likes_by_fqid(request, author_serial, entry_serial, comment_fqid
         ]
         
         # Build the request host for URLs
-        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        request_host = request.build_absolute_uri("/").rstrip("/")
         
         response_data = {
             "type": "likes",
@@ -3506,7 +3487,7 @@ def get_author_likes_by_fqid(request, author_fqid):
         paginated_likes = likes_data[offset:limit]
         
         # Build the request host for URLs
-        request_host = request.build_absolute_uri("/s25-project-white/").rstrip("/")
+        request_host = request.build_absolute_uri("/").rstrip("/")
         
         response_data = {
             "type": "likes",
@@ -3566,8 +3547,9 @@ def get_single_like_by_fqid(request, like_fqid):
 
 
 
-def is_local_url(request, url):
-    current_host = request.get_host()
+def is_local_url(current_host, url):
+    
     url_host = urlparse(url).netloc
+    print("CURRENT HOST", current_host)
     return current_host == url_host
      
