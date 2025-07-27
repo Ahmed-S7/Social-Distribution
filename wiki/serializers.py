@@ -60,7 +60,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         displayName = validated_data.get("id")
-        user = User.objects.create(username=displayName, password="whitepass")
+        user = User.objects.create(username=displayName, password="uniquepass")
 
         # Now create the Author and link the new user
         author = Author.objects.create(user=user, **validated_data)

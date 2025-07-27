@@ -334,20 +334,37 @@ class MyLoginView(LoginView):
             if remote_author.get("id"):
                 author_id = remote_author.get("id")
                 try:
-                    #SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                    new_account_serialized = AuthorSerializer(data=remote_author)
                     
-                    if not author_exists(author_id): 
-                           
-                        #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
-                        if not new_account_serialized.is_valid():
-                            print("AUTHOR OBJECT STRUCTURE INVALID")
+                    if author_exists(author_id):
+                        print("EXISTING AUTHOR FOUND")
+                        existing_author = Author.objects.get(id=author_id)
+                        account_serialized = AuthorSerializer(existing_author, data=remote_author, partial=True)
+                    else:
+                        #SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                        print("NEW AUTHOR FOUND")
+                        account_serialized = AuthorSerializer(data=remote_author)    
+                        
+                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                    if not account_serialized.is_valid():
+                            print("NEW AUTHOR OBJECT STRUCTURE INVALID")
+                            print(account_serialized.errors)
                             
-                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
-                        new_profile = new_account_serialized.save()
-                        new_profile.is_local=False
-                        new_profile.save()
-                        print(f"NEW AUTHOR {new_profile} SAVED TO DATABASE")
+               
+                           
+                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                    else:
+                        
+                        if not author_exists(author_id):
+                            print("AUTHOR OBJECT VALIDATED, SAVING TO DB")
+                        else:
+                            print("EXISTING AUTHOR UPDATED, SAVING TO DB")
+                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXIS
+                        profile = account_serialized.save()
+                        profile.is_local=False
+                        profile.save()
+                        print(f"AUTHOR {profile} SAVED TO DATABASE")
+        
+                        
                 except Exception as e:
                     print(e)     
             
@@ -547,7 +564,7 @@ def view_external_profile(request, author_serial):
         friends_a = profile_viewing.friend_a.all()if logged_in_author else Author.objects.none()
         friends_b = profile_viewing.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
-
+        is_local =  profile_viewing.is_local
         
         # VISUAL REPRESENTATION TEST
         '''
@@ -629,12 +646,10 @@ def view_external_profile(request, author_serial):
             else entry.content
          )
          rendered_entries.append((entry, rendered)) 
-         print(logged_in_author)
-         print(profile_viewing)
-         print(is_following)
         
         return render(request, "external_profile.html", 
                       {
+                       'is_local': is_local,
                        'author': profile_viewing,
                        'entries': rendered_entries,
                        "followers": followers,
@@ -722,7 +737,7 @@ def unfollow_profile(request, author_serial, following_id):
     except Author.DoesNotExist:
         #print(f"{following_id} is not a valid existing following id")
         return redirect(reverse("wiki:view_local_authors"))
-
+        
     
     try:
         #retrieve the current follow request
@@ -736,6 +751,7 @@ def unfollow_profile(request, author_serial, following_id):
      
     # ID of friendship object or None
     active_friendship_id = current_author.get_friendship_id_with(followed_author)
+    
     
     '''#VISUAL REPRESENTATION TEST
     print("Current Author is:",current_author,followed_author)
@@ -852,13 +868,11 @@ def follow_profile(request, author_serial):
             print(serialized_follow_request.data)
                 
             try:
-                    
                 remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
                 requesting = remote_follow_request.requester
                 requested = remote_follow_request.requested_account
                 remote_serialized_request = FollowRequestSerializer(remote_follow_request)
-
-                #attempt to save the follow request
+                # attempt to save the follow request
                 try:
                     
                     # try to push the follow request to the remote inbox to send them a follow request, then automatically follow them if succeeds
@@ -871,34 +885,32 @@ def follow_profile(request, author_serial):
                             )
                     except Exception as e:
                         print(e)
-                   
-                    print(f"RESPONSE: {follow_request_response.content}")
                         
+                    if len(follow_request_response.content) < 200:
+                        print(f"RESPONSE: {follow_request_response.content}")
+                    
+                    # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
+                    # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
                     if follow_request_response.status_code == 200:
-                        #print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code, f"THE REMOTE FOLLOW REQUEST BEING SAVED IS: {remote_follow_request}, {remote_follow_request.state}")
                         local_request = remote_follow_request
                         local_request.set_request_state(RequestState.ACCEPTED)
                         try:
                             local_request.save()    
                         except Exception as e:
                             raise e
+                        
                         print("remote follow request was saved")
                         print(f"{requesting} is attempting to follow {requested}")
                         saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
-                        print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")
-                            
+                        print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")  
                         #save the new following
                         print("TRYING TO SAVE NEW FOLLOWING...")
                         saved_following_to_remote.save()
                         print("valid follow request, saved following for remote node.")
-                        print(saved_following_to_remote)
-                        
                         #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
-                        print(f"requesting author: {requesting}, requested author: {requested}")
-                            
+                        print(f"requesting author: {requesting}, requested author: {requested}")   
                         if requesting.is_following(requested) and requested.is_following(requesting): 
-                            newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)
-                                
+                            newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)   
                             print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
                             try:
                                 newRemoteFriendship.save()
@@ -911,20 +923,19 @@ def follow_profile(request, author_serial):
                     raise e
                        
             except Exception as e:
-                raise e
-                
-                
+                raise e  
+                      
     except Exception as e:
                 return HttpResponseServerError(f"Failed to save follow request: {e}")
       
             
     try:
         follow_request.save()
-        print("REMOTE REQUEST FAILED, YOU MAY STILL BE FOLLOWING THIS AUTHOR ON THEIR NODE, SWITCHING TO MANUAL FOLLOW REQUEST")
+        print("REMOTE REQUEST FAILED, YOU MAY STILL BE FOLLOWING THIS AUTHOR ON THEIR NODE, SWITCHING TO LOCAL FOLLOW REQUEST")
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
     except Exception as e:
-        raise(e)
-                   
+        print(e)
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
         
     
         
@@ -993,9 +1004,7 @@ def process_follow_request(request, author_serial, request_id):
     
         try:
             #set the following accoun, and store whether they are local or not
-            
             follower = follow_request.requester
-            new_follower_local = follower.is_local
             followed_account_remote = follow_request.requested_account.is_local == False
             print("succeeded in setting follower and followed account")
             print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
@@ -1005,7 +1014,7 @@ def process_follow_request(request, author_serial, request_id):
         #set the follow request state to accepted (only if the requested author is isn't remote, otherwise it will be accepted by default so the state is already accepted)
         #followings are also only newly made when we don't have any type of account making a follow request to a remote account, otherwise the normal flow of logic applies
         #if a remote account follows a local account, everything should work as normal
-        if not (followed_account_remote): # -> NOT (any type of account FOLLOWING remote account)
+        if not (followed_account_remote): # -> NOT (remote account getting followed)
             
             #create a following from requester to requested (for local author object, because remote author objects will already have an automatic following once requested)
             follow_request.set_request_state(RequestState.ACCEPTED)
@@ -1048,7 +1057,7 @@ def process_follow_request(request, author_serial, request_id):
                 #set the follow  request state to requested
                 follow_request.set_request_state(RequestState.REQUESTING)
         
-                #create a following from requester to requested
+                #delete the new following
                 new_following.delete()
                 
                 #print the exception
@@ -1068,7 +1077,6 @@ def process_follow_request(request, author_serial, request_id):
         
          #Reject the follow request and delete it 
          follow_request.set_request_state(RequestState.REJECTED)
-         
          follow_request.delete()
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
