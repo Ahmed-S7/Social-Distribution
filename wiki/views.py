@@ -864,17 +864,17 @@ def follow_profile(request, author_serial):
 
                     #attempt to save the follow request
                     try:
-                        print("act like a successful post  request was made")#for testing with local host 
-                        success = True
-                    
+                       
+                        #print("act like a successful post  request was made")#for testing with local host 
                         follow_request_response = requests.post(
                         inbox_url,
                         json=remote_serialized_request.data,  
                         auth=AUTHTOKEN,
                         timeout=1
                         )
+                       
                      
-                        if success:#follow_request_response.status_code == 200:
+                        if follow_request_response.status_code == 200:
                             #print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code, f"THE REMOTE FOLLOW REQUEST BEING SAVED IS: {remote_follow_request}, {remote_follow_request.state}")
                             local_request = remote_follow_request
                             local_request.set_request_state(RequestState.ACCEPTED)
