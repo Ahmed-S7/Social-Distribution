@@ -1277,9 +1277,13 @@ def user_inbox_api(request, author_serial):
    
         
     #sends an inbox object to a specific author
-    elif request.method =="POST":
-        
-        #################################TEST#################################### 
+    elif request.method =="POST": 
+        print("Processing a POST request to the inbox")
+        is_local = request.get_host() == requested_author.host
+        if is_local:
+            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
+            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
         type = request.data.get("type")
@@ -1617,12 +1621,7 @@ def user_inbox_api(request, author_serial):
         
         else:
             return Response({f"FAILED TO SAVE INBOX ITEM":f"{newItemSerializer.errors}"} ,status=status.HTTP_400_BAD_REQUEST)
-        
-        
-       
-        
-        
-        
+                
         
         
         
@@ -2058,16 +2057,18 @@ def create_entry(request):
         text_content = request.POST.get('content', '').strip()
         content_type_input = request.POST.get('contentType', '').strip()
         description = request.POST.get('description', '').strip()
-        image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
         use_markdown = request.POST.get('use_markdown') == 'on'
         content_type = "text/markdown" if use_markdown else "text/plain"
+        image = request.FILES.get('image')
 
 
         if not title:
             return HttpResponse("Title is required.")
 
-
+        if image and text_content:
+            return HttpResponse("Please provide either an image or text content, not both.")
+        
         author = get_object_or_404(Author, user=request.user)
 
         # Determine content type
@@ -2154,24 +2155,33 @@ def edit_entry(request, entry_serial):
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
-        image = request.FILES.get('image')
+        content_type = request.POST.get('contentType')
         visibility = request.POST.get('visibility')
+        image = request.FILES.get('image')
         if visibility in dict(Entry.VISIBILITY_CHOICES):
             entry.visibility = visibility
         if (title and content) or (title and image):
             entry.title = title
-            if content:
-                entry.content = content
             if image:
-                entry.image = image
-            if request.POST.get('remove_image'):
-               entry.image.delete(save=False)
-               entry.image = None
+                image_data = image.read()            
+                encoded = base64.b64encode(image_data).decode('utf-8')
+                if image.content_type == 'image/png':
+                    entry.contentType = 'image/png;base64'
+                elif image.content_type == 'image/jpeg':
+                    entry.contentType = 'image/jpeg;base64'
+                else:
+                    entry.contentType = 'application/base64'
+                entry.content = encoded
+            elif content:
+                entry.content = content
+                entry.contentType = content_type
+
             entry.save()
             #print(entry.serial)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
-            return HttpResponse("Title and content required.")
+            return HttpResponse("Either text content or an image is required.")
+        
         
     return render(request, 'edit_entry.html', {'entry': entry})
 
@@ -2212,6 +2222,65 @@ def entry_detail_api(request, entry_serial, author_serial):
             }, status=status.HTTP_403_FORBIDDEN)
             
         elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+   
+
+    if request.method == 'GET':
+        serializer = EntrySerializer(entry, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    elif request.method == 'PUT':
+        serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
+        if serializer and serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        if current_author!=entry.author:
+            return Response({
+                "error": "You are not authorized to delete this entry."
+            })
+        try:
+            entry.delete()
+            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
+            deleted_entry.visibility='DELETED'
+            serializer = EntrySerializer(deleted_entry, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@login_required
+@api_view(['GET'])
+def entry_detail_fqid_api(request, entry_fqid):
+    """
+    GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    
+    """
+
+    decoded_entry_fqid = urllib.parse.unquote(entry_fqid)
+    entry = get_object_or_404(Entry, id=decoded_entry_fqid)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_id = entry.author.id
+    entry_author=get_object_or_404(Author, id=author_id)
+    
+   #checks if the current author isn't the one getting the entry information, if so there will be visibility restrictions
+    if current_author == entry_author:
+        pass
+    else:
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(entry_author):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(entry_author):
             return Response({
                 "error": "You are not following this author, you cannot view this entry"
             }, status=status.HTTP_403_FORBIDDEN)
@@ -3027,12 +3096,54 @@ def get_author_comments_api(request, author_serial):
 
 
 @api_view(['GET'])
-def get_entry_image_api(request, entry_serial):
-    entry = get_object_or_404(Entry, serial=entry_serial)
+def get_entry_image_api(request, entry_fqid):
+    pass
+#     entry_fqid = unquote(entry_fqid) 
+#     entry = None
+#     try:
+#         entry = Entry.objects.get(id=entry_fqid)
+#     except Entry.DoesNotExist:
+#         pass
+    
+#     # REMOTE
+#     if entry is None:
+#         try:
+#             response = requests.get(entry_fqid, headers={"Accept": "application/json"})
+#             if response.status_code != 200:
+#                 return HttpResponse("Entry not found or remote entry does not exist.", status=404)
+            
+#             try:
+#                 data = response.json()
+#             except Exception:
+#                 return HttpResponse(f"Remote did not return valid JSON: {response.text}", status=502)
+#             content_type = data.get("contentType", "")
+#             content = data.get("content", "")
+#             if not content_type.startswith('image/'):
+#                 return HttpResponse("Content is not an image.", status=400)
+#             image_data = base64.b64decode(content)
+#             return HttpResponse(image_data, content_type=content_type)
+#         except Exception as e:
+#             print("Response content:", response.text)
+#             print("Content-Type:", response.headers.get("Content-Type"))
+#             return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
+        
+#     # LOCAL
+#     if not entry.contentType.startswith('image/'):
+#         return HttpResponse("Content is not an image.", status=400)
+#     try:
+#         image_data = base64.b64decode(entry.content)
+#         return HttpResponse(image_data, content_type=entry.contentType)
+#     except Exception as e:
+#         return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
 
+@api_view(['GET'])
+def get_author_image_api(request, author_serial, entry_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
-
+        
+    content_type = entry.contentType.split(";")[0]
     # Determine MIME type from contentType
     if entry.contentType.startswith('image/png'):
         mime_type = 'image/png'
@@ -3049,20 +3160,6 @@ def get_entry_image_api(request, entry_serial):
 
     # Return as binary response
     return HttpResponse(image_data, content_type=mime_type)
-    
-
-@api_view(['GET'])
-def get_author_image_api(request, author_serial, entry_serial):
-    author = get_object_or_404(Author, serial=author_serial)
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
-    if not entry.image:
-        return HttpResponse("No image available for this entry.", status=404)
-    image_path = entry.image.path
-    mime_type, _ = mimetypes.guess_type(image_path)
-    with open(image_path, 'rb') as image_file:
-        image_data = image_file.read()
-        response = HttpResponse(image_data, content_type=mime_type)
-        return response
     
 
 @api_view(['GET'])

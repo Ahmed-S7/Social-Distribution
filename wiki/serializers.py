@@ -127,6 +127,8 @@ class AuthorSummarySerializer(serializers.ModelSerializer):
         return None
     def get_github(self,obj):
         return obj.github or None
+    
+
 class LikeSummarySerializer(serializers.Serializer):
     type = serializers.SerializerMethodField()
     author = AuthorSummarySerializer(source='user')
@@ -222,13 +224,12 @@ class CommentSummarySerializer(serializers.Serializer):
         host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
 
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
-        comment_id = obj.id
 
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id": f"{host}/api/authors/{author_id}/commented/{comment_id}/likes",
-            "web": f"{host}/authors/{obj.author.displayName}/comments/{comment_id}/likes",
+            "id":  f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}",
+            "web": f"{host}/s25-project-white/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
             "count": likes.count(),
@@ -293,11 +294,7 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_is_local(self, obj):
         return obj.is_local
     def get_content(self, obj):
-        if obj.contentType.startswith("image/") and obj.image:
-            with obj.image.open('rb') as img_file:
-                encoded = base64.b64encode(img_file.read()).decode('utf-8')
-                return encoded
-        return obj.content
+        return obj.content  
 
     def get_comments(self, obj):
         author_id = obj.author.serial

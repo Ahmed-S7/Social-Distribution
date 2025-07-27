@@ -38,18 +38,13 @@
     <div class="card card-entry-detail">
       <div class="card-body">
         <h2 class="entry_title text-center mb-3">{{ entry.title }}</h2>
-        {% if entry.image %}
-          <img class="entry-image" src="{{ entry.image.url }}" alt="Post image">
-        {% endif %}
-
 
         <div class="entry_content text-center">
           {% if entry.contentType|slice:":5" == "image" %}
-            <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" style="max-width: 100%; height: auto;" />
+            <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
           {% else %}
             {{ rendered_content|safe }}
           {% endif %}
-        </div>
         <p class="entry_author text-center"><em>By {{ entry.author.displayName }}</em></p>
         <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
           <form method="post" action="{% url 'wiki:like-entry' entry.serial %}" class="m-0 p-0">
@@ -68,7 +63,7 @@
         </div>
       </div>
     </div>
-    <div class="card card-create mt-4" style="max-width:36em;margin:auto;">
+    <div class="card card-entry-detail mt-4">
       <div class="card-body">
         <h3 class="mb-3">Comments</h3>
         <form method="post" action="{% url 'wiki:add_comment' entry.serial %}" class="mb-4">
@@ -79,7 +74,7 @@
         {% if comments %}
           <div class="comments-list">
             {% for comment in comments %}
-              <div class="card mb-2">
+              <div class="card mb-3" style="border: 1px solid #e0e0e0;">
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <strong>{{ comment.author.displayName }}</strong>

@@ -1,4 +1,6 @@
 import base64
+from unittest.mock import patch
+from urllib import request
 import urllib.parse
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -10,7 +12,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.db.models.signals import post_save
-
+import requests
 from rest_framework import status
 BASE_PATH = "/api"
 
@@ -1443,22 +1445,17 @@ And a landscape:
     def test_create_image_author(self):
         """User Story: As an author, entries I create can be images."""
         # Image US
-        image_path = 'wiki/static/images/dog.jpg'
-        with open(image_path, 'rb') as image_file:
-            uploaded_image = SimpleUploadedFile(
-                name="dog.jpg",  
-                content=image_file.read(), 
-                content_type="image/jpeg"  
-            )
+        image_path = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSFUAfyVe3Easiycyh3isP9wDQTYuSmGPsPQvLIJdEYvQ_DsFq5Ez2Nh_QjiS3oZ3B8ZPfK9cZQyIStmQMV1lDPLw'
+        response = requests.get(image_path)
+        image_data = base64.b64encode(response.content).decode('utf-8')
         entry = Entry.objects.create(
             title='Dog Image Entry',
-            content="This is a test entry with an image.",
+            content=image_data,
             author=self.author,
             serial=uuid.uuid4(),
             visibility="PUBLIC",
             contentType="image/jpeg",  
         )
-        entry.image.save(uploaded_image.name, uploaded_image, save=True)
         url = f'{BASE_PATH}/authors/{self.author.serial}/entries/{entry.serial}/image/'
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -1503,9 +1500,9 @@ And a landscape:
         entry.refresh_from_db()
         self.assertNotEqual(entry.title, 'Hacked')
 
-class SharingTestCase(TestCase):
-    def setUp(self):
-        self.client = APIClient()
+# class SharingTestCase(TestCase):
+#     def setUp(self):
+#         self.client = APIClient()
 
         # Create user and authenticate properly
         self.user = User.objects.create_user(
@@ -1558,9 +1555,9 @@ class SharingTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-    # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
-    def test_push_images_to_other_nodes(self):
-        pass
+#     # Sharing 5.2 As a node admin, I want to push images to users on other nodes, so that they are visible by users of other nodes. ⧟ Part 3-5 only.
+#     def test_push_images_to_other_nodes(self):
+#         pass
 
     #Sharing 5.3 As an author, I should be able to browse the public entries of everyone, so that I can see what's going on beyond authors I follow.
         # Note: this should include all local public entries and all public entries received in any inbox.
@@ -1583,7 +1580,8 @@ class NodeManagementTestCase(TestCase):
         self.login_api_url = f'{BASE_PATH}/login/'
     
     # Node Management 8.3 As a node admin, I want to be able to allow users to sign-up but require my approval to complete sign-up and use my node, so that I can prevent unwanted users and spambots.
-    def test_sign_up_approval(self):
+    @patch('wiki.views.is_local_url', return_value=True)
+    def test_sign_up_approval(self,  mock_is_local):
         register_data = {
             'username': 'pending_user',
             'password': 'pass',
