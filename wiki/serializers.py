@@ -268,13 +268,11 @@ class EntrySerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     published = serializers.DateTimeField(source='created_at')
     visibility = serializers.ChoiceField(required=True, choices=VISIBILITY_CHOICES)
-    is_local = serializers.SerializerMethodField(read_only=True)
-    origin_url = serializers.CharField(read_only=True)
     class Meta:
         model = Entry
         fields = [
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
-            'author', 'comments', 'likes', 'published', 'visibility', 'is_local', 'origin_url' 
+            'author', 'comments', 'likes', 'published', 'visibility'
         ]
     def get_id(self, obj):
         request = self.context.get('request')

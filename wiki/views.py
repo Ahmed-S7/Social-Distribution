@@ -240,7 +240,7 @@ def register(request):
             user = User.objects.create_user(username=username, password=password, is_active=False)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(request, user, username, github, profileImage)
+            newAuthor = saveNewAuthor(request, user, username, github, profileImage, is_local=True)
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -939,7 +939,7 @@ def follow_profile(request, author_serial):
             return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
         
         #remote profiles will automatically send a following
-        if not requested_account.is_local:
+        if  requested_account.is_local:
             print("requested isn't local")
                 
             inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
@@ -1077,49 +1077,52 @@ def process_follow_request(request, author_serial, request_id):
     
     choice = request.POST.get("action")
     if choice.lower() == "accept":
-        
+    
         #if follow request gets accepted, 
         follow_request = FollowRequest.objects.filter(id=request_id).first()
         print(f"THE STATE OF THE SELECTED FOLLOW REQUEST IS: {follow_request.state}")
     
         try:
-            #set the following accoun, and store whether they are local or not
+            #set the following account, and store whether they are local or not
             follower = follow_request.requester
             followed_account_remote = follow_request.requested_account.is_local == False
+            print(f"this account is remote: {followed_account_remote}")
             print("succeeded in setting follower and followed account")
             print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
         except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-        #set the follow request state to accepted (only if the requested author is isn't remote, otherwise it will be accepted by default so the state is already accepted)
-        #followings are also only newly made when we don't have any type of account making a follow request to a remote account, otherwise the normal flow of logic applies
-        #if a remote account follows a local account, everything should work as normal
-        if not (followed_account_remote): # -> NOT (remote account getting followed)
+        # create a following after accepted request
+        try:
             
             #create a following from requester to requested (for local author object, because remote author objects will already have an automatic following once requested)
             follow_request.set_request_state(RequestState.ACCEPTED)
             new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
             new_following_serializer = AuthorFollowingSerializer(new_following, data={
-                "follower":new_following.follower.id,
-                "following":new_following.following.id,
+                    "follower":new_following.follower.id,
+                    "following":new_following.following.id,
             }, partial=True)
-            
-            
+                
+                
             if new_following_serializer.is_valid():
                 try:
-                    new_following_serializer.save()
-                    # Send all appropriate entries to new remote follower
-                    # from .util import send_all_entries_to_follower
-                    # send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
-                        
+                        new_following_serializer.save()
+                        # Send all appropriate entries to new remote follower
+                        # from .util import send_all_entries_to_follower
+                        # send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
+                            
                 except Exception as e:
-                    print(e)
-                    return check_follow_requests(request, request.user.username)
+                        print(e)
+                        return check_follow_requests(request, request.user.username)
 
             else:
-                
-                return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
-           
+                    
+                return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")  
+        
+        except Exception as e:
+            print(e) 
+            
+             
         # check if there is now a mutual following
         if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
             print("there is a mutual following between these authors")

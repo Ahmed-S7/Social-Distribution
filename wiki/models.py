@@ -198,6 +198,13 @@ def update_author_name(sender, instance, **kwargs):
         author.save()
     except Author.DoesNotExist:
         pass
+    
+@receiver(post_save, sender=Author)
+def update_user_username(sender, instance, **kwargs):
+    user = instance.user
+    if user and user.username != instance.displayName:
+        user.username = instance.displayName
+        user.save()
          
 class Entry(BaseModel):
     '''Used to represent entries inside of the application '''

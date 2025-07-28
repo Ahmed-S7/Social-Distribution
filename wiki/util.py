@@ -41,7 +41,7 @@ def validUserName(username):
     
     return False
 
-def saveNewAuthor(request, user, username, github, profileImage):
+def saveNewAuthor(request, user, username, github, profileImage, is_local):
     '''Saves a new author instance'''
     
     serial_id = uuid.uuid4()
@@ -72,6 +72,8 @@ def saveNewAuthor(request, user, username, github, profileImage):
         github=github,
     
         web =base_web,
+        
+        is_local=True
         
         )
         if profileImage:  # only set if user uploaded one
@@ -143,66 +145,38 @@ def send_entry_to_remote_followers(entry, request=None):
     from .serializers import EntrySerializer
     from .util import AUTHTOKEN
 
-    # Find all remote followers (not local)
-    remote_followers = AuthorFollowing.objects.filter(
+    # Find all remote followe objects(not local)
+    follower_relations = AuthorFollowing.objects.filter(
         following=entry.author
-    ).exclude(follower__host="http://127.0.0.1:8000/api")
-    print(f"remote followers: {remote_followers}")
-    for rel in remote_followers:
-        follower = rel.follower
-        inbox_url = follower.id.rstrip('/') + '/inbox/'
-
-        serialized_entry = EntrySerializer(entry, context={"request": request}).data
-
-        payload = {
-            "type": "entry",
-            "body": serialized_entry
-        }
-
-        try:
-            response = requests.post(
-                inbox_url,
-                json=payload,
-                auth=AUTHTOKEN,
-                headers={"Content-Type": "application/json"}
-            )
-            if response.status_code >= 400:
-                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
-        except Exception as e:
-            print(f"Exception sending entry to {inbox_url}: {e}")
-
-
-def send_entry_to_remote_followers(entry, request=None):
-    # Find all remote followers (not local)
-    remote_followers = [
-        rel.follower
-        for rel in AuthorFollowing.objects.filter(following=entry.author)
-        if not rel.follower.is_local
-    ]
-
+    )
+    
+    # get all of the remote followers
+    remote_followers = []
+    for follow_relation in follower_relations:
+        if not follow_relation.follower.is_local: 
+            remote_followers.append(follow_relation.follower) 
+        
+    
+    
+    print(remote_followers)
+    
+    print(f"remote followers: {follower_relations}")
     for follower in remote_followers:
         inbox_url = follower.id.rstrip('/') + '/inbox/'
+        print(inbox_url)
+
         serialized_entry = EntrySerializer(entry, context={"request": request}).data
 
-       
         payload = {
             "type": "entry",
             "body": serialized_entry
         }
+        
+        print(payload)
+        #data is correct, now need to send, will do later
+        
 
-        try:
-            response = requests.post(
-                inbox_url,
-                json=payload,
-                auth=AUTHTOKEN,
-                headers={"Content-Type": "application/json"}
-            )
-            if response.status_code >= 400:
-                print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
-        except Exception as e:
-            print(f"Exception sending entry to {inbox_url}: {e}")
-            
-            
+                   
             
 def author_exists(id):
     '''
