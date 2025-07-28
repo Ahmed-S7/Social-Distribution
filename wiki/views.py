@@ -462,7 +462,7 @@ def get_authors(request):
         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
     
-    if not node_valid(request.get_host(), username, password):
+    if not node_valid(username, password):
         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
 
     print("AUTHENTICATION COMPLETE.")
@@ -875,27 +875,28 @@ def view_entry_author(request, entry_serial):
 
             
         
-def node_valid(host, username, password):
+def node_valid(username, password):
     '''checks if the node associated with a given host is valid'''
-    #Log the information of the node attempting to connect to this nodd
-    print("HOST",host,"\nUSERNAME",username,"\nPASSWORD:","*" * len(password))
+    
+    #Log the information of the node attempting to connect to this node
+    print("\nUSERNAME",username,"\nPASSWORD:","*" * len(password))
     #check if the following conditions are met by the connecting node:
     #the host is one of the active remote nodes currently in our database
     #the credentials in the BASIC auth token match our current Node Connection Credentials
     remoteNodes = RemoteNode.objects.filter(is_active=True)
     print(f"ACTIVE NODES: {remoteNodes}")
 
-   
-    for remoteNode in remoteNodes:
-        if str(host) == str(urlparse(remoteNode.url).netloc) and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
-            return True #access if granted to the node
+    if RemoteNode.objects.filter(username=username, password=password).exists():
+        return True #access is granted to the node
+         
     print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
-    return False
+    return False #access denied
         
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
+    
     
     if request.user.is_staff or request.user.is_superuser:
         return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
@@ -1338,7 +1339,7 @@ def user_inbox_api(request, author_serial):
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
 
-    if not node_valid(request.get_host(), username, password):
+    if not node_valid(request, username, password):
         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
     print("AUTHENTICATION COMPLETE.")
     print(f"{username} may now access the node.")
