@@ -89,9 +89,9 @@ class Author(BaseModel):
     
     user = models.OneToOneField(User, on_delete= models.CASCADE, related_name="author")
      
-    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
+    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/{AUTHOR_SERIAL}"
      
-    host = models.URLField(default=f"http://127.0.0.1:8000/")
+    host = models.URLField(default=f"http://127.0.0.1:8000/api")
     
     displayName = models.CharField(max_length=150)
 
@@ -107,6 +107,8 @@ class Author(BaseModel):
     
     is_local = models.BooleanField(default=True)
     
+    class Meta:
+        ordering = ['displayName']
     
 
     def get_follow_requests_sent(self):

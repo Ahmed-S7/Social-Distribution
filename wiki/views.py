@@ -310,7 +310,7 @@ class MyLoginView(LoginView):
             try:
                 
                 #get the response from pulling another node's authors
-                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/")
+                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/", auth=AUTHTOKEN)
                 
                 #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
                 if node_authors_pull_attempt.status_code == 200:
@@ -318,7 +318,7 @@ class MyLoginView(LoginView):
                     
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
-                        node_authors = requests.get(normalized_url+"/api/authors/").json()
+                        node_authors = requests.get(normalized_url+"/api/authors/", auth=AUTHTOKEN).json()
                     except Exception as e:
                         raise e
                     
@@ -373,8 +373,7 @@ class MyLoginView(LoginView):
                 except Exception as e:
                     print(e)     
             
-            
-        
+        # redirects to the login if the redirection to the wiki page fails
         try:
             return redirect('wiki:user-wiki', username=username)
         except Exception as e:
@@ -412,6 +411,7 @@ def login_api(request):
     return Response({"detail": "Login successful"}, status=200)
 
 @api_view(['GET'])
+@authentication_classes([]) #DJANGO was causing most of our problems. the 403 was caused by django enforcing a user object to exist for every request that gets sent
 def get_authors(request):
     """
     Gets the list of all authors on the application
@@ -441,12 +441,75 @@ def get_authors(request):
                 ]
             }
     """
-  
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
+    
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+    
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+    print(request.get_host())
+    
+    if not node_valid(request.get_host(), username, password):
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
     authors = Author.objects.all()
-    if authors:
-        serializer =AuthorSerializer(authors, many=True) 
-        return Response({"type": "authors",
-                            "authors":serializer.data}, status=status.HTTP_200_OK)  
+    
+     # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 50)), 50)  # Cap at 50 items per page
+    
+    # Paginate the results
+    paginator = Paginator(authors, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the authors
+    authors_data = []
+    for author in page_obj:
+        serializer = AuthorSerializer(author, context={'request': request})
+        authors_data.append(serializer.data)
+    
+
+
+    # Build response
+    host = request.build_absolute_uri('/').rstrip('/')
+    response_data = {
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "type": "authors",  
+        "authors": authors_data
+    }
+    
+    # Add pagination URLs if needed
+    if page_obj.has_next():
+        response_data["next_url"] = f"?page={page_obj.next_page_number()}&size={page_size}"
+    if page_obj.has_previous():
+        response_data["previous_url"] = f"?page={page_obj.previous_page_number()}&size={page_size}"
+    
+    if authors_data:     
+        return Response(response_data, status=status.HTTP_200_OK)  
     else:
         return Response({"type":"authors", "authors": []}, status=status.HTTP_200_OK)
 
@@ -815,12 +878,17 @@ def view_entry_author(request, entry_serial):
         
 def node_valid(host, username, password):
     '''checks if the node associated with a given host is valid'''
- 
-    remoteNodes = RemoteNode.objects.all()
+    #Log the information of the node attempting to connect to this nodd
+    print("HOST",host,"\nUSERNAME",username,"\nPASSWORD:","*" * len(password))
+    #check if the following conditions are met by the connecting node:
+    #the host is one of the active remote nodes currently in our database
+    #the credentials in the BASIC auth token match our current Node Connection Credentials
+    remoteNodes = RemoteNode.objects.filter(is_active=True)
+    print(f"ACTIVE NODES: {remoteNodes}")
     for remoteNode in remoteNodes:
-        if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.filter(username=username, password=password):
-            return True
-
+        if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
+            return True #access if granted to the node
+    print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
     return False
         
 
@@ -1269,7 +1337,8 @@ def user_inbox_api(request, author_serial):
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
 
-
+    if not node_valid(request.get_host(), username, password):
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
     print("AUTHENTICATION COMPLETE.")
     print(f"{username} may now access the node.")
     
@@ -1669,7 +1738,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     try:  
         #get the response at the author followers endpoint
             followers_uri =decodedId + "/followers"
-            response = requests.get(followers_uri)
+            response = requests.get(followers_uri,auth=AUTHTOKEN)
             if response.status_code != 200:
                 response_data = response.json()
                 return Response(response_data, response.status_code)
