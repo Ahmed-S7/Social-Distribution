@@ -887,7 +887,6 @@ def node_valid(host, username, password):
 
    
     for remoteNode in remoteNodes:
-        
         if str(host) == str(urlparse(remoteNode.url).netloc) and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
             return True #access if granted to the node
     print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
