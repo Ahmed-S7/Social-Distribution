@@ -1339,7 +1339,7 @@ def user_inbox_api(request, author_serial):
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
 
-    if not node_valid(request, username, password):
+    if not node_valid(username, password):
         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
     print("AUTHENTICATION COMPLETE.")
     print(f"{username} may now access the node.")
@@ -1379,10 +1379,6 @@ def user_inbox_api(request, author_serial):
         
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
-
-
-        
-        
         
         ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
         
@@ -2247,6 +2243,7 @@ def create_entry(request):
             from .util import send_entry_to_remote_followers
             print("sending entry to remote followers")
             send_entry_to_remote_followers(entry, request)
+            print(request.get_host())
         
         return redirect('wiki:entry_detail', entry_serial=entry.serial)
 
