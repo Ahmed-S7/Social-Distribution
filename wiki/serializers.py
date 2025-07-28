@@ -227,7 +227,7 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id": f"{host}/api/authors/{author_id}/commented/{comment_id}/likes",
+            "id": f"{host}/api/authors/{author_id}/comments/{comment_id}/likes",
             "web": f"{host}/authors/{obj.author.displayName}/comments/{comment_id}/likes",
             "page_number": 1,
             "size": 50,

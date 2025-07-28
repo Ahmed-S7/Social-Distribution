@@ -3540,3 +3540,93 @@ def get_author_entries_api(request, author_serial):
 
     return Response(response_data, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def get_comment_likes_api(request, author_serial, comment_id):
+    """
+    GET /api/authors/{AUTHOR_SERIAL}/comments/{COMMENT_ID}/likes/
+    
+    Get all likes for a specific comment.
+    
+    Response format:
+    {
+        "type": "likes",
+        "web": "http://nodeaaaa/authors/greg/comments/130/likes",
+        "id": "http://nodeaaaa/api/authors/greg/comments/130/likes",
+        "page_number": 1,
+        "size": 50,
+        "count": 5,
+        "src": [
+            {
+                "type": "like",
+                "author": {...},
+                "published": "2025-01-27T10:30:00+00:00",
+                "id": "...",
+                "object": "..."
+            }
+        ]
+    }
+    """
+    # Get the author
+    try:
+        author = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get the comment
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verify the comment belongs to the specified author
+    if comment.author != author:
+        return Response({"error": "Comment does not belong to the specified author"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 50)), 50)  # Cap at 50 items per page
+    
+    # Get all likes for this comment (exclude deleted likes)
+    likes_queryset = CommentLike.objects.filter(
+        comment=comment,
+        is_deleted=False
+    ).order_by('-created_at')
+    
+    # Paginate the results
+    paginator = Paginator(likes_queryset, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the likes
+    likes_data = []
+    for like in page_obj:
+        serializer = CommentLikeSummarySerializer(like, context={'request': request})
+        likes_data.append(serializer.data)
+    
+
+
+    # Build response
+    host = request.build_absolute_uri('/').rstrip('/')
+    response_data = {
+        "type": "likes",
+        "web": f"{host}/entries/{comment.entry.serial}",
+        "id": f"{host}/api/authors/{author_serial}/comments/{comment_id}/likes",
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "src": likes_data
+    }
+    
+    # Add pagination URLs if needed
+    if page_obj.has_next():
+        response_data["next_url"] = f"?page={page_obj.next_page_number()}&size={page_size}"
+    if page_obj.has_previous():
+        response_data["previous_url"] = f"?page={page_obj.previous_page_number()}&size={page_size}"
+    
+    return Response(response_data, status=status.HTTP_200_OK)
+
