@@ -326,7 +326,6 @@ class MyLoginView(LoginView):
                     remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
                     
                 print("\n")
-                get_remote_entries(node)
                 
             except Exception as e:
                 raise e
