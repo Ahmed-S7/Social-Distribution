@@ -4,7 +4,7 @@ from urllib import request
 import urllib.parse
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like, Comment, CommentLike
+from wiki.models import Author, Entry,FollowRequest, RequestState, AuthorFollowing, AuthorFriend, Like, Comment, CommentLike
 from django.contrib.auth.models import User
 import uuid
 from django.db.models import Q
@@ -17,7 +17,9 @@ from rest_framework import status
 BASE_PATH = "/api"
 
 
-from .serializers import CommentSummarySerializer, CommentLikeSummarySerializer
+from wiki.serializers import CommentSummarySerializer, CommentLikeSummarySerializer
+
+
 
 
 class IdentityTestCase(TestCase):

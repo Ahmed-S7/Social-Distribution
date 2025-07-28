@@ -60,10 +60,10 @@ class RemotePostReceiver(APIView):
 
 @api_view(['GET'])
 def user_wiki_api(request, username):
-    if request.user.username != username or request.user.is_superuser:
-        raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
-
+    if request.user.username != username:
+        return redirect("wiki:login")
+    
     # Followed
     followed_ids = AuthorFollowing.objects.filter(
         follower=current_author
@@ -294,6 +294,8 @@ class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
         username = self.request.user.username
+        if not Author.objects.filter(displayName=username):
+            return redirect("wiki:register")
         
         #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
@@ -370,8 +372,11 @@ class MyLoginView(LoginView):
             
             
         
-        return redirect('wiki:user-wiki', username=username)
-
+        try:
+            return redirect('wiki:user-wiki', username=username)
+        except Exception as e:
+            return redirect("wiki:login")
+        
     def form_invalid(self, form):
         username = self.request.POST.get('username')
         password = self.request.POST.get('password')
@@ -539,6 +544,7 @@ def view_local_authors(request):
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
+@login_required 
 @require_GET  
 def view_external_profile(request, author_serial):
     '''Presents a view of a profile other than the one that is currently logged
@@ -889,6 +895,8 @@ def follow_profile(request, author_serial):
                     if len(follow_request_response.content) < 200:
                         print(f"RESPONSE: {follow_request_response.content}")
                     
+                    
+                    
                     # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
                     # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
                     if follow_request_response.status_code == 200:
@@ -917,8 +925,7 @@ def follow_profile(request, author_serial):
                                 print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
                             except Exception as e:
                                  raise e
-                        
-                            
+      
                 except Exception as e:
                     raise e
                        
@@ -926,16 +933,16 @@ def follow_profile(request, author_serial):
                 raise e  
                       
     except Exception as e:
-                return HttpResponseServerError(f"Failed to save follow request: {e}")
-      
-            
+        print(f"Failed to save follow request: {e}")
     try:
-        follow_request.save()
+        follow_request.save()        
         print("REMOTE REQUEST FAILED, YOU MAY STILL BE FOLLOWING THIS AUTHOR ON THEIR NODE, SWITCHING TO LOCAL FOLLOW REQUEST")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))       
     except Exception as e:
         print(e)
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+        
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))                
+    
         
     
         
