@@ -939,7 +939,7 @@ def follow_profile(request, author_serial):
             return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
         
         #remote profiles will automatically send a following
-        if  requested_account.is_local:
+        if  not requested_account.is_local:
             print("requested isn't local")
                 
             inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
