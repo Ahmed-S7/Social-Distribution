@@ -1420,7 +1420,6 @@ def user_inbox_api(request, author_serial):
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
                     "is_deleted": False,
-                    "is_local": False,
                 }
             )
            
