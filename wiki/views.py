@@ -939,7 +939,7 @@ def follow_profile(request, author_serial):
             return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
         
         #remote profiles will automatically send a following
-        if  requested_account.is_local:
+        if  not requested_account.is_local:
             print("requested isn't local")
                 
             inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
@@ -1420,7 +1420,6 @@ def user_inbox_api(request, author_serial):
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
                     "is_deleted": False,
-                    "is_local": False,
                 }
             )
            

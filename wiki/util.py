@@ -130,7 +130,6 @@ def get_serial(FOREIGN_AUTHOR_FQID):
 
 def get_remote_followers(author):
     """Return a list of FQIDs of remote authors following the given local author"""
-    from .models import AuthorFollowing
     # filter followers whose host is not local
     return [
         follower.follower.id
@@ -141,9 +140,77 @@ def get_remote_followers(author):
 
 
 def send_entry_to_remote_followers(entry, request=None):
-    from .models import AuthorFollowing
-    from .serializers import EntrySerializer
-    from .util import AUTHTOKEN
+    # Don't send deleted entries
+    if entry.visibility == 'DELETED':
+        print(f"Not sending deleted entry {entry.id} to remote followers")
+        return
+    # Find all remote followers (not local)
+    remote_followers = AuthorFollowing.objects.filter(
+        following=entry.author,
+	is_deleted=False
+    ).exclude(follower__is_local=True)
+    # Get all remote friends (mutual following)
+    remote_friends = AuthorFriend.objects.filter(
+        (Q(friending=entry.author) | Q(friended=entry.author)),
+        is_deleted=False
+    ).exclude(
+        Q(friending__is_local=True) | Q(friended__is_local=True)
+    ) 
+    if not remote_followers.exists() and not remote_friends.exists():
+        print(f"No remote followers or friends to send entry to.")
+        return
+    # Determine who should receive this entry based on visibility
+    recipients = set()
+    
+    if entry.visibility == 'PUBLIC' or entry.visibility == 'UNLISTED':
+        # Send to all remote followers
+        for rel in remote_followers:
+            recipients.add(rel.follower)
+    
+    elif entry.visibility == 'FRIENDS':
+        # Send only to remote friends
+        for rel in remote_friends:
+            if rel.friending == entry.author:
+                recipients.add(rel.friended)
+            else:
+                recipients.add(rel.friending)
+    
+    # Serialize entry
+    serialized_entry = EntrySerializer(entry, context={"request": request}).data
+    
+    
+    for recipient in recipients:
+        try:
+            # Construct inbox url
+            inbox_url = recipient.id.rstrip('/') + '/inbox/'
+            
+            # Create payload
+            payload = {
+                "type": "entry",
+                "body": serialized_entry
+            }
+            
+            # Send POST request to remote inbox
+            response = requests.post(
+                inbox_url,
+                json=payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"},
+              
+            ) 
+
+            if response.status_code in [200, 201]:
+                print(f"Successfully sent entry {entry.id} to {inbox_url}")
+            else:
+                print(f"Failed to send entry {entry.id} to {inbox_url}: {response.status_code} {response.text}")
+                
+        except requests.exceptions.Timeout:
+            print(f"Timeout sending entry {entry.id} to {inbox_url}")
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error sending entry {entry.id} to {inbox_url}")
+        except Exception as e:
+            print(f"Exception sending entry {entry.id} to {inbox_url}: {str(e)}")
+    print(f"Sent entry {entry.id} to {len(recipients)} remote recipients")
 
     # Find all remote followe objects(not local)
     follower_relations = AuthorFollowing.objects.filter(
