@@ -83,7 +83,6 @@ class Migration(migrations.Migration):
                 ('origin_url', models.URLField(blank=True, null=True)),
                 ('title', models.CharField(max_length=200)),
                 ('content', models.TextField()),
-                ('image', models.ImageField(blank=True, null=True, upload_to='entry_images/')),
                 ('created_at', models.DateTimeField(default=wiki.models.get_mst_time)),
                 ('id', models.URLField(primary_key=True, serialize=False, unique=True)),
                 ('serial', models.UUIDField(default=uuid.uuid4, unique=True)),

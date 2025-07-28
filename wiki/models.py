@@ -212,7 +212,6 @@ class Entry(BaseModel):
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
     title = models.CharField(max_length=200)
     content = models.TextField()
-    image = models.ImageField(upload_to='entry_images/', blank=True, null=True)
     created_at = models.DateTimeField(default=get_mst_time)
     id = models.URLField(unique=True, primary_key=True) 
     serial = models.UUIDField(default=uuid.uuid4, unique=True) 
@@ -240,14 +239,6 @@ class Entry(BaseModel):
             self.id = self.get_entry_url()
         if not self.web:
             self.web = self.get_web_url()
-        if self.image and not self.contentType.startswith("image/"):
-            filename = self.image.name.lower()
-            if filename.endswith(".png"):
-               self.contentType = "image/png;base64"
-            elif filename.endswith(".jpg") or filename.endswith(".jpeg"):
-               self.contentType = "image/jpeg;base64"
-            else:
-               self.contentType = "application/base64"
         return super().save(*args, **kwargs)
 
     def __str__(self):

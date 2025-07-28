@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
+html, body, h1,h2,p{
+    font-family: 'Nunito', sans-serif;
+    background-color: rgb(255, 255, 255); 
+}
+
+.post-card {
+    font-family: 'Nunito', sans-serif;
+    border: 0.0625em solid #6f6c6cac;
+    border-radius: 0.625em;
+    padding: 2em;
+    margin: 1.5em auto;
+    background-color: #fff;
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.208);
+    text-decoration: none;
+    justify-content: center;
+    align-content: center;
+    max-width:30em;
+}
+
+.post-card:hover{
+    transform: scale(1.03);
+    transition:transform 0.3s ease-in-out;
+}
+
+.entry_image{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 90%; 
+    border-radius: 0.625em;
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin-bottom: 0.5em;
+}
+.post-header img {
+    width: 2.5em;
+    height: 2.5em;
+    border-radius: 50%;
+}
+.post-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.post-content {
+    margin: 0.75em 0;
+    justify-content: center;
+    text-align: center;
+    padding-bottom: 2em;
+}
+.post-footer {
+    display: inline-flex;
+    justify-content: left;
+    max-height: fit-content;
+    gap: 3em;
+}
+.like-btn, .comment-btn {
+    background: none;
+    border: none;
+    color: black;
+    cursor: pointer;
+    font-weight: normal;
+    font-size: 1em;
+    margin:0em;
+    padding: 0em 0em;
+    display: inline-flex;
+    line-height: 1;
+    gap:3em;
+}
+
+.like-btn-custom:hover {
+    color: #e25555 !important;
+    background: #ffeaea;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+.comment-btn-custom:hover {
+    color: #0d6efd !important;
+    background: #eaf1ff;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+
+a{
+    text-decoration: none;
+    color:black;
+}

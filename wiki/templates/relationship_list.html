@@ -15,28 +15,32 @@
     <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Back to Profile</a>
     <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
   </div>
- <h2 class='page_title'>Authors</h2>
+ <h2 class='page_title'>{{ title }}</h2>
   <div class="author_list">
 
     <link rel="stylesheet" href="{% static 'wiki/author_list.css' %}">
     <section class="authors_list">
+    {% if people %}
       <ul class="author_list">
-        {% for author in authors %}
-          <section class="author">
-            {% if author.profileImage %}
-              <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
+        {% for person in people %}
+          <li class="author">
+            {% if person.profileImage %}
+              <img class="profile_image" src="{{ person.profileImage }}" alt="Profile Picture">
             {% else %}
               <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
             {% endif %}
-            <p class="list_display_name">{{ author.displayName }}</p>
+            <p class="list_display_name">{{ person.displayName }}</p>
             <section class="view_profile_button">
-              <a href="{% url 'wiki:view_external_profile' author.serial %}">
+              <a href="{% url 'wiki:view_external_profile' person.serial %}">
                 <button class="view_profile" type="submit">View Profile</button>
               </a>
             </section>
-          </section>
+          </li>
         {% endfor %}
       </ul>
+    {% else %}
+        <p>No {{ title|lower }} found.</p>
+    {% endif %}
     </section>
   </div>
 </body>

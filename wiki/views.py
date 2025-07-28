@@ -1,9 +1,10 @@
 import mimetypes
 from django.db.models import Q
+from django.core.paginator import Paginator
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
+from .models import NodeConnectionCredentials, Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
 from .serializers import FollowRequestReadingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
@@ -60,10 +61,10 @@ class RemotePostReceiver(APIView):
 
 @api_view(['GET'])
 def user_wiki_api(request, username):
-    if request.user.username != username or request.user.is_superuser:
-        raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
-
+    if request.user.username != username:
+        return redirect("wiki:login")
+    
     # Followed
     followed_ids = AuthorFollowing.objects.filter(
         follower=current_author
@@ -294,22 +295,91 @@ class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
         username = self.request.user.username
+        if not Author.objects.filter(displayName=username):
+            return redirect("wiki:register")
         
-        #Populate the db with users from other valid nodes
+        #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
-        print("ACTIVE REMOTE NODES:", active_nodes)
+        print("ACTIVE REMOTE NODES:", active_nodes,'\n')
+        remote_authors_lists = []
         for node in active_nodes:
 
             get_remote_entries(node)
             
             normalized_url = node.url.rstrip("/")
-            print(requests.get(normalized_url+"/api/authors/"))
+            try:
+                
+                #get the response from pulling another node's authors
+                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/")
+                
+                #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
+                if node_authors_pull_attempt.status_code == 200:
+                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
+                    
+                    #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
+                    try:
+                        node_authors = requests.get(normalized_url+"/api/authors/").json()
+                    except Exception as e:
+                        raise e
+                    
+                    #add the json list of the authors to the complete list of authors
+                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
+                    
+                print("\n")
+                
+            except Exception as e:
+                raise e
             
-            
-        remote_authors = []
+        all_remote_authors = []
+        for remote_author_list in remote_authors_lists:
+            for author_json in remote_author_list:
+                all_remote_authors.append(author_json)#contains a json of all of the remote authors 
+             
+        for remote_author in all_remote_authors:
+            if remote_author.get("id"):
+                author_id = remote_author.get("id")
+                try:
+                    
+                    if author_exists(author_id):
+                        print("EXISTING AUTHOR FOUND")
+                        existing_author = Author.objects.get(id=author_id)
+                        account_serialized = AuthorSerializer(existing_author, data=remote_author, partial=True)
+                    else:
+                        #SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                        print("NEW AUTHOR FOUND")
+                        account_serialized = AuthorSerializer(data=remote_author)    
+                        
+                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                    if not account_serialized.is_valid():
+                            print("NEW AUTHOR OBJECT STRUCTURE INVALID")
+                            print(account_serialized.errors)
+                            
+               
+                           
+                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                    else:
+                        
+                        if not author_exists(author_id):
+                            print("AUTHOR OBJECT VALIDATED, SAVING TO DB")
+                        else:
+                            print("EXISTING AUTHOR UPDATED, SAVING TO DB")
+                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXIS
+                        profile = account_serialized.save()
+                        profile.is_local=False
+                        profile.save()
+                        print(f"AUTHOR {profile} SAVED TO DATABASE")
         
-        return redirect('wiki:user-wiki', username=username)
-
+                        
+                except Exception as e:
+                    print(e)     
+            
+            
+        
+        try:
+            return redirect('wiki:user-wiki', username=username)
+        except Exception as e:
+            return redirect("wiki:login")
+        
     def form_invalid(self, form):
         username = self.request.POST.get('username')
         password = self.request.POST.get('password')
@@ -477,6 +547,7 @@ def view_local_authors(request):
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
+@login_required 
 @require_GET  
 def view_external_profile(request, author_serial):
     '''Presents a view of a profile other than the one that is currently logged
@@ -502,7 +573,7 @@ def view_external_profile(request, author_serial):
         friends_a = profile_viewing.friend_a.all()if logged_in_author else Author.objects.none()
         friends_b = profile_viewing.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
-
+        is_local =  profile_viewing.is_local
         
         # VISUAL REPRESENTATION TEST
         '''
@@ -584,12 +655,10 @@ def view_external_profile(request, author_serial):
             else entry.content
          )
          rendered_entries.append((entry, rendered)) 
-         print(logged_in_author)
-         print(profile_viewing)
-         print(is_following)
         
         return render(request, "external_profile.html", 
                       {
+                       'is_local': is_local,
                        'author': profile_viewing,
                        'entries': rendered_entries,
                        "followers": followers,
@@ -677,7 +746,7 @@ def unfollow_profile(request, author_serial, following_id):
     except Author.DoesNotExist:
         #print(f"{following_id} is not a valid existing following id")
         return redirect(reverse("wiki:view_local_authors"))
-
+        
     
     try:
         #retrieve the current follow request
@@ -691,6 +760,7 @@ def unfollow_profile(request, author_serial, following_id):
      
     # ID of friendship object or None
     active_friendship_id = current_author.get_friendship_id_with(followed_author)
+    
     
     '''#VISUAL REPRESENTATION TEST
     print("Current Author is:",current_author,followed_author)
@@ -743,14 +813,14 @@ def view_entry_author(request, entry_serial):
 
             
         
-def node_valid(host_and_scheme):
+def node_valid(host, username, password):
     '''checks if the node associated with a given host is valid'''
-    remoteNode = RemoteNode.objects.filter(
-                    Q(url=f"http://{host_and_scheme}") & Q(is_active=True)| 
-                    Q(url=f"https://{host_and_scheme}") & Q(is_active=True)                                                                          
-                    )
-    if remoteNode:
-        return remoteNode
+ 
+    remoteNodes = RemoteNode.objects.all()
+    for remoteNode in remoteNodes:
+        if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.filter(username=username, password=password):
+            return True
+
     return False
         
 
@@ -765,9 +835,7 @@ def follow_profile(request, author_serial):
     
     requesting_account = get_object_or_404(Author, user=current_user)
     requested_account = get_object_or_404(Author, serial=author_serial)
-    print("FOLLOW REQUEST DATA:")
-    print("Follower:", requesting_account)
-    print("Following:", requested_account)
+    
 
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
@@ -797,98 +865,89 @@ def follow_profile(request, author_serial):
 
         )
          # Valid follow requests will lead to an attempted saving of the corresponding respective inbox item
-        if serialized_follow_request.is_valid():
-            
-            #follow_request.status=RequestState.ACCEPTED
-            #print("Follow Request serializer is valid")
-            
-            #remote profiles will automatically send a following
-            if not requested_account.is_local:
-                print("requested isn't local")
-                
-                
-                inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
-                print(f"sending request to {inbox_url}")
-                
-                try:
-                    
-                    remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
-                    requesting = remote_follow_request.requester
-                    requested = remote_follow_request.requested_account
-                    remote_serialized_request = FollowRequestSerializer(remote_follow_request)
-
-                    #attempt to save the follow request
-                    try:
-                        print("act like a successful post  request was made")#for testing with local host 
-                        success = True
-                        '''
-                        follow_request_response = requests.post(
-                        inbox_url,
-                        json=remote_serialized_request.data,  
-                        auth=AUTHTOKEN,
-                        timeout=1
-                        )
-                        '''
-                        if success:#follow_request_response.status_code == 200:
-                            #print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code, f"THE REMOTE FOLLOW REQUEST BEING SAVED IS: {remote_follow_request}, {remote_follow_request.state}")
-                            local_request = remote_follow_request
-                            local_request.set_request_state(RequestState.ACCEPTED)
-                            try:
-                                local_request.save()    
-                            except Exception as e:
-                                raise e
-                            print("remote follow request was saved")
-                            print(f"{requesting} is attempting to follow {requested}")
-                            saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
-                            print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")
-                            
-                            #save the new following
-                            print("TRYING TO SAVE NEW FOLLOWING...")
-                            saved_following_to_remote.save()
-                            print("valid follow request, saved following for remote node.")
-                            print(saved_following_to_remote)
-                            
-                            
-                            
-
-                            #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
-                            print(f"requesting author: {requesting}, requested author: {requested}")
-                            
-                            if requesting.is_following(requested) and requested.is_following(requesting): 
-                                newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)
-                                print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
-                                try:
-                                    newRemoteFriendship.save()
-                                    print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
-                                except Exception as e:
-                                    raise e
-                            
-                            
-                            
-                    except Exception as e:
-                        print(remote_serialized_request.data)
-                        raise e
-                       
-                    
-                    
-                except Exception as e:
-                    raise
-            else:
-                
-                try:
-                    follow_request.save()
-                except Exception as e:
-                        print(e)
-                        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
-
-
-        else:
+        if not serialized_follow_request.is_valid():
             return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
-
+        
+        #remote profiles will automatically send a following
+        if not requested_account.is_local:
+            print("requested isn't local")
+                
+            inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
+            print(f"sending request to {inbox_url}")
+            print(serialized_follow_request.data)
+                
+            try:
+                remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                requesting = remote_follow_request.requester
+                requested = remote_follow_request.requested_account
+                remote_serialized_request = FollowRequestSerializer(remote_follow_request)
+                # attempt to save the follow request
+                try:
+                    
+                    # try to push the follow request to the remote inbox to send them a follow request, then automatically follow them if succeeds
+                    try:
+                            follow_request_response = requests.post(
+                            inbox_url,
+                            json=remote_serialized_request.data,  
+                            auth=AUTHTOKEN,
+                            timeout=1
+                            )
+                    except Exception as e:
+                        print(e)
+                        
+                    if len(follow_request_response.content) < 200:
+                        print(f"RESPONSE: {follow_request_response.content}")
+                    
+                    
+                    
+                    # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
+                    # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
+                    if follow_request_response.status_code == 200:
+                        local_request = remote_follow_request
+                        local_request.set_request_state(RequestState.ACCEPTED)
+                        try:
+                            local_request.save()    
+                        except Exception as e:
+                            raise e
+                        
+                        print("remote follow request was saved")
+                        print(f"{requesting} is attempting to follow {requested}")
+                        saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
+                        print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")  
+                        #save the new following
+                        print("TRYING TO SAVE NEW FOLLOWING...")
+                        saved_following_to_remote.save()
+                        print("valid follow request, saved following for remote node.")
+                        #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
+                        print(f"requesting author: {requesting}, requested author: {requested}")   
+                        if requesting.is_following(requested) and requested.is_following(requesting): 
+                            newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)   
+                            print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
+                            try:
+                                newRemoteFriendship.save()
+                                print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
+                            except Exception as e:
+                                 raise e
+      
+                except Exception as e:
+                    raise e
+                       
+            except Exception as e:
+                raise e  
+                      
     except Exception as e:
-                return HttpResponseServerError(f"Failed to save follow request: {e}")
-       
-    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+        print(f"Failed to save follow request: {e}")
+    try:
+        follow_request.save()        
+        print("REMOTE REQUEST FAILED, YOU MAY STILL BE FOLLOWING THIS AUTHOR ON THEIR NODE, SWITCHING TO LOCAL FOLLOW REQUEST")
+        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))       
+    except Exception as e:
+        print(e)
+        
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))                
+    
+        
+    
         
 @api_view(['GET']) 
 def get_profile_api(request, username):
@@ -955,9 +1014,7 @@ def process_follow_request(request, author_serial, request_id):
     
         try:
             #set the following accoun, and store whether they are local or not
-            
             follower = follow_request.requester
-            new_follower_local = follower.is_local
             followed_account_remote = follow_request.requested_account.is_local == False
             print("succeeded in setting follower and followed account")
             print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
@@ -967,7 +1024,7 @@ def process_follow_request(request, author_serial, request_id):
         #set the follow request state to accepted (only if the requested author is isn't remote, otherwise it will be accepted by default so the state is already accepted)
         #followings are also only newly made when we don't have any type of account making a follow request to a remote account, otherwise the normal flow of logic applies
         #if a remote account follows a local account, everything should work as normal
-        if not (followed_account_remote): # -> NOT (any type of account FOLLOWING remote account)
+        if not (followed_account_remote): # -> NOT (remote account getting followed)
             
             #create a following from requester to requested (for local author object, because remote author objects will already have an automatic following once requested)
             follow_request.set_request_state(RequestState.ACCEPTED)
@@ -1010,7 +1067,7 @@ def process_follow_request(request, author_serial, request_id):
                 #set the follow  request state to requested
                 follow_request.set_request_state(RequestState.REQUESTING)
         
-                #create a following from requester to requested
+                #delete the new following
                 new_following.delete()
                 
                 #print the exception
@@ -1030,7 +1087,6 @@ def process_follow_request(request, author_serial, request_id):
         
          #Reject the follow request and delete it 
          follow_request.set_request_state(RequestState.REJECTED)
-         
          follow_request.delete()
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
@@ -1212,6 +1268,8 @@ def user_inbox_api(request, author_serial):
         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
+
+
     print("AUTHENTICATION COMPLETE.")
     print(f"{username} may now access the node.")
     
@@ -1237,9 +1295,13 @@ def user_inbox_api(request, author_serial):
    
         
     #sends an inbox object to a specific author
-    elif request.method =="POST":
-        
-        #################################TEST#################################### 
+    elif request.method =="POST": 
+        print("Processing a POST request to the inbox")
+        is_local = request.get_host() == requested_author.host
+        if is_local:
+            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
+            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
         type = request.data.get("type")
@@ -1577,12 +1639,7 @@ def user_inbox_api(request, author_serial):
         
         else:
             return Response({f"FAILED TO SAVE INBOX ITEM":f"{newItemSerializer.errors}"} ,status=status.HTTP_400_BAD_REQUEST)
-        
-        
-       
-        
-        
-        
+                
         
         
         
@@ -1911,7 +1968,62 @@ def get_local_follow_requests(request, author_serial):
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
     
+
+def friends_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    friendships = AuthorFriend.objects.filter(
+        Q(friending=author) | Q(friended=author),
+        is_deleted=False
+    )
+
+    friends = []
+    for friendship in friendships:
+        if friendship.friending == author:
+            friends.append(friendship.friended)
+        else:
+
+            friends.append(friendship.friending)
+    return render(request, "relationship_list.html", {
+        "title": "Friends",
+        "people": friends,
+    })
+
+def followers_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    follower_relationships = AuthorFollowing.objects.filter(
+        following=author,
+        is_deleted=False
+    )
+
+    followers = []
+    for relationship in follower_relationships:
+        follower = relationship.follower
+        followers.append(follower)
+
+    return render(request, "relationship_list.html", {
+        "title": "Followers",
+        "people": followers,
+    })
+
+def following_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    # Get all people this author is following
+    following_relationships = AuthorFollowing.objects.filter(
+        follower=author,
+        is_deleted=False
+    )
     
+    following = []
+    for relationship in following_relationships:
+        followed_author = relationship.following
+        following.append(followed_author)
+
+    return render(request, "relationship_list.html", {
+        "title": "Following",
+        "people": following,
+    })
 
 
 def profile_view(request, username):
@@ -2018,16 +2130,18 @@ def create_entry(request):
         text_content = request.POST.get('content', '').strip()
         content_type_input = request.POST.get('contentType', '').strip()
         description = request.POST.get('description', '').strip()
-        image = request.FILES.get('image')
         visibility = request.POST.get('visibility')
         use_markdown = request.POST.get('use_markdown') == 'on'
         content_type = "text/markdown" if use_markdown else "text/plain"
+        image = request.FILES.get('image')
 
 
         if not title:
             return HttpResponse("Title is required.")
 
-
+        if image and text_content:
+            return HttpResponse("Please provide either an image or text content, not both.")
+        
         author = get_object_or_404(Author, user=request.user)
 
         # Determine content type
@@ -2114,24 +2228,33 @@ def edit_entry(request, entry_serial):
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
-        image = request.FILES.get('image')
+        content_type = request.POST.get('contentType')
         visibility = request.POST.get('visibility')
+        image = request.FILES.get('image')
         if visibility in dict(Entry.VISIBILITY_CHOICES):
             entry.visibility = visibility
         if (title and content) or (title and image):
             entry.title = title
-            if content:
-                entry.content = content
             if image:
-                entry.image = image
-            if request.POST.get('remove_image'):
-               entry.image.delete(save=False)
-               entry.image = None
+                image_data = image.read()            
+                encoded = base64.b64encode(image_data).decode('utf-8')
+                if image.content_type == 'image/png':
+                    entry.contentType = 'image/png;base64'
+                elif image.content_type == 'image/jpeg':
+                    entry.contentType = 'image/jpeg;base64'
+                else:
+                    entry.contentType = 'application/base64'
+                entry.content = encoded
+            elif content:
+                entry.content = content
+                entry.contentType = content_type
+
             entry.save()
             #print(entry.serial)
             return redirect('wiki:entry_detail', entry_serial=entry.serial)
         else:
-            return HttpResponse("Title and content required.")
+            return HttpResponse("Either text content or an image is required.")
+        
         
     return render(request, 'edit_entry.html', {'entry': entry})
 
@@ -2172,6 +2295,65 @@ def entry_detail_api(request, entry_serial, author_serial):
             }, status=status.HTTP_403_FORBIDDEN)
             
         elif entry.visibility=="UNLISTED" and not current_author.is_following(author_in_request):
+            return Response({
+                "error": "You are not following this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+   
+
+    if request.method == 'GET':
+        serializer = EntrySerializer(entry, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+    elif request.method == 'PUT':
+        serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
+        if serializer and serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        if current_author!=entry.author:
+            return Response({
+                "error": "You are not authorized to delete this entry."
+            })
+        try:
+            entry.delete()
+            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
+            deleted_entry.visibility='DELETED'
+            serializer = EntrySerializer(deleted_entry, context={"request": request})
+            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@login_required
+@api_view(['GET'])
+def entry_detail_fqid_api(request, entry_fqid):
+    """
+    GET /api/authors/<author_serial>/entries/<entry_serial>/ — View a single entry
+    
+    """
+
+    decoded_entry_fqid = urllib.parse.unquote(entry_fqid)
+    entry = get_object_or_404(Entry, id=decoded_entry_fqid)
+    current_author = get_object_or_404(Author, user=request.user)
+    author_id = entry.author.id
+    entry_author=get_object_or_404(Author, id=author_id)
+    
+   #checks if the current author isn't the one getting the entry information, if so there will be visibility restrictions
+    if current_author == entry_author:
+        pass
+    else:
+        if entry.visibility == "PUBLIC":
+            pass
+        
+        elif entry.visibility=="FRIENDS" and not current_author.is_friends_with(entry_author):
+            return Response({
+                "error": "You are not friends with this author, you cannot view this entry"
+            }, status=status.HTTP_403_FORBIDDEN)
+            
+        elif entry.visibility=="UNLISTED" and not current_author.is_following(entry_author):
             return Response({
                 "error": "You are not following this author, you cannot view this entry"
             }, status=status.HTTP_403_FORBIDDEN)
@@ -2987,12 +3169,54 @@ def get_author_comments_api(request, author_serial):
 
 
 @api_view(['GET'])
-def get_entry_image_api(request, entry_serial):
-    entry = get_object_or_404(Entry, serial=entry_serial)
+def get_entry_image_api(request, entry_fqid):
+    pass
+#     entry_fqid = unquote(entry_fqid) 
+#     entry = None
+#     try:
+#         entry = Entry.objects.get(id=entry_fqid)
+#     except Entry.DoesNotExist:
+#         pass
+    
+#     # REMOTE
+#     if entry is None:
+#         try:
+#             response = requests.get(entry_fqid, headers={"Accept": "application/json"})
+#             if response.status_code != 200:
+#                 return HttpResponse("Entry not found or remote entry does not exist.", status=404)
+            
+#             try:
+#                 data = response.json()
+#             except Exception:
+#                 return HttpResponse(f"Remote did not return valid JSON: {response.text}", status=502)
+#             content_type = data.get("contentType", "")
+#             content = data.get("content", "")
+#             if not content_type.startswith('image/'):
+#                 return HttpResponse("Content is not an image.", status=400)
+#             image_data = base64.b64decode(content)
+#             return HttpResponse(image_data, content_type=content_type)
+#         except Exception as e:
+#             print("Response content:", response.text)
+#             print("Content-Type:", response.headers.get("Content-Type"))
+#             return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
+        
+#     # LOCAL
+#     if not entry.contentType.startswith('image/'):
+#         return HttpResponse("Content is not an image.", status=400)
+#     try:
+#         image_data = base64.b64decode(entry.content)
+#         return HttpResponse(image_data, content_type=entry.contentType)
+#     except Exception as e:
+#         return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
 
+@api_view(['GET'])
+def get_author_image_api(request, author_serial, entry_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     if not entry.content:
         return HttpResponse("No image available for this entry.", status=404)
-
+        
+    content_type = entry.contentType.split(";")[0]
     # Determine MIME type from contentType
     if entry.contentType.startswith('image/png'):
         mime_type = 'image/png'
@@ -3009,20 +3233,6 @@ def get_entry_image_api(request, entry_serial):
 
     # Return as binary response
     return HttpResponse(image_data, content_type=mime_type)
-    
-
-@api_view(['GET'])
-def get_author_image_api(request, author_serial, entry_serial):
-    author = get_object_or_404(Author, serial=author_serial)
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
-    if not entry.image:
-        return HttpResponse("No image available for this entry.", status=404)
-    image_path = entry.image.path
-    mime_type, _ = mimetypes.guess_type(image_path)
-    with open(image_path, 'rb') as image_file:
-        image_data = image_file.read()
-        response = HttpResponse(image_data, content_type=mime_type)
-        return response
     
 
 @api_view(['GET'])
