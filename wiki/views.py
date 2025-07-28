@@ -305,9 +305,7 @@ class MyLoginView(LoginView):
         print("ACTIVE REMOTE NODES:", active_nodes,'\n')
         remote_authors_lists = []
         for node in active_nodes:
-
-            get_remote_entries(node)
-            
+                        
             normalized_url = node.url.rstrip("/")
             try:
                 
@@ -463,7 +461,6 @@ def get_authors(request):
     if not (username and password):
         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-    print(request.get_host())
     
     if not node_valid(request.get_host(), username, password):
         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -887,12 +884,11 @@ def node_valid(host, username, password):
     #the credentials in the BASIC auth token match our current Node Connection Credentials
     remoteNodes = RemoteNode.objects.filter(is_active=True)
     print(f"ACTIVE NODES: {remoteNodes}")
-    
-    if "127.0.0.1" in host or "localhost" in host or "::1" in host:
-        print("ALLOWING LOCAL HOST...")
-        return True
+
+   
     for remoteNode in remoteNodes:
-        if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
+        
+        if str(host) == str(urlparse(remoteNode.url).netloc) and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
             return True #access if granted to the node
     print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
     return False
