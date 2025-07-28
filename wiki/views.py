@@ -294,10 +294,12 @@ def register_api(request):
 class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
-        username = self.request.user.username
-        if not Author.objects.filter(displayName=username):
+        user=form.get_user()
+        author = Author.objects.filter(user=user).first()
+        if not author:
             return redirect("wiki:register")
-        
+        else:
+            username = author.displayName
         #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
         print("ACTIVE REMOTE NODES:", active_nodes,'\n')
@@ -318,8 +320,8 @@ class MyLoginView(LoginView):
                     
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
-                        node_authors = requests.get(normalized_url+"/api/authors/", auth=AUTHTOKEN).json()
-                    except Exception as e:
+                        node_authors = node_authors_pull_attempt.json()
+                    except Exception as e:second-test-node-d9e237bba110.herokuapp.com
                         raise e
                     
                     #add the json list of the authors to the complete list of authors
@@ -885,6 +887,10 @@ def node_valid(host, username, password):
     #the credentials in the BASIC auth token match our current Node Connection Credentials
     remoteNodes = RemoteNode.objects.filter(is_active=True)
     print(f"ACTIVE NODES: {remoteNodes}")
+    
+    if "127.0.0.1" in host or "localhost" in host or "::1" in host:
+        print("ALLOWING LOCAL HOST...")
+        return True
     for remoteNode in remoteNodes:
         if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.objects.filter(username=username, password=password).exists():
             return True #access if granted to the node
@@ -958,7 +964,7 @@ def follow_profile(request, author_serial):
                             inbox_url,
                             json=remote_serialized_request.data,  
                             auth=AUTHTOKEN,
-                            timeout=1
+                            timeout=2
                             )
                     except Exception as e:
                         print(e)
@@ -2243,6 +2249,7 @@ def create_entry(request):
         
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
+            print("sending entry to remote followers")
             send_entry_to_remote_followers(entry, request)
         
         return redirect('wiki:entry_detail', entry_serial=entry.serial)
@@ -2339,7 +2346,7 @@ def delete_entry(request, entry_serial):
     
     return render(request, 'confirm_delete.html', {'entry': entry})
 
-@login_required
+
 @api_view(['GET', 'PUT', 'DELETE'])
 def entry_detail_api(request, entry_serial, author_serial):
     """
@@ -3739,6 +3746,8 @@ def get_author_entries_api(request, author_serial):
     - size: items per page (default: 10, max: 50)
     """
     from django.core.paginator import Paginator
+    
+    
     
     # Get the author
     try:

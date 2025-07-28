@@ -146,8 +146,8 @@ def send_entry_to_remote_followers(entry, request=None):
     # Find all remote followers (not local)
     remote_followers = AuthorFollowing.objects.filter(
         following=entry.author
-    ).exclude(follower__host="http://127.0.0.1:8000/")
-
+    ).exclude(follower__host="http://127.0.0.1:8000/api")
+    print(f"remote followers: {remote_followers}")
     for rel in remote_followers:
         follower = rel.follower
         inbox_url = follower.id.rstrip('/') + '/inbox/'
