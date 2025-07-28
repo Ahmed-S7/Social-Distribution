@@ -321,7 +321,7 @@ class MyLoginView(LoginView):
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
                         node_authors = node_authors_pull_attempt.json()
-                    except Exception as e:second-test-node-d9e237bba110.herokuapp.com
+                    except Exception as e:
                         raise e
                     
                     #add the json list of the authors to the complete list of authors
