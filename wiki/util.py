@@ -253,3 +253,120 @@ def send_all_entries_to_follower(local_author, remote_follower, request=None):
                 print(f"Failed to send entry to {inbox_url}: {response.status_code} {response.text}")
         except Exception as e:
             print(f"Exception sending entry to {inbox_url}: {e}")
+
+
+def get_remote_entries(node):
+    """
+    Fetch and store all entries from a specific remote node.
+    
+    Args:
+        node: RemoteNode object containing the node's URL and credentials
+    
+    Returns:
+        tuple: (entries_created, entries_updated)
+    """
+    from .models import Author, Entry
+    
+    entries_created = 0
+    entries_updated = 0
+    
+    try:
+        normalized_url = node.url.rstrip("/")
+        print(f"Fetching from node: {normalized_url}")
+        
+        # Fetch authors from remote node
+        authors_response = requests.get(
+            f"{normalized_url}/api/authors/",
+            auth=AUTHTOKEN,
+            timeout=10
+        )
+        
+        if authors_response.status_code == 200:
+            authors_data = authors_response.json()
+            print(f"Found {len(authors_data.get('authors', []))} authors from {normalized_url}")
+            
+            # Process each author and their entries
+            for author_data in authors_data.get('authors', []):
+                # Create or update the remote author
+                remote_author, created = Author.objects.get_or_create(
+                    id=author_data['id'],
+                    defaults={
+                        'displayName': author_data.get('displayName', ''),
+                        'host': author_data.get('host', ''),
+                        'web': author_data.get('web', ''),
+                        'github': author_data.get('github', ''),
+                        'profileImage': author_data.get('profileImage', ''),
+                        'is_local': False,
+                    }
+                )
+                
+                if not created:
+                    # Update existing author with latest data
+                    remote_author.displayName = author_data.get('displayName', remote_author.displayName)
+                    remote_author.host = author_data.get('host', remote_author.host)
+                    remote_author.web = author_data.get('web', remote_author.web)
+                    remote_author.github = author_data.get('github', remote_author.github)
+                    remote_author.profileImage = author_data.get('profileImage', remote_author.profileImage)
+                    remote_author.save()
+                
+                # Fetch entries for this author
+                author_serial = remote_author.serial
+                entries_response = requests.get(
+                    f"{normalized_url}/api/authors/{author_serial}/entries/",
+                    auth=AUTHTOKEN,
+                    timeout=10
+                )
+                
+                if entries_response.status_code == 200:
+                    entries_data = entries_response.json()
+                    print(f"Found {len(entries_data.get('entries', []))} entries for author {author_serial}")
+                    
+                    # Process each entry
+                    for entry_data in entries_data.get('entries', []):
+                        # Check if entry already exists by origin_url
+                        existing_entry = Entry.objects.filter(
+                            origin_url=entry_data.get('id')
+                        ).first()
+                        
+                        if not existing_entry:
+                            # Create new entry
+                            try:
+                                new_entry = Entry.objects.create(
+                                    author=remote_author,
+                                    title=entry_data.get('title', ''),
+                                    content=entry_data.get('content', ''),
+                                    contentType=entry_data.get('contentType', 'text/plain'),
+                                    description=entry_data.get('description', ''),
+                                    visibility=entry_data.get('visibility', 'PUBLIC'),
+                                    origin_url=entry_data.get('id'),
+                                    web=entry_data.get('web', ''),
+                                    is_local=False,
+                                )
+                                print(f"Created entry: {new_entry.title}")
+                                entries_created += 1
+                            except Exception as e:
+                                print(f"Error creating entry: {e}")
+                        else:
+                            # Update existing entry
+                            existing_entry.title = entry_data.get('title', existing_entry.title)
+                            existing_entry.content = entry_data.get('content', existing_entry.content)
+                            existing_entry.contentType = entry_data.get('contentType', existing_entry.contentType)
+                            existing_entry.description = entry_data.get('description', existing_entry.description)
+                            existing_entry.visibility = entry_data.get('visibility', existing_entry.visibility)
+                            existing_entry.web = entry_data.get('web', existing_entry.web)
+                            existing_entry.save()
+                            print(f"Updated entry: {existing_entry.title}")
+                            entries_updated += 1
+                else:
+                    print(f"Failed to fetch entries for author {author_serial}: {entries_response.status_code}")
+                    
+        else:
+            print(f"Failed to fetch authors from {normalized_url}: {authors_response.status_code}")
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Network error fetching from {node.url}: {e}")
+    except Exception as e:
+        print(f"Error processing node {node.url}: {e}")
+    
+    print(f"Node {node.url}: {entries_created} entries created, {entries_updated} entries updated")
+    return entries_created, entries_updated

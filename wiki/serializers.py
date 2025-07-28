@@ -228,8 +228,8 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id":  f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}",
-            "web": f"{host}/s25-project-white/entries/{obj.entry.serial}",
+            "id": f"{host}/api/authors/{author_id}/comments/{comment_id}/likes",
+            "web": f"{host}/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
             "count": likes.count(),
