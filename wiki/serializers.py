@@ -60,7 +60,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         displayName = validated_data.get("id")
-        user = User.objects.create(username=displayName, password="whitepass")
+        user = User.objects.create(username=displayName, password="uniquepass")
 
         # Now create the Author and link the new user
         author = Author.objects.create(user=user, **validated_data)
@@ -228,8 +228,8 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id":  f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}",
-            "web": f"{host}/s25-project-white/entries/{obj.entry.serial}",
+            "id": f"{host}/api/authors/{author_id}/comments/{comment_id}/likes",
+            "web": f"{host}/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
             "count": likes.count(),
@@ -268,13 +268,11 @@ class EntrySerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     published = serializers.DateTimeField(source='created_at')
     visibility = serializers.ChoiceField(required=True, choices=VISIBILITY_CHOICES)
-    is_local = serializers.SerializerMethodField(read_only=True)
-    origin_url = serializers.CharField(read_only=True)
     class Meta:
         model = Entry
         fields = [
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
-            'author', 'comments', 'likes', 'published', 'visibility', 'is_local', 'origin_url' 
+            'author', 'comments', 'likes', 'published', 'visibility'
         ]
     def get_id(self, obj):
         request = self.context.get('request')
