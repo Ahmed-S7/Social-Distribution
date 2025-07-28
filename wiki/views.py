@@ -2451,7 +2451,7 @@ def entry_detail_fqid_api(request, entry_fqid):
             })
         try:
             entry.delete()
-            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
+            deleted_entry = Entry._base_manager.get(serial=entry.serial, is_deleted=True)
             deleted_entry.visibility='DELETED'
             serializer = EntrySerializer(deleted_entry, context={"request": request})
             return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
