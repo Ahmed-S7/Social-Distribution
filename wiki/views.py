@@ -294,7 +294,7 @@ def register_api(request):
 class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
-        user=form.get_user()
+        user = form.get_user()
         author = Author.objects.filter(user=user).first()
         if not author:
             return redirect("wiki:register")
@@ -326,6 +326,7 @@ class MyLoginView(LoginView):
                     remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
                     
                 print("\n")
+                get_remote_entries(node)
                 
             except Exception as e:
                 raise e
