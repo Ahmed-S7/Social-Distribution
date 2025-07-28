@@ -130,7 +130,6 @@ def get_serial(FOREIGN_AUTHOR_FQID):
 
 def get_remote_followers(author):
     """Return a list of FQIDs of remote authors following the given local author"""
-    from .models import AuthorFollowing
     # filter followers whose host is not local
     return [
         follower.follower.id
@@ -157,6 +156,9 @@ def send_entry_to_remote_followers(entry, request=None):
     ).exclude(
         Q(friending__is_local=True) | Q(friended__is_local=True)
     ) 
+    if not remote_followers.exists() and not remote_friends.exists():
+        print(f"No remote followers or friends to send entry to.")
+        return
     # Determine who should receive this entry based on visibility
     recipients = set()
     
@@ -209,11 +211,6 @@ def send_entry_to_remote_followers(entry, request=None):
         except Exception as e:
             print(f"Exception sending entry {entry.id} to {inbox_url}: {str(e)}")
     print(f"Sent entry {entry.id} to {len(recipients)} remote recipients")
-
-
-    from .models import AuthorFollowing
-    from .serializers import EntrySerializer
-    from .util import AUTHTOKEN
 
     # Find all remote followe objects(not local)
     follower_relations = AuthorFollowing.objects.filter(
