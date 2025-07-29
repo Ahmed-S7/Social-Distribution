@@ -255,8 +255,8 @@ def send_comment_to_entry_author(comment, request=None):
     
     try:
         # Construct inbox url for the entry author
-        inbox_url = comment.entry.author.id.rstrip('/') + '/inbox/'
-        print(f"DEBUG: Entry author id: {comment.entry.author.id}")
+        inbox_url = entry_author.serial.rstrip('/') + '/inbox/'
+        print(f"DEBUG: Entry author id: {entry_author.serial}")
         print(f"DEBUG: Entry author id: {entry_author.id}")
         print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
