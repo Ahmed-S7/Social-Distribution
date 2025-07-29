@@ -195,10 +195,7 @@ def send_entry_to_remote_followers(entry, request=None):
                 headers={"Content-Type": "application/json"},
               
             ) 
-        
-            
-        
-
+    
             if response.status_code in [200, 201]:
                 print(f"Successfully sent entry {entry.id} to {inbox_url}")
             else:
