@@ -2312,6 +2312,9 @@ def edit_entry(request, entry_serial):
 
             entry.save()
             #post to remote followers/friends
+            from .util import send_entry_to_remote_followers
+            print("sending entry to remote followers")
+            send_entry_to_remote_followers(entry, request)
             
             #print(entry.serial)
             return redirect('wiki:entry_detail', author_serial=author_serial, entry_serial=entry.serial)
