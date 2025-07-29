@@ -243,16 +243,16 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
-        return str(obj.entry.id)
-        # # Use the entry author's host instead of the current request's host
-        # # This ensures the entry URL points to the correct server where the entry resides
-        # entry_author_host = obj.entry.author.host.rstrip('/')
+        # If the entry is remote, use its true FQID
+        if not obj.entry.is_local:
+            return str(obj.entry.id)
         
-        # # Remove the /api suffix from the host if it exists to avoid duplication
-        # if entry_author_host.endswith('/api'):
-        #     entry_author_host = entry_author_host[:-4]  # Remove '/api'
-        
-        # return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
+        # Otherwise construct local URL
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        if entry_author_host.endswith('/api'):
+            entry_author_host = entry_author_host[:-4]
+
+        return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [
