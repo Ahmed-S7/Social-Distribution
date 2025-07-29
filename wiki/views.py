@@ -1665,7 +1665,7 @@ def user_inbox_api(request, author_serial):
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
         # Use author.inboxitems to retrieve all of an author's inbox items
-        print(requested_author)
+        print("this is the requested other:" + requested_author)
         newItemSerializer = InboxItemSerializer(data= {
             "type":type,
             "author":requested_author.id,
