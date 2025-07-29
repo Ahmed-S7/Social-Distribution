@@ -1486,27 +1486,30 @@ def user_inbox_api(request, author_serial):
             
             # CHECK FOR THE EXISTENCE OF THE AUTHOR
             if not author_exists(authorFQID):
-                
+                print(f"DEBUG: Author {authorFQID} does not exist, creating new author object")
                 # SERIALIZE AND SAVE IF THEIR DATA IS VALID
                 requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
-                
+                print(f"DEBUG: Serialized author data: {requesting_account_serialized.data}")
                 # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
                     return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 # IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
+                print(f"DEBUG: Saved new author object: {requester}")
                 requester.is_local=False
                 requester.save()
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
                 requester = Author.objects.get(id=authorFQID)
+                print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
             if '/entries/' in objectFQID and '/comments/' in objectFQID:
                 # This is a comment like
                 try:
+                    print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
                     # Parse the comment FQID to extract entry and comment info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
                     parts = objectFQID.split('/')
@@ -1544,15 +1547,16 @@ def user_inbox_api(request, author_serial):
             elif '/entries/' in objectFQID:
                 # This is an entry like
                 try:
+                    print(f"DEBUG: Processing entry like for objectFQID: {objectFQID}")
                     # Parse the entry FQID to extract entry info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-3]  # author serial (third from end)
-                    entry_serial = parts[-1]  # entry serial (last)
+                    entry_author_serial = parts[-4]  # author serial (third from end)
+                    entry_serial = parts[-2]  # entry serial (last)
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
-                    
+                    print(f"DEBUG: Found entry with serial {entry_serial}: {entry}")
                     # Check if like already exists
                     if Like.objects.filter(entry=entry, user=requester, is_deleted=False).exists():
                         return Response({"failed to save Inbox item": "Like already exists"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1563,12 +1567,12 @@ def user_inbox_api(request, author_serial):
                         user=requester,
                         is_local=False
                     )
-                    
+                    print(f"DEBUG: Created entry like: {entry_like}")
                     # Serialize the like for the inbox
                     like_serializer = LikeSummarySerializer(entry_like, context={'request': request})
                     body = like_serializer.data
                     type = "like"
-                    
+                    print(f"DEBUG: Serialized like for inbox: {body}")
                 except Entry.DoesNotExist:
                     return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
                 except Exception as e:

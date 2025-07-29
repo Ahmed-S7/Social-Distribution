@@ -188,13 +188,7 @@ class Author(BaseModel):
       
     def __str__(self):
         return self.displayName
-    
-    def save(self, *args, **kwargs):
-        if not self.id:
-            self.id = self.id.rstrip('/') + '/'
-        if not self.web:
-            self.web = self.web.rstrip('/') + '/'
-        return super().save(*args, **kwargs)
+
     
 @receiver(post_save, sender=User)
 def update_author_name(sender, instance, **kwargs):
@@ -292,7 +286,7 @@ class Like(BaseModel):
 class Comment(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
-    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, null=True, blank=True, related_name='comments')
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(default=get_mst_time)
