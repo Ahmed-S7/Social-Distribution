@@ -1532,7 +1532,7 @@ def user_inbox_api(request, author_serial):
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
+                    type = "like"
                     
                 except Comment.DoesNotExist:
                     return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
