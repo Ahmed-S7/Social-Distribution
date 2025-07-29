@@ -260,7 +260,7 @@ def send_comment_to_entry_author(comment, request=None):
         host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
         
         # Construct inbox url for the entry author using the correct serial
-        inbox_url = f"{host}/api/authors/{entry_author.serial}/inbox/"
+        inbox_url = f"{host}/api/authors/{comment.entry.author.serial}/inbox/"
         print(f"DEBUG: Entry author id: {entry_author.id}")
         print(f"DEBUG: Entry author serial: {entry_author.serial}")
         print(f"DEBUG: Extracted host: {host}")
