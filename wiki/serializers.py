@@ -228,7 +228,7 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id": f"{host}/api/authors/{author_id}/comments/{comment_id}/likes",
+            "id": f"{host}/api/authors/{author_id}/comments/{obj.id}/likes",
             "web": f"{host}/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
@@ -243,10 +243,18 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
+        # If the entry is remote, use its true FQID
+        if not obj.entry.is_local:
+            print(f"DEBUG: Remote entry URL: {obj.entry.serial}")
+            print(f"DEBUG: Remote entry ID: {obj.entry.id}")
+            return str(obj.entry.id)
+        
+        # Otherwise construct local URL
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        if entry_author_host.endswith('/api'):
+            entry_author_host = entry_author_host[:-4]
 
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+        return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [

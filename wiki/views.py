@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, get_remote_entries
+from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -176,32 +176,8 @@ def like_entry(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=author)
 
     if created:
-        # Check if the entry is remote (not local) and send like to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"},
-                    auth=AUTHTOKEN,
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
@@ -295,7 +271,7 @@ def register_api(request):
 class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
-        user=form.get_user()
+        user = form.get_user()
         author = Author.objects.filter(user=user).first()
         if not author:
             return redirect("wiki:register")
@@ -442,32 +418,33 @@ def get_authors(request):
                 ]
             }
     """
-    auth_header = request.META.get('HTTP_AUTHORIZATION')
-
-    #need to have auth in request to connect with us
-    if not auth_header:
-        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
-    
-    
-    #If the auth header has basic auth token in it
-    if not auth_header.startswith("Basic"):
-        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-    
-    #Gets the user and pass using basic auth
-    username, password = decoded_auth_token(auth_header)
-    
-    #make sure the auth is properly formatted
-    if not (username and password):
-        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
-        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-    
-    if not node_valid(username, password):
-        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
-
-    print("AUTHENTICATION COMPLETE.")
-    print(f"{username} may now access the node.")
+    # Authentication disabled for browser testing
+    # auth_header = request.META.get('HTTP_AUTHORIZATION')
+    # 
+    # #need to have auth in request to connect with us
+    # if not auth_header:
+    #     return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    # print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
+    # 
+    # 
+    # #If the auth header has basic auth token in it
+    # if not auth_header.startswith("Basic"):
+    #     return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    # print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    # 
+    # #Gets the user and pass using basic auth
+    # username, password = decoded_auth_token(auth_header)
+    # 
+    # #make sure the auth is properly formatted
+    # if not (username and password):
+    #     print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+    #     return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+    # 
+    # if not node_valid(username, password):
+    #     return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+    # 
+    # print("AUTHENTICATION COMPLETE.")
+    # print(f"{username} may now access the node.")
     authors = Author.objects.all()
     
      # Get pagination parameters
@@ -1379,6 +1356,8 @@ def user_inbox_api(request, author_serial):
         # Handle remote entry
         if type.lower() == "entry":
             entry_data = request.data
+            entry_id = entry_data.get("id")
+            entry_serial = entry_id.rstrip('/').split('/')[-1]
             if not entry_data:
                 return Response({"error": "No entry data provided"}, status=status.HTTP_400_BAD_REQUEST)
             origin_url = entry_data.get("id")
@@ -1402,6 +1381,8 @@ def user_inbox_api(request, author_serial):
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
                 defaults={
+                    "id": entry_id,
+                    "serial": entry_serial,
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
@@ -1488,9 +1469,12 @@ def user_inbox_api(request, author_serial):
         elif type == "like" or type == "Like":
             
             try:
-                body = request.data
-                authorFQID = request.data['author']['id']
-                objectFQID = request.data['object']
+                # like = request.data
+                # authorFQID = like['author']['id']
+                objectFQID = request.data.get('object')
+                authorFQID = request.data.get('author', {}).get('id')
+                print(f"DEBUG: Extracted authorFQID: {authorFQID}")
+                print(f"DEBUG: Extracted objectFQID: {objectFQID}")
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch like object, improperly formatted like"}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -1502,27 +1486,30 @@ def user_inbox_api(request, author_serial):
             
             # CHECK FOR THE EXISTENCE OF THE AUTHOR
             if not author_exists(authorFQID):
-                
+                print(f"DEBUG: Author {authorFQID} does not exist, creating new author object")
                 # SERIALIZE AND SAVE IF THEIR DATA IS VALID
                 requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
-                
+                print(f"DEBUG: Serialized author data: {requesting_account_serialized.data}")
                 # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
                     return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 # IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
+                print(f"DEBUG: Saved new author object: {requester}")
                 requester.is_local=False
                 requester.save()
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
                 requester = Author.objects.get(id=authorFQID)
+                print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
             if '/entries/' in objectFQID and '/comments/' in objectFQID:
                 # This is a comment like
                 try:
+                    print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
                     # Parse the comment FQID to extract entry and comment info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
                     parts = objectFQID.split('/')
@@ -1550,7 +1537,7 @@ def user_inbox_api(request, author_serial):
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
+                    type = "like"
                     
                 except Comment.DoesNotExist:
                     return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -1560,15 +1547,16 @@ def user_inbox_api(request, author_serial):
             elif '/entries/' in objectFQID:
                 # This is an entry like
                 try:
+                    print(f"DEBUG: Processing entry like for objectFQID: {objectFQID}")
                     # Parse the entry FQID to extract entry info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-2]  # author serial
-                    entry_serial = parts[-1]  # entry serial
+                    entry_author_serial = parts[-4]  # author serial (third from end)
+                    entry_serial = parts[-2]  # entry serial (last)
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
-                    
+                    print(f"DEBUG: Found entry with serial {entry_serial}: {entry}")
                     # Check if like already exists
                     if Like.objects.filter(entry=entry, user=requester, is_deleted=False).exists():
                         return Response({"failed to save Inbox item": "Like already exists"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1579,12 +1567,12 @@ def user_inbox_api(request, author_serial):
                         user=requester,
                         is_local=False
                     )
-                    
+                    print(f"DEBUG: Created entry like: {entry_like}")
                     # Serialize the like for the inbox
                     like_serializer = LikeSummarySerializer(entry_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
-                    
+                    type = "like"
+                    print(f"DEBUG: Serialized like for inbox: {body}")
                 except Entry.DoesNotExist:
                     return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
                 except Exception as e:
@@ -1601,14 +1589,20 @@ def user_inbox_api(request, author_serial):
         ############## PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
         
         elif type == "comment" or type == "Comment":
+            print(f"DEBUG: Processing comment in inbox")
+            print(f"DEBUG: Request data: {request.data}")
             
             try:
-                body = request.data
-                authorFQID = request.data['author']['id']
+                authorFQID = request.data.get('author', {}).get('id')
                 comment_content = request.data.get('comment', '')
                 contentType = request.data.get('contentType', 'text/plain')
-                entryFQID = request.data.get('entry', '')
+                entryFQID = request.data.get('entry')
+                print(f"DEBUG: Extracted authorFQID: {authorFQID}")
+                print(f"DEBUG: Extracted comment_content: {comment_content}")
+                print(f"DEBUG: Extracted contentType: {contentType}")
+                print(f"DEBUG: Extracted entryFQID: {entryFQID}")
             except Exception as e:
+                print(f"DEBUG: Exception in comment processing: {e}")
                 return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
             
             print("COMMENT REQUEST BODY:", "\n\n\n", request.data, '\n\n\n')
@@ -1638,28 +1632,34 @@ def user_inbox_api(request, author_serial):
             
             # Parse the entry FQID to extract entry info
             # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
+            print(f"DEBUG: Parsing entryFQID: {entryFQID}")
             try:
                 parts = entryFQID.split('/')
-                entry_author_serial = parts[-2]  # author serial
-                entry_serial = parts[-1]  # entry serial
+                print(f"DEBUG: Split parts: {parts}")
+                entry_author_serial = parts[-4]  # author serial (third from end)
+                entry_serial = parts[-2]  # entry serial (last)
+                print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
+                print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
                 # Find the local entry
-                entry = Entry.objects.get(serial=entry_serial)
-                
-                # Create the comment
+                try:
+                    entry = Entry.objects.get(serial=entry_serial)
+                except Entry.DoesNotExist:
+                    entry = None  # Accept that it’s a remote entry
+                print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 comment = Comment.objects.create(
                     entry=entry,
-                    author=requester,  # The comment is by the remote author
+                    author=requester,
                     content=comment_content,
                     contentType=contentType,
                     is_local=False
                 )
-                
+                print(f"DEBUG: Created comment: {comment}")
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
                 body = comment_serializer.data
-                type = "Comment"
-                
+                type = "comment"
+                print(f"DEBUG: Serialized comment for inbox: {body}")
             except Entry.DoesNotExist:
                 return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
@@ -1676,7 +1676,7 @@ def user_inbox_api(request, author_serial):
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
         # Use author.inboxitems to retrieve all of an author's inbox items
-        print(requested_author)
+        print("this is the requested other: " + str(requested_author))
         newItemSerializer = InboxItemSerializer(data= {
             "type":type,
             "author":requested_author.id,
@@ -2484,31 +2484,8 @@ def add_comment(request, entry_serial):
             content=content
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code in [200, 201, 301, 302]:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
     
     return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry_serial)
 
@@ -2522,38 +2499,14 @@ def like_comment(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
 
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}, 
-                    auth=AUTHTOKEN
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
 
 
-    return redirect('wiki:entry_detail', author_serial = comment.entry.author.serial, entry_serial=comment.entry.serial)
+    return redirect('wiki:entry_detail', author_serial=comment.entry.author.serial, entry_serial=comment.entry.serial)
 
 
 
@@ -2640,32 +2593,8 @@ def like_entry_api(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
-        # Check if the entry is remote (not local)
-        if not entry.author.is_local:
-            # Send the like to the remote author's inbox
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
         
         # Return the properly formatted like object
         serializer = LikeSummarySerializer(like, context={'request': request})
@@ -2711,32 +2640,8 @@ def like_comment_api(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
     
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"},
-                    auth=AUTHTOKEN
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
         
         # Return the properly formatted like object
         serializer = CommentLikeSummarySerializer(like, context={'request': request})
@@ -3144,31 +3049,8 @@ def get_author_comments_api(request, author_serial):
             contentType=content_type
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
         
         # Return the properly formatted comment object
         serializer = CommentSummarySerializer(comment, context={'request': request})
