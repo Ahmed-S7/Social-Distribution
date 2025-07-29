@@ -1610,11 +1610,11 @@ def user_inbox_api(request, author_serial):
         elif type == "comment" or type == "Comment":
             
             try:
-                body = request.data
-                authorFQID = request.data['author']['id']
-                comment_content = request.data.get('comment', '')
-                contentType = request.data.get('contentType', 'text/plain')
-                entryFQID = request.data.get('entry', '')
+                body = request.data.get('body', {})
+                authorFQID = body.get('author', {}).get('id')
+                comment_content = body.get('content', '')
+                contentType = body.get('contentType', 'text/plain')
+                entryFQID = body.get('entry', '')
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
             

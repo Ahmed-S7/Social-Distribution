@@ -330,7 +330,8 @@ def send_comment_to_entry_author(comment, request=None):
         # Create payload
         payload = {
             "type": "comment",
-            "body": serialized_comment
+            "body": serialized_comment,
+            
         }
         
         # Send POST request to entry author's inbox
