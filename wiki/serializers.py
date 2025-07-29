@@ -243,10 +243,11 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
-
-        return f"{host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
+        # Use the entry author's host instead of the current request's host
+        # This ensures the entry URL points to the correct server where the entry resides
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        
+        return f"{entry_author_host}/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [
