@@ -1718,7 +1718,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     
     #decode the foreign author's ID
     decodedId = decoded_fqid(FOREIGN_AUTHOR_FQID)
-     
+    
 
     remote_author_object = remote_author_fetched(decodedId)
     
@@ -1789,10 +1789,22 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
                 return Response({"error": f"We were unable to add this follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
         else:
             return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_400_BAD_REQUEST) 
-        
-    
-        
-       
+    if request.method == "DELETE":
+        if current_user != current_author.user:
+                return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            # Find the remote author in your DB (should exist if they were a follower)
+            remote_author = Author.objects.get(id=remote_author_object['id'])
+            # Find the following relationship
+            following = AuthorFollowing.objects.filter(follower=remote_author, following=current_author).first()
+            if not following:
+                return Response({"error": "This author is not a follower."}, status=status.HTTP_404_NOT_FOUND)
+            following.delete()
+            return Response({"success": "Follower removed."}, status=status.HTTP_204_NO_CONTENT)
+        except Author.DoesNotExist:
+            return Response({"error": "Remote author not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Failed to remove follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
            
         
         
