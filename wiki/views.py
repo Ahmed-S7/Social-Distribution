@@ -1640,30 +1640,8 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
                 print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
-                # Try to find the local entry by serial first
-                try:
-                    entry = Entry.objects.get(serial=entry_serial)
-                    print(f"DEBUG: Found entry by serial: {entry_serial}")
-                except Entry.DoesNotExist:
-                    print(f"DEBUG: Entry not found by serial: {entry_serial}")
-                    # If not found by serial, try to find by matching the entryFQID pattern
-                    # Look for entries that have the same author and a similar URL structure
-                    try:
-                        # Try to find the entry by looking for entries with the same author
-                        entry = Entry.objects.filter(
-                            author__serial=entry_author_serial
-                        ).first()
-                        if entry:
-                            print(f"DEBUG: Found entry by author serial: {entry_author_serial}")
-                        else:
-                            print(f"DEBUG: No entry found for author serial: {entry_author_serial}")
-                    except Exception as e:
-                        print(f"DEBUG: Error finding entry by author: {e}")
-                        entry = None
-                
-                # Check if we found an entry
-                if not entry:
-                    return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
+                # Find the local entry
+                entry = Entry.objects.get(serial=entry_serial)
                 
                 # Create the comment
                 comment = Comment.objects.create(
