@@ -228,7 +228,7 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id": f"{host}/api/authors/{author_id}/comments/{comment_id}/likes",
+            "id": f"{host}/api/authors/{author_id}/comments/{obj.id}/likes",
             "web": f"{host}/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
@@ -243,10 +243,15 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
-
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+        # Use the entry author's host instead of the current request's host
+        # This ensures the entry URL points to the correct server where the entry resides
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        
+        # Remove the /api suffix from the host if it exists to avoid duplication
+        if entry_author_host.endswith('/api'):
+            entry_author_host = entry_author_host[:-4]  # Remove '/api'
+        
+        return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [

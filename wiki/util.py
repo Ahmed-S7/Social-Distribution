@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
-from .serializers import EntrySerializer
+from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
 
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
@@ -224,118 +224,175 @@ def author_exists(id):
 
 
 
-def get_remote_entries(node):
+def send_comment_to_entry_author(comment, request=None):
     """
-    Fetch and store all entries from a specific remote node.
-    
-    Args:
-        node: RemoteNode object containing the node's URL and credentials
-    
-    Returns:
-        tuple: (entries_created, entries_updated)
+    Send a comment to the entry author's inbox.
+    This is used when someone comments on an entry - the comment goes to the entry author's inbox.
     """
-    from .models import Author, Entry
+    # Don't send comments on deleted entries
+    if comment.entry.visibility == 'DELETED':
+        print(f"Not sending comment on deleted entry {comment.entry.id} to entry author")
+        return
     
-    entries_created = 0
-    entries_updated = 0
+    # Get the entry author
+    entry_author = comment.entry.author
+    print(f"DEBUG: Entry author id: {entry_author.id}")
+    print(f"DEBUG: Entry author serial: {entry_author.serial}")
+    print(f"DEBUG: Entry author is_local: {entry_author.is_local}")
+    
+    # Don't send if the comment author is the same as the entry author (local comment on own entry)
+    if comment.author == entry_author:
+        print(f"Comment author is the same as entry author, not sending to inbox")
+        return
+    
+    # Only send if the entry author is remote (not local)
+    if entry_author.is_local:
+        print(f"Entry author is local, not sending comment to inbox")
+        return
     
     try:
-        normalized_url = node.url.rstrip("/")
-        print(f"Fetching from node: {normalized_url}")
+        # Use the entry author ID directly and add /inbox/
+        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        print(f"DEBUG: Entry author id: {entry_author.id}")
+        print(f"DEBUG: Entry author serial: {entry_author.serial}")
+        print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
-        # Fetch authors from remote node
-        authors_response = requests.get(
-            f"{normalized_url}/api/authors/",
+        # Serialize comment
+        serialized_comment = CommentSummarySerializer(comment, context={"request": request}).data
+        print(f"DEBUG: Serialized comment entry field: {serialized_comment.get('entry', 'NOT_FOUND')}")
+        
+        # Create payload
+        payload = {
+            "type": "comment",
+            "body": serialized_comment,
+            
+        }
+        
+        # Send POST request to entry author's inbox
+        response = requests.post(
+            inbox_url,
+            json=payload,
             auth=AUTHTOKEN,
-            timeout=10
+            headers={"Content-Type": "application/json"},
         )
         
-        if authors_response.status_code == 200:
-            authors_data = authors_response.json()
-            print(f"Found {len(authors_data.get('authors', []))} authors from {normalized_url}")
-            
-            # Process each author and their entries
-            for author_data in authors_data.get('authors', []):
-                # Create or update the remote author
-                remote_author, created = Author.objects.get_or_create(
-                    id=author_data['id'],
-                    defaults={
-                        'displayName': author_data.get('displayName', ''),
-                        'host': author_data.get('host', ''),
-                        'web': author_data.get('web', ''),
-                        'github': author_data.get('github', ''),
-                        'profileImage': author_data.get('profileImage', ''),
-                        'is_local': False,
-                    }
-                )
-                
-                if not created:
-                    # Update existing author with latest data
-                    remote_author.displayName = author_data.get('displayName', remote_author.displayName)
-                    remote_author.host = author_data.get('host', remote_author.host)
-                    remote_author.web = author_data.get('web', remote_author.web)
-                    remote_author.github = author_data.get('github', remote_author.github)
-                    remote_author.profileImage = author_data.get('profileImage', remote_author.profileImage)
-                    remote_author.save()
-                
-                # Fetch entries for this author
-                author_serial = remote_author.serial
-                entries_response = requests.get(
-                    f"{normalized_url}/api/authors/{author_serial}/entries/",
-                    auth=AUTHTOKEN,
-                    timeout=10
-                )
-                
-                if entries_response.status_code == 200:
-                    entries_data = entries_response.json()
-                    print(f"Found {len(entries_data.get('entries', []))} entries for author {author_serial}")
-                    
-                    # Process each entry
-                    for entry_data in entries_data.get('entries', []):
-                        # Check if entry already exists by origin_url
-                        existing_entry = Entry.objects.filter(
-                            origin_url=entry_data.get('id')
-                        ).first()
-                        
-                        if not existing_entry:
-                            # Create new entry
-                            try:
-                                new_entry = Entry.objects.create(
-                                    author=remote_author,
-                                    title=entry_data.get('title', ''),
-                                    content=entry_data.get('content', ''),
-                                    contentType=entry_data.get('contentType', 'text/plain'),
-                                    description=entry_data.get('description', ''),
-                                    visibility=entry_data.get('visibility', 'PUBLIC'),
-                                    origin_url=entry_data.get('id'),
-                                    web=entry_data.get('web', ''),
-                                    is_local=False,
-                                )
-                                print(f"Created entry: {new_entry.title}")
-                                entries_created += 1
-                            except Exception as e:
-                                print(f"Error creating entry: {e}")
-                        else:
-                            # Update existing entry
-                            existing_entry.title = entry_data.get('title', existing_entry.title)
-                            existing_entry.content = entry_data.get('content', existing_entry.content)
-                            existing_entry.contentType = entry_data.get('contentType', existing_entry.contentType)
-                            existing_entry.description = entry_data.get('description', existing_entry.description)
-                            existing_entry.visibility = entry_data.get('visibility', existing_entry.visibility)
-                            existing_entry.web = entry_data.get('web', existing_entry.web)
-                            existing_entry.save()
-                            print(f"Updated entry: {existing_entry.title}")
-                            entries_updated += 1
-                else:
-                    print(f"Failed to fetch entries for author {author_serial}: {entries_response.status_code}")
-                    
+        if response.status_code in [200, 201]:
+            print(f"Successfully sent comment {comment.id} to entry author's inbox: {inbox_url}")
         else:
-            print(f"Failed to fetch authors from {normalized_url}: {authors_response.status_code}")
+            print(f"Failed to send comment {comment.id} to entry author's inbox: {inbox_url}: {response.status_code} {response.text}")
             
-    except requests.exceptions.RequestException as e:
-        print(f"Network error fetching from {node.url}: {e}")
+    except requests.exceptions.Timeout:
+        print(f"Timeout sending comment {comment.id} to entry author's inbox: {inbox_url}")
+    except requests.exceptions.ConnectionError:
+        print(f"Connection error sending comment {comment.id} to entry author's inbox: {inbox_url}")
     except Exception as e:
-        print(f"Error processing node {node.url}: {e}")
+        print(f"Exception sending comment {comment.id} to entry author's inbox: {str(e)}")
+
+
+def send_comment_like_to_comment_author(comment_like, request=None):
+    """
+    Send a comment like to the comment author's inbox.
+    This is used when someone likes a comment - the like goes to the comment author's inbox.
+    """
+    # Get the comment and its author
+    comment = comment_like.comment
+    comment_author = comment.author
     
-    print(f"Node {node.url}: {entries_created} entries created, {entries_updated} entries updated")
-    return entries_created, entries_updated
+    # Don't send if the like author is the same as the comment author (liking own comment)
+    if comment_like.user == comment_author:
+        print(f"Like author is the same as comment author, not sending to inbox")
+        return
+    
+    # Only send if the comment author is remote (not local)
+    if comment_author.is_local:
+        print(f"Comment author is local, not sending like to inbox")
+        return
+    
+    try:
+        # Extract host from the author ID and use the correct serial
+        author_id = comment_author.id
+        # Remove the /api/authors/{wrong_serial} part to get just the host
+        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
+        
+        # Construct inbox url for the comment author using the correct serial
+        inbox_url = f"{host}/api/authors/{comment_author.serial}/inbox/"
+        
+        serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
+        
+        # Create payload in inbox format
+        payload = {
+            "type": "like",
+            "body": serialized_like,
+        }
+        
+        # Send POST request to comment author's inbox
+        response = requests.post(
+            inbox_url,
+            json=payload,
+            auth=AUTHTOKEN,
+            headers={"Content-Type": "application/json"},
+        )
+        
+        if response.status_code in [200, 201]:
+            print(f"Successfully sent comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+        else:
+            print(f"Failed to send comment like {comment_like.id} to comment author's inbox: {inbox_url}: {response.status_code} {response.text}")
+            
+    except requests.exceptions.Timeout:
+        print(f"Timeout sending comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+    except requests.exceptions.ConnectionError:
+        print(f"Connection error sending comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+    except Exception as e:
+        print(f"Exception sending comment like {comment_like.id} to comment author's inbox: {str(e)}")
+
+
+def send_entry_like_to_entry_author(entry_like, request=None):
+    """
+    Send an entry like to the entry author's inbox.
+    This is used when someone likes an entry - the like goes to the entry author's inbox.
+    """
+    # Get the entry and its author
+    entry = entry_like.entry
+    entry_author = entry.author
+    
+    # Don't send if the like author is the same as the entry author (liking own entry)
+    if entry_like.user == entry_author:
+        print(f"Like author is the same as entry author, not sending to inbox")
+        return
+    
+    # Only send if the entry author is remote (not local)
+    if entry_author.is_local:
+        print(f"Entry author is local, not sending like to inbox")
+        return
+    
+    try:
+        # Use the entry author ID directly and add /inbox/
+        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        
+        serialized_like = LikeSummarySerializer(entry_like, context={"request": request}).data
+        
+        # Create payload in inbox format
+        payload = {
+            "type": "like",
+            "body": serialized_like,
+        }
+        
+        # Send POST request to entry author's inbox
+        response = requests.post(
+            inbox_url,
+            json=payload,
+            auth=AUTHTOKEN,
+            headers={"Content-Type": "application/json"},
+        )
+        
+        if response.status_code in [200, 201]:
+            print(f"Successfully sent entry like {entry_like.id} to entry author's inbox: {inbox_url}")
+        else:
+            print(f"Failed to send entry like {entry_like.id} to entry author's inbox: {inbox_url}: {response.status_code} {response.text}")
+            
+    except requests.exceptions.Timeout:
+        print(f"Timeout sending entry like {entry_like.id} to entry author's inbox: {inbox_url}")
+    except requests.exceptions.ConnectionError:
+        print(f"Connection error sending entry like {entry_like.id} to entry author's inbox: {inbox_url}")
+    except Exception as e:
+        print(f"Exception sending entry like {entry_like.id} to entry author's inbox: {str(e)}")
