@@ -254,13 +254,8 @@ def send_comment_to_entry_author(comment, request=None):
         return
     
     try:
-        # Extract host from the author ID and use the correct serial
-        author_id = entry_author.id
-        # Remove the /api/authors/{wrong_serial} part to get just the host
-        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
-        
-        # Construct inbox url for the entry author using the correct serial
-        inbox_url = f"{entry_author.id}/inbox/"
+        # Use the entry author ID directly and add /inbox/
+        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
         print(f"DEBUG: Entry author id: {entry_author.id}")
         print(f"DEBUG: Entry author serial: {entry_author.serial}")
         print(f"DEBUG: Extracted host: {host}")
@@ -375,13 +370,8 @@ def send_entry_like_to_entry_author(entry_like, request=None):
         return
     
     try:
-        # Extract host from the author ID and use the correct serial
-        author_id = entry_author.id
-        # Remove the /api/authors/{wrong_serial} part to get just the host
-        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
-        
-        # Construct inbox url for the entry author using the correct serial
-        inbox_url = f"{host}/api/authors/{entry_author.serial}/inbox/"
+        # Use the entry author ID directly and add /inbox/
+        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
         
         serialized_like = LikeSummarySerializer(entry_like, context={"request": request}).data
         
