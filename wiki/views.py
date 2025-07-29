@@ -191,7 +191,8 @@ def like_entry(request, entry_serial):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
+                    auth=AUTHTOKEN,
                 )
                 
                 if response.status_code == 200:
@@ -213,7 +214,7 @@ def like_entry(request, entry_serial):
     #Redirect to the entry's details's page if the entry was liked from its details  
     if request.POST.get("liked_from_details") == "true":
 
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry.serial)
     
     #regular stream entry like
     return redirect('wiki:user-wiki', username=request.user.username)
