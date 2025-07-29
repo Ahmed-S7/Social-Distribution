@@ -245,7 +245,7 @@ class CommentSummarySerializer(serializers.Serializer):
     def get_entry(self, obj):
         # If the entry is remote, use its true FQID
         if not obj.entry.is_local:
-            return str(obj.entry.id)
+            return obj.entry_url
         
         # Otherwise construct local URL
         entry_author_host = obj.entry.author.host.rstrip('/')
