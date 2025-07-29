@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author
+from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -176,31 +176,8 @@ def like_entry(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=author)
 
     if created:
-        # Check if the entry is remote (not local) and send like to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
@@ -2596,32 +2573,8 @@ def like_entry_api(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
-        # Check if the entry is remote (not local)
-        if not entry.author.is_local:
-            # Send the like to the remote author's inbox
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
         
         # Return the properly formatted like object
         serializer = LikeSummarySerializer(like, context={'request': request})
