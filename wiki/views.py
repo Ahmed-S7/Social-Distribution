@@ -1637,7 +1637,7 @@ def user_inbox_api(request, author_serial):
                     entry = Entry.objects.get(serial=entry_serial)
                 except Entry.DoesNotExist:
                     entry = None  # Accept that it’s a remote entry
-
+                print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 comment = Comment.objects.create(
                     entry=entry,
                     entry_url=entryFQID,
