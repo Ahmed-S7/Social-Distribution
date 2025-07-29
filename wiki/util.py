@@ -326,6 +326,7 @@ def send_comment_to_entry_author(comment, request=None):
         
         # Serialize comment
         serialized_comment = CommentSummarySerializer(comment, context={"request": request}).data
+        print(f"DEBUG: Serialized comment entry field: {serialized_comment.get('entry', 'NOT_FOUND')}")
         
         # Create payload
         payload = {

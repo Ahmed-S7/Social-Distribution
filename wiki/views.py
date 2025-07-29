@@ -1645,10 +1645,14 @@ def user_inbox_api(request, author_serial):
             
             # Parse the entry FQID to extract entry info
             # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
+            print(f"DEBUG: Parsing entryFQID: {entryFQID}")
             try:
                 parts = entryFQID.split('/')
+                print(f"DEBUG: Split parts: {parts}")
                 entry_author_serial = parts[-2]  # author serial
                 entry_serial = parts[-1]  # entry serial
+                print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
+                print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
                 # Find the local entry
                 entry = Entry.objects.get(serial=entry_serial)
