@@ -2498,7 +2498,7 @@ def add_comment(request, entry_serial):
             except Exception as e:
                 print(f"Error sending comment to remote inbox: {str(e)}")
     
-    return redirect('wiki:entry_detail', entry_serial=entry_serial)
+    return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry_serial)
 
 
 
@@ -2525,7 +2525,8 @@ def like_comment(request, comment_id):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"}, 
+                    auth=AUTHTOKEN
                 )
                 
                 if response.status_code == 200:
@@ -2540,7 +2541,7 @@ def like_comment(request, comment_id):
         like.delete()  # Toggle like off
 
 
-    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+    return redirect('wiki:entry_detail', author_serial = comment.entry.author.serial, entry_serial=comment.entry.serial)
 
 
 
@@ -2713,7 +2714,8 @@ def like_comment_api(request, comment_id):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
+                    auth=AUTHTOKEN
                 )
                 
                 if response.status_code == 200:
