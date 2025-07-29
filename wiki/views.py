@@ -418,33 +418,33 @@ def get_authors(request):
                 ]
             }
     """
-    # Authentication disabled for browser testing
-    # auth_header = request.META.get('HTTP_AUTHORIZATION')
-    # 
-    # #need to have auth in request to connect with us
-    # if not auth_header:
-    #     return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
-    # print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
-    # 
-    # 
-    # #If the auth header has basic auth token in it
-    # if not auth_header.startswith("Basic"):
-    #     return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
-    # print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-    # 
-    # #Gets the user and pass using basic auth
-    # username, password = decoded_auth_token(auth_header)
-    # 
-    # #make sure the auth is properly formatted
-    # if not (username and password):
-    #     print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
-    #     return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-    # 
-    # if not node_valid(username, password):
-    #     return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
-    # 
-    # print("AUTHENTICATION COMPLETE.")
-    # print(f"{username} may now access the node.")
+    #Authentication disabled for browser testing
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+     
+    #need to have auth in request to connect with us
+    if not auth_header:
+         return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
+     
+     
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+         return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+     
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+     
+    #make sure the auth is properly formatted
+    if not (username and password):
+         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+     
+    if not node_valid(username, password):
+         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+     
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
     authors = Author.objects.all()
     
      # Get pagination parameters
@@ -1586,7 +1586,7 @@ def user_inbox_api(request, author_serial):
             
         ##################################### END OF LIKE PROCESSING ######################################################################################################################################
         
-        ############## PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
+        ################################ PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
         
         elif type == "comment" or type == "Comment":
             print(f"DEBUG: Processing comment in inbox")
