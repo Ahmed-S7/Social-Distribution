@@ -239,6 +239,9 @@ def send_comment_to_entry_author(comment, request=None):
     
     # Get the entry author
     entry_author = comment.entry.author
+    print(f"DEBUG: Entry author id: {entry_author.id}")
+    print(f"DEBUG: Entry author serial: {entry_author.serial}")
+    print(f"DEBUG: Entry author is_local: {entry_author.is_local}")
     
     # Don't send if the comment author is the same as the entry author (local comment on own entry)
     if comment.author == entry_author:
@@ -252,7 +255,8 @@ def send_comment_to_entry_author(comment, request=None):
     
     try:
         # Construct inbox url for the entry author
-        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        inbox_url = comment.entry.author.id.rstrip('/') + '/inbox/'
+        print(f"DEBUG: Entry author id: {comment.entry.author.id}")
         print(f"DEBUG: Entry author id: {entry_author.id}")
         print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
