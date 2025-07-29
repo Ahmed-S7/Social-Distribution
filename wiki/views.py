@@ -1513,31 +1513,25 @@ def user_inbox_api(request, author_serial):
                 # This is a comment like
                 try:
                     print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
-                    # Parse the comment FQID to extract entry and comment info
-                    # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
+                    # Parse the comment FQID to extract comment info
+                    # Format: http://host/api/authors/{author_serial}/commented/{comment_id}
                     parts = objectFQID.split('/')
                     print(f"DEBUG: Split parts: {parts}")
                     print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
                     
                     # Check if there's a trailing slash and adjust indices accordingly
                     if objectFQID.endswith('/'):
-                        entry_author_serial = parts[-5]  # author serial (fifth from end)
-                        entry_serial = parts[-3]  # entry serial (third from end)
-                        comment_serial = parts[-2]  # comment serial (second from end)
+                        comment_author_serial = parts[-3]  # author serial (third from end)
+                        comment_id = parts[-2]  # comment id (second from end)
                     else:
-                        entry_author_serial = parts[-4]  # author serial (fourth from end)
-                        entry_serial = parts[-2]  # entry serial (second from end)
-                        comment_serial = parts[-1]  # comment serial (last)
+                        comment_author_serial = parts[-2]  # author serial (second from end)
+                        comment_id = parts[-1]  # comment id (last)
                     
-                    print(f"DEBUG: Extracted entry_author_serial: {entry_author_serial}")
-                    print(f"DEBUG: Extracted entry_serial: {entry_serial}")
-                    print(f"DEBUG: Extracted comment_serial: {comment_serial}")
-                    
-                    # Find the local entry
-                    entry = Entry.objects.get(serial=entry_serial)
+                    print(f"DEBUG: Extracted comment_author_serial: {comment_author_serial}")
+                    print(f"DEBUG: Extracted comment_id: {comment_id}")
                     
                     # Find the existing comment
-                    comment = Comment.objects.get(id=comment_serial)
+                    comment = Comment.objects.get(id=comment_id)
                     
                     # Check if like already exists
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
