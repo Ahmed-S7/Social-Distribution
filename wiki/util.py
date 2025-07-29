@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
-from .serializers import EntrySerializer, CommentSummarySerializer
+from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
 
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
@@ -352,3 +352,55 @@ def send_comment_to_entry_author(comment, request=None):
         print(f"Connection error sending comment {comment.id} to entry author's inbox: {inbox_url}")
     except Exception as e:
         print(f"Exception sending comment {comment.id} to entry author's inbox: {str(e)}")
+
+
+def send_comment_like_to_comment_author(comment_like, request=None):
+    """
+    Send a comment like to the comment author's inbox.
+    This is used when someone likes a comment - the like goes to the comment author's inbox.
+    """
+    # Get the comment and its author
+    comment = comment_like.comment
+    comment_author = comment.author
+    
+    # Don't send if the like author is the same as the comment author (liking own comment)
+    if comment_like.user == comment_author:
+        print(f"Like author is the same as comment author, not sending to inbox")
+        return
+    
+    # Only send if the comment author is remote (not local)
+    if comment_author.is_local:
+        print(f"Comment author is local, not sending like to inbox")
+        return
+    
+    try:
+        # Construct inbox url for the comment author
+        inbox_url = comment_author.id.rstrip('/') + '/inbox/'
+        
+        serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
+        
+        # Create payload in inbox format
+        payload = {
+            "type": "like",
+            "body": serialized_like,
+        }
+        
+        # Send POST request to comment author's inbox
+        response = requests.post(
+            inbox_url,
+            json=payload,
+            auth=AUTHTOKEN,
+            headers={"Content-Type": "application/json"},
+        )
+        
+        if response.status_code in [200, 201]:
+            print(f"Successfully sent comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+        else:
+            print(f"Failed to send comment like {comment_like.id} to comment author's inbox: {inbox_url}: {response.status_code} {response.text}")
+            
+    except requests.exceptions.Timeout:
+        print(f"Timeout sending comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+    except requests.exceptions.ConnectionError:
+        print(f"Connection error sending comment like {comment_like.id} to comment author's inbox: {inbox_url}")
+    except Exception as e:
+        print(f"Exception sending comment like {comment_like.id} to comment author's inbox: {str(e)}")
