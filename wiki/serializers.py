@@ -257,7 +257,6 @@ VISIBILITY_CHOICES = [
     ]
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
     web = serializers.SerializerMethodField()
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
@@ -274,23 +273,20 @@ class EntrySerializer(serializers.ModelSerializer):
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
             'author', 'comments', 'likes', 'published', 'visibility'
         ]
-    def get_id(self, obj):
-        request = self.context.get('request')
-        if request is None: 
-            return None
-        host = request.build_absolute_uri("/").rstrip("/")
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.serial}"
 
     def get_type(self, obj):
-        return 'entry'
+        return "entry"
+    
     def get_web(self,obj):
-        return obj.author.web
+        request = self.context.get('request')
+        host = request.build_absolute_uri("/").rstrip("/")
+        return f"{host}/authors/{obj.author.serial}/entries/{obj.serial}"
+    
     def get_description(self,obj):
         return f"entry by {obj.author}, titled: '{obj.title}"
     
     content = serializers.SerializerMethodField()
-    def get_is_local(self, obj):
-        return obj.is_local
+    
     def get_content(self, obj):
         return obj.content  
 

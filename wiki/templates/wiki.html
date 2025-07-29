@@ -61,7 +61,7 @@
       {% for entry, rendered in entries %}
       <div class="card mb-4 shadow-sm post-card">
         <div class="card-body">
-          <a href="{% url 'wiki:entry_detail' entry.serial %}" style="text-decoration:none;color:inherit;">
+          <a href="{% url 'wiki:entry_detail' entry.author.serial entry.serial %}" style="text-decoration:none;color:inherit;">
             <div class="d-flex align-items-center mb-2 post-header">
               {% if entry.author.profileImage %}
                 <img class="profile_image" src="{{ entry.author.profileImage }}" alt="Profile image">
@@ -100,10 +100,10 @@
               </button>
               <span class="ms-1">{{ entry.likes.count }}</span>
             </form>
-            <a href="{% url 'wiki:entry_detail' entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
+            <a href="{% url 'wiki:entry_detail' entry.author.serial entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
               💬 Comment ({{ entry.comments.count }})
             </a>
-            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
+            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.author.serial entry.serial %}">🔗 Share Link</button>
           </div>
         </div>
       </div>
