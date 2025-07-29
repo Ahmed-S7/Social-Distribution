@@ -190,7 +190,7 @@ def like_entry(request, entry_serial):
     #Redirect to the entry's details's page if the entry was liked from its details  
     if request.POST.get("liked_from_details") == "true":
 
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry.serial)
     
     #regular stream entry like
     return redirect('wiki:user-wiki', username=request.user.username)
@@ -2467,7 +2467,7 @@ def add_comment(request, entry_serial):
         # Send comment to entry author's inbox
         send_comment_to_entry_author(comment, request)
     
-    return redirect('wiki:entry_detail', entry_serial=entry_serial)
+    return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry_serial)
 
 
 
@@ -2486,7 +2486,7 @@ def like_comment(request, comment_id):
         like.delete()  # Toggle like off
 
 
-    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+    return redirect('wiki:entry_detail', author_serial=comment.entry.author.serial, entry_serial=comment.entry.serial)
 
 
 
