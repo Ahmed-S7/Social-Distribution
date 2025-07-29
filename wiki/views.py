@@ -1636,8 +1636,8 @@ def user_inbox_api(request, author_serial):
             try:
                 parts = entryFQID.split('/')
                 print(f"DEBUG: Split parts: {parts}")
-                entry_author_serial = parts[-4]  # author serial (third from end)
-                entry_serial = parts[-2]  # entry serial (last)
+                entry_author_serial = parts[-3]  # author serial (third from end)
+                entry_serial = parts[-1]  # entry serial (last)
                 print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
                 print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
