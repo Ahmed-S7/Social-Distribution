@@ -42,7 +42,7 @@ def validUserName(username):
     return False
 
 def saveNewAuthor(request, user, username, github, profileImage, is_local):
-    '''Saves a new author instance'''
+    '''Saves a new author instance from the signup'''
     
     serial_id = uuid.uuid4()
     string_serial = str(serial_id)
@@ -187,7 +187,7 @@ def send_entry_to_remote_followers(entry, request=None):
             payload = serialized_entry
             
             # Send POST request to remote inbox
-            '''
+        
             response = requests.post(
                 inbox_url,
                 json=payload,
@@ -195,9 +195,9 @@ def send_entry_to_remote_followers(entry, request=None):
                 headers={"Content-Type": "application/json"},
               
             ) 
-            '''
+        
             
-            response = {'status_code':200}
+        
 
             if response.status_code in [200, 201]:
                 print(f"Successfully sent entry {entry.id} to {inbox_url}")
