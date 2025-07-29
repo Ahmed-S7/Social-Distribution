@@ -320,11 +320,8 @@ def send_comment_like_to_comment_author(comment_like, request=None):
         
         serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
         
-        # Create payload in inbox format
-        payload = {
-            "type": "like",
-            "body": serialized_like,
-        }
+        # Create payload in inbox format - send the like data directly
+        payload = serialized_like
         
         # Send POST request to comment author's inbox
         response = requests.post(
