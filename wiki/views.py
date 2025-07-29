@@ -1468,6 +1468,9 @@ def user_inbox_api(request, author_serial):
         
         elif type == "like" or type == "Like":
             
+            print(f"DEBUG: Processing like in inbox")
+            print(f"DEBUG: Request data: {request.data}")
+            
             try:
                 # like = request.data
                 # authorFQID = like['author']['id']
@@ -1513,9 +1516,22 @@ def user_inbox_api(request, author_serial):
                     # Parse the comment FQID to extract entry and comment info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-4]  # author serial
-                    entry_serial = parts[-2]  # entry serial
-                    comment_serial = parts[-1]  # comment serial
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
+                    
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        entry_author_serial = parts[-5]  # author serial (fifth from end)
+                        entry_serial = parts[-3]  # entry serial (third from end)
+                        comment_serial = parts[-2]  # comment serial (second from end)
+                    else:
+                        entry_author_serial = parts[-4]  # author serial (fourth from end)
+                        entry_serial = parts[-2]  # entry serial (second from end)
+                        comment_serial = parts[-1]  # comment serial (last)
+                    
+                    print(f"DEBUG: Extracted entry_author_serial: {entry_author_serial}")
+                    print(f"DEBUG: Extracted entry_serial: {entry_serial}")
+                    print(f"DEBUG: Extracted comment_serial: {comment_serial}")
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
@@ -1551,8 +1567,19 @@ def user_inbox_api(request, author_serial):
                     # Parse the entry FQID to extract entry info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-4]  # author serial (third from end)
-                    entry_serial = parts[-2]  # entry serial (last)
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
+                    
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        entry_author_serial = parts[-4]  # author serial (fourth from end)
+                        entry_serial = parts[-2]  # entry serial (second from end)
+                    else:
+                        entry_author_serial = parts[-3]  # author serial (third from end)
+                        entry_serial = parts[-1]  # entry serial (last)
+                    
+                    print(f"DEBUG: Extracted entry_author_serial: {entry_author_serial}")
+                    print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
