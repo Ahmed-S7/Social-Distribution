@@ -54,8 +54,8 @@ def saveNewAuthor(request, user, username, github, profileImage, is_local):
 
         host = request.get_host()
 
-        base_id = f"{port}://{host}/api/authors/{string_serial}"
-        base_web = f"{port}://{host}/authors/{string_serial}"
+        base_id = f"{port}://{host}/api/authors/{string_serial}/"
+        base_web = f"{port}://{host}/authors/{string_serial}/"
 
         newAuthor = Author(
                     
