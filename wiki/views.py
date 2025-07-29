@@ -1326,7 +1326,6 @@ def user_inbox_api(request, author_serial):
         return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
     print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
     
-    
     #If the auth header has basic auth token in it
     if not auth_header.startswith("Basic"):
         return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
@@ -1340,22 +1339,17 @@ def user_inbox_api(request, author_serial):
         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
-
+    #for an invalid node
     if not node_valid(username, password):
-        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes", "detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
     print("AUTHENTICATION COMPLETE.")
     print(f"{username} may now access the node.")
-    
-    #NEXT IMPLEMENTATION WILL CHECK AGAINST OUR AGREED UPON CREDENTIALS AND THE VALIDITY OF THE REMOTE NODE
+
     currentNodes = RemoteNode.objects.all()
-    print(currentNodes)
+    print(f"CONNECTED NODES {currentNodes}")
     
     requested_author = get_object_or_404(Author, serial=author_serial)
-    #TODO
-    #check the node validity
-    #populate the local node with all of the foreign node's users
-    
-    
+
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
@@ -1369,11 +1363,7 @@ def user_inbox_api(request, author_serial):
         
     #sends an inbox object to a specific author
     elif request.method =="POST": 
-        print("Processing a POST request to the inbox")
-        is_local = request.get_host() == requested_author.host
-        if is_local:
-            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
-            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
@@ -1422,6 +1412,8 @@ def user_inbox_api(request, author_serial):
                     "is_local": False
                 }
             )
+            
+            
            
 
             return Response({"success": "Entry received and stored", "created": created}, status=status.HTTP_200_OK)
@@ -2336,6 +2328,7 @@ def delete_entry(request, entry_serial):
     if request.method == 'POST':
         entry.delete() 
         #post to remote followers/friends
+        
         messages.success(request, "Entry deleted successfully.")
         return redirect('wiki:user-wiki', username=request.user.username)
     
@@ -2450,7 +2443,7 @@ def entry_detail_fqid_api(request, entry_fqid):
             })
         try:
             entry.delete()
-            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
+            deleted_entry = Entry._base_manager.get(serial=entry.serial, is_deleted=True)
             deleted_entry.visibility='DELETED'
             serializer = EntrySerializer(deleted_entry, context={"request": request})
             return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
