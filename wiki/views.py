@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, get_remote_entries
+from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, get_remote_entries, send_comment_to_entry_author, send_comment_like_to_comment_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -2475,31 +2475,8 @@ def add_comment(request, entry_serial):
             content=content
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code in [200, 201, 301, 302]:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
     
     return redirect('wiki:entry_detail', entry_serial=entry_serial)
 
@@ -2513,31 +2490,8 @@ def like_comment(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
 
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
@@ -2701,31 +2655,8 @@ def like_comment_api(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
     
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
         
         # Return the properly formatted like object
         serializer = CommentLikeSummarySerializer(like, context={'request': request})
@@ -3133,31 +3064,8 @@ def get_author_comments_api(request, author_serial):
             contentType=content_type
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
         
         # Return the properly formatted comment object
         serializer = CommentSummarySerializer(comment, context={'request': request})

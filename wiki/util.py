@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
-from .serializers import EntrySerializer
+from .serializers import EntrySerializer, CommentSummarySerializer
 
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
@@ -296,3 +296,59 @@ def send_all_entries_to_follower(local_author, remote_follower, request=None):
         except Exception as e:
             print(f"Exception sending entry to {inbox_url}: {e}")
 
+
+def send_comment_to_entry_author(comment, request=None):
+    """
+    Send a comment to the entry author's inbox.
+    This is used when someone comments on an entry - the comment goes to the entry author's inbox.
+    """
+    # Don't send comments on deleted entries
+    if comment.entry.visibility == 'DELETED':
+        print(f"Not sending comment on deleted entry {comment.entry.id} to entry author")
+        return
+    
+    # Get the entry author
+    entry_author = comment.entry.author
+    
+    # Don't send if the comment author is the same as the entry author (local comment on own entry)
+    if comment.author == entry_author:
+        print(f"Comment author is the same as entry author, not sending to inbox")
+        return
+    
+    # Only send if the entry author is remote (not local)
+    if entry_author.is_local:
+        print(f"Entry author is local, not sending comment to inbox")
+        return
+    
+    try:
+        # Construct inbox url for the entry author
+        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        
+        # Serialize comment
+        serialized_comment = CommentSummarySerializer(comment, context={"request": request}).data
+        
+        # Create payload
+        payload = {
+            "type": "comment",
+            "body": serialized_comment
+        }
+        
+        # Send POST request to entry author's inbox
+        response = requests.post(
+            inbox_url,
+            json=payload,
+            auth=AUTHTOKEN,
+            headers={"Content-Type": "application/json"},
+        )
+        
+        if response.status_code in [200, 201]:
+            print(f"Successfully sent comment {comment.id} to entry author's inbox: {inbox_url}")
+        else:
+            print(f"Failed to send comment {comment.id} to entry author's inbox: {inbox_url}: {response.status_code} {response.text}")
+            
+    except requests.exceptions.Timeout:
+        print(f"Timeout sending comment {comment.id} to entry author's inbox: {inbox_url}")
+    except requests.exceptions.ConnectionError:
+        print(f"Connection error sending comment {comment.id} to entry author's inbox: {inbox_url}")
+    except Exception as e:
+        print(f"Exception sending comment {comment.id} to entry author's inbox: {str(e)}")
