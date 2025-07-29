@@ -246,7 +246,7 @@ class CommentSummarySerializer(serializers.Serializer):
         request = self.context.get('request')
         host = request.build_absolute_uri("/").rstrip("/")
 
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+        return f"{host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [
