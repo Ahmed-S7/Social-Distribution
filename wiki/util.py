@@ -254,10 +254,16 @@ def send_comment_to_entry_author(comment, request=None):
         return
     
     try:
-        # Construct inbox url for the entry author
-        inbox_url = entry_author.serial.rstrip('/') + '/inbox/'
-        print(f"DEBUG: Entry author id: {entry_author.serial}")
+        # Extract host from the author ID and use the correct serial
+        author_id = entry_author.id
+        # Remove the /api/authors/{wrong_serial} part to get just the host
+        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
+        
+        # Construct inbox url for the entry author using the correct serial
+        inbox_url = f"{host}/api/authors/{entry_author.serial}/inbox/"
         print(f"DEBUG: Entry author id: {entry_author.id}")
+        print(f"DEBUG: Entry author serial: {entry_author.serial}")
+        print(f"DEBUG: Extracted host: {host}")
         print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
         # Serialize comment
@@ -312,8 +318,13 @@ def send_comment_like_to_comment_author(comment_like, request=None):
         return
     
     try:
-        # Construct inbox url for the comment author
-        inbox_url = comment_author.id.rstrip('/') + '/inbox/'
+        # Extract host from the author ID and use the correct serial
+        author_id = comment_author.id
+        # Remove the /api/authors/{wrong_serial} part to get just the host
+        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
+        
+        # Construct inbox url for the comment author using the correct serial
+        inbox_url = f"{host}/api/authors/{comment_author.serial}/inbox/"
         
         serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
         
@@ -364,8 +375,13 @@ def send_entry_like_to_entry_author(entry_like, request=None):
         return
     
     try:
-        # Construct inbox url for the entry author
-        inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        # Extract host from the author ID and use the correct serial
+        author_id = entry_author.id
+        # Remove the /api/authors/{wrong_serial} part to get just the host
+        host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
+        
+        # Construct inbox url for the entry author using the correct serial
+        inbox_url = f"{host}/api/authors/{entry_author.serial}/inbox/"
         
         serialized_like = LikeSummarySerializer(entry_like, context={"request": request}).data
         
