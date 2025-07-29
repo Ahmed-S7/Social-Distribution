@@ -1466,7 +1466,7 @@ def user_inbox_api(request, author_serial):
         
         ############## PROCESSES LIKE INBOX OBJECTS ###################################################################################################################
         
-        elif type == "like" or type == "Like":
+        elif type.lower() == 'like':
             
             try:
                 # like = request.data
@@ -1671,7 +1671,7 @@ def user_inbox_api(request, author_serial):
             
         ##################################### END OF COMMENT PROCESSING ######################################################################################################################################
         else:
-            return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK) 
+            return Response({"Invalid inbox object":"must send 'like', 'comment', 'follow' or 'entry'."}, status=status.HTTP_400_BAD_REQUEST) 
         
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
