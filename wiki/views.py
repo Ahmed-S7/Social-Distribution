@@ -1608,14 +1608,22 @@ def user_inbox_api(request, author_serial):
         ############## PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
         
         elif type == "comment" or type == "Comment":
+            print(f"DEBUG: Processing comment in inbox")
+            print(f"DEBUG: Request data: {request.data}")
             
             try:
                 body = request.data.get('body', {})
+                print(f"DEBUG: Body: {body}")
                 authorFQID = body.get('author', {}).get('id')
                 comment_content = body.get('content', '')
                 contentType = body.get('contentType', 'text/plain')
                 entryFQID = body.get('entry', '')
+                print(f"DEBUG: Extracted authorFQID: {authorFQID}")
+                print(f"DEBUG: Extracted comment_content: {comment_content}")
+                print(f"DEBUG: Extracted contentType: {contentType}")
+                print(f"DEBUG: Extracted entryFQID: {entryFQID}")
             except Exception as e:
+                print(f"DEBUG: Exception in comment processing: {e}")
                 return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
             
             print("COMMENT REQUEST BODY:", "\n\n\n", request.data, '\n\n\n')
