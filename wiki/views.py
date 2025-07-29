@@ -2283,9 +2283,8 @@ def entry_detail(request, author_serial, entry_serial):
 
 @login_required
 def edit_entry(request, entry_serial):
-   
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     author = get_object_or_404(Author, serial=entry.author.serial)
+    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     author_serial=entry.author.serial
     if request.method == 'POST':
         title = request.POST.get('title')
