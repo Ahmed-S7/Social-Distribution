@@ -191,7 +191,8 @@ def like_entry(request, entry_serial):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
+                    auth=AUTHTOKEN,
                 )
                 
                 if response.status_code == 200:
@@ -213,7 +214,7 @@ def like_entry(request, entry_serial):
     #Redirect to the entry's details's page if the entry was liked from its details  
     if request.POST.get("liked_from_details") == "true":
 
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry.serial)
     
     #regular stream entry like
     return redirect('wiki:user-wiki', username=request.user.username)
@@ -2282,8 +2283,8 @@ def entry_detail(request, author_serial, entry_serial):
 
 @login_required
 def edit_entry(request, entry_serial):
+    entry = get_object_or_404(Entry, serial=entry_serial)
     author = get_object_or_404(Author, serial=entry.author.serial)
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
     author_serial=entry.author.serial
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -2311,6 +2312,9 @@ def edit_entry(request, entry_serial):
 
             entry.save()
             #post to remote followers/friends
+            from .util import send_entry_to_remote_followers
+            print("sending entry to remote followers")
+            send_entry_to_remote_followers(entry, request)
             
             #print(entry.serial)
             return redirect('wiki:entry_detail', author_serial=author_serial, entry_serial=entry.serial)
@@ -2494,7 +2498,7 @@ def add_comment(request, entry_serial):
             except Exception as e:
                 print(f"Error sending comment to remote inbox: {str(e)}")
     
-    return redirect('wiki:entry_detail', entry_serial=entry_serial)
+    return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry_serial)
 
 
 
@@ -2521,7 +2525,8 @@ def like_comment(request, comment_id):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"}, 
+                    auth=AUTHTOKEN
                 )
                 
                 if response.status_code == 200:
@@ -2536,7 +2541,7 @@ def like_comment(request, comment_id):
         like.delete()  # Toggle like off
 
 
-    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+    return redirect('wiki:entry_detail', author_serial = comment.entry.author.serial, entry_serial=comment.entry.serial)
 
 
 
@@ -2709,7 +2714,8 @@ def like_comment_api(request, comment_id):
                 response = requests.post(
                     inbox_url,
                     json=like_data,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
+                    auth=AUTHTOKEN
                 )
                 
                 if response.status_code == 200:
