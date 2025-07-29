@@ -1653,7 +1653,7 @@ def user_inbox_api(request, author_serial):
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
                 body = comment_serializer.data
-                type = "Comment"
+                type = "comment"
                 print(f"DEBUG: Serialized comment for inbox: {body}")
             except Entry.DoesNotExist:
                 return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
