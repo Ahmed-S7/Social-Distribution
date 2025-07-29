@@ -305,6 +305,7 @@ def send_comment_like_to_comment_author(comment_like, request=None):
     try:
         # Extract host from the author ID and use the correct serial
         author_id = comment_author.id
+        author_id = author_id.rstrip('/')
         print(f"DEBUG: Comment author ID: {author_id}")
         print(f"DEBUG: Comment author serial: {comment_author.serial}")
         print(f"DEBUG: Comment author is_local: {comment_author.is_local}")
@@ -314,7 +315,7 @@ def send_comment_like_to_comment_author(comment_like, request=None):
         print(f"DEBUG: Extracted host: {host}")
         
         # Construct inbox url for the comment author using the correct serial
-        inbox_url = f"{host}/api/authors/{comment_author.serial}/inbox/"
+        inbox_url = f"{author_id}/inbox/"
         print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
         serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
