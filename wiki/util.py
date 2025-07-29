@@ -307,7 +307,6 @@ def send_comment_like_to_comment_author(comment_like, request=None):
         author_id = comment_author.id
         author_id = author_id.rstrip('/')
         print(f"DEBUG: Comment author ID: {author_id}")
-        print(f"DEBUG: Comment author serial: {comment_author.serial}")
         print(f"DEBUG: Comment author is_local: {comment_author.is_local}")
         
         # Remove the /api/authors/{wrong_serial} part to get just the host

@@ -1509,7 +1509,7 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
-            if '/entries/' in objectFQID and '/commented/' in objectFQID:
+            if '/commented/' in objectFQID:
                 # This is a comment like
                 try:
                     print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
