@@ -1369,7 +1369,6 @@ def user_inbox_api(request, author_serial):
             remote_author, _ = Author.objects.get_or_create(
                 id=author_data["id"],
                 defaults={
-                    "serial": author_data.get("serial", ""),
                     "displayName": author_data.get("displayName", ""),
                     "host": author_data.get("host", ""),
                     "web": author_data.get("web", ""),
