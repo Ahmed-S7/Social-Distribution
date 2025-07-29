@@ -1356,6 +1356,8 @@ def user_inbox_api(request, author_serial):
         # Handle remote entry
         if type.lower() == "entry":
             entry_data = request.data
+            entry_id = entry_data.get("id")
+            entry_serial = entry_id.rstrip('/').split('/')[-1]
             if not entry_data:
                 return Response({"error": "No entry data provided"}, status=status.HTTP_400_BAD_REQUEST)
             origin_url = entry_data.get("id")
@@ -1379,6 +1381,7 @@ def user_inbox_api(request, author_serial):
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
                 defaults={
+                    "id": entry_id,
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
@@ -1640,7 +1643,6 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 comment = Comment.objects.create(
                     entry=entry,
-                    entry_url=entryFQID,
                     author=requester,
                     content=comment_content,
                     contentType=contentType,
