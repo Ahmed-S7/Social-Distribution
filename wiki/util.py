@@ -261,17 +261,11 @@ def send_comment_to_entry_author(comment, request=None):
         serialized_comment = CommentSummarySerializer(comment, context={"request": request}).data
         print(f"DEBUG: Serialized comment entry field: {serialized_comment.get('entry', 'NOT_FOUND')}")
         
-        # Create payload
-        payload = {
-            "type": "comment",
-            "body": serialized_comment,
-            
-        }
-        
+
         # Send POST request to entry author's inbox
         response = requests.post(
             inbox_url,
-            json=payload,
+            json=serialized_comment,
             auth=AUTHTOKEN,
             headers={"Content-Type": "application/json"},
         )

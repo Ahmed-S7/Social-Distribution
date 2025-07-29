@@ -1586,12 +1586,10 @@ def user_inbox_api(request, author_serial):
             print(f"DEBUG: Request data: {request.data}")
             
             try:
-                body = request.data.get('body', {})
-                print(f"DEBUG: Body: {body}")
-                authorFQID = body.get('author', {}).get('id')
-                comment_content = body.get('comment', '')
-                contentType = body.get('contentType', 'text/plain')
-                entryFQID = body.get('entry')
+                authorFQID = request.get('author', {}).get('id')
+                comment_content = request.get('comment', '')
+                contentType = request.get('contentType', 'text/plain')
+                entryFQID = request.get('entry')
                 print(f"DEBUG: Extracted authorFQID: {authorFQID}")
                 print(f"DEBUG: Extracted comment_content: {comment_content}")
                 print(f"DEBUG: Extracted contentType: {contentType}")
