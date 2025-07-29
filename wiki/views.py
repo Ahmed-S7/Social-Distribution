@@ -1634,7 +1634,7 @@ def user_inbox_api(request, author_serial):
                 
                 # Find the local entry
                 entry = Entry.objects.get(serial=entry_serial)
-                
+                print(f"DEBUG: Found entry: {entry}")
                 # Create the comment
                 comment = Comment.objects.create(
                     entry=entry,
@@ -1643,12 +1643,12 @@ def user_inbox_api(request, author_serial):
                     contentType=contentType,
                     is_local=False
                 )
-                
+                print(f"DEBUG: Created comment: {comment}")
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
                 body = comment_serializer.data
                 type = "Comment"
-                
+                print(f"DEBUG: Serialized comment for inbox: {body}")
             except Entry.DoesNotExist:
                 return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
