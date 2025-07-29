@@ -228,14 +228,14 @@ class Entry(BaseModel):
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
-    
+    is_local = models.BooleanField(default=False)
     
     @property
     def is_local(self):
         return self.author.is_local
     def get_entry_url(self):
         host = urlparse(self.author.host).netloc
-        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
+        return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"
     
     def get_web_url(self):
         host = urlparse(self.author.host).netloc

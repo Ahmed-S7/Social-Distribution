@@ -54,7 +54,7 @@ urlpatterns = [
     path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
 
     # Entry Related URLs
-    path('entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
+    path('authors/<uuid:author_serial>/entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
     path('entries/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
     path('comment/<int:comment_id>/like/', like_comment, name='like-comment'),
     path('entries/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),

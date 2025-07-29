@@ -945,8 +945,7 @@ def follow_profile(request, author_serial):
                     if len(follow_request_response.content) < 200:
                         print(f"RESPONSE: {follow_request_response.content}")
                     
-                    
-                    
+       
                     # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
                     # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
                     if follow_request_response.status_code == 200:
@@ -1365,7 +1364,7 @@ def user_inbox_api(request, author_serial):
 
         # Handle remote entry
         if type.lower() == "entry":
-            entry_data = request.data.get("body")
+            entry_data = request.data
             if not entry_data:
                 return Response({"error": "No entry data provided"}, status=status.HTTP_400_BAD_REQUEST)
             origin_url = entry_data.get("id")
@@ -1397,6 +1396,7 @@ def user_inbox_api(request, author_serial):
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
                     "is_deleted": False,
+                    "is_local": False
                 }
             )
            
@@ -2236,19 +2236,15 @@ def create_entry(request):
             send_entry_to_remote_followers(entry, request)
             print(request.get_host())
         
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail',author_serial=author.serial, entry_serial=entry.serial)
 
     return render(request, 'create_entry.html')
 
-def entry_detail(request, entry_serial):
+def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     is_owner = (entry.author.user == request.user)
-
-    current_author = (
-        get_object_or_404(Author, user=request.user)
-        if request.user.is_authenticated
-        else None
-    )
+    current_author = get_object_or_404(Author, serial=author_serial)
+    
 
     is_friend = False
     if current_author:  # if the current user is authenticated, check if they are friends with the entry author
@@ -2283,8 +2279,9 @@ def entry_detail(request, entry_serial):
 
 @login_required
 def edit_entry(request, entry_serial):
-    author = get_object_or_404(Author, user=request.user)
+    author = get_object_or_404(Author, serial=entry.author.serial)
     entry = get_object_or_404(Entry, serial=entry_serial, author=author)
+    author_serial=entry.author.serial
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
@@ -2310,8 +2307,10 @@ def edit_entry(request, entry_serial):
                 entry.contentType = content_type
 
             entry.save()
+            #post to remote followers/friends
+            
             #print(entry.serial)
-            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+            return redirect('wiki:entry_detail', author_serial=author_serial, entry_serial=entry.serial)
         else:
             return HttpResponse("Either text content or an image is required.")
         
@@ -2322,13 +2321,14 @@ def edit_entry(request, entry_serial):
 @login_required
 def delete_entry(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial, author__user=request.user)
-    
+    author = get_object_or_404(Author, serial=entry.author.serial)
     if request.method == 'POST':
         entry.delete() 
+        #post to remote followers/friends
         messages.success(request, "Entry deleted successfully.")
         return redirect('wiki:user-wiki', username=request.user.username)
     
-    return render(request, 'confirm_delete.html', {'entry': entry})
+    return render(request, 'confirm_delete.html', {'entry': entry, 'author':author})
 
 
 @api_view(['GET', 'PUT', 'DELETE'])

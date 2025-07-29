@@ -142,7 +142,7 @@
                     {% for entry, rendered in entries %}   
                      <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
-                        <a href="{% url 'wiki:entry_detail' entry.serial %}">
+                        <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
                             <div class="post-header">
 
                                 <div>
@@ -179,8 +179,8 @@
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
-                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
+                                <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
+                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' author.serial entry.serial %}">🔗 Share Link</button>
                                 </div>
                             </div>
                     {% endfor %}
