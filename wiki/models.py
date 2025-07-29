@@ -287,7 +287,6 @@ class Comment(BaseModel):
     objects = AppManager()
     all_objects = models.Manager()
     entry = models.ForeignKey(Entry, on_delete=models.CASCADE, null=True, blank=True, related_name='comments')
-    entry_url = models.URLField(null=True, blank=True)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(default=get_mst_time)

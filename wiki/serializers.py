@@ -245,7 +245,9 @@ class CommentSummarySerializer(serializers.Serializer):
     def get_entry(self, obj):
         # If the entry is remote, use its true FQID
         if not obj.entry.is_local:
-            return obj.entry_url
+            print(f"DEBUG: Remote entry URL: {obj.entry.serial}")
+            print(f"DEBUG: Remote entry ID: {obj.entry.id}")
+            return str(obj.entry.id)
         
         # Otherwise construct local URL
         entry_author_host = obj.entry.author.host.rstrip('/')
