@@ -247,6 +247,10 @@ class CommentSummarySerializer(serializers.Serializer):
         # This ensures the entry URL points to the correct server where the entry resides
         entry_author_host = obj.entry.author.host.rstrip('/')
         
+        # Remove the /api suffix from the host if it exists to avoid duplication
+        if entry_author_host.endswith('/api'):
+            entry_author_host = entry_author_host[:-4]  # Remove '/api'
+        
         return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
