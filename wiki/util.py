@@ -365,16 +365,11 @@ def send_entry_like_to_entry_author(entry_like, request=None):
         
         serialized_like = LikeSummarySerializer(entry_like, context={"request": request}).data
         
-        # Create payload in inbox format
-        payload = {
-            "type": "like",
-            "body": serialized_like,
-        }
         
         # Send POST request to entry author's inbox
         response = requests.post(
             inbox_url,
-            json=payload,
+            json=serialized_like,
             auth=AUTHTOKEN,
             headers={"Content-Type": "application/json"},
         )

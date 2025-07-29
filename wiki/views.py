@@ -1469,9 +1469,9 @@ def user_inbox_api(request, author_serial):
         elif type == "like" or type == "Like":
             
             try:
-                body = request.data.get('body', {})
-                authorFQID = body['author']['id']
-                objectFQID = body['object']
+                like = request.data.get('like', {})
+                authorFQID = like['author']['id']
+                objectFQID = like['object']
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch like object, improperly formatted like"}, status=status.HTTP_400_BAD_REQUEST)
             
