@@ -1587,7 +1587,7 @@ def user_inbox_api(request, author_serial):
                 authorFQID = body.get('author', {}).get('id')
                 comment_content = body.get('content', '')
                 contentType = body.get('contentType', 'text/plain')
-                entryFQID = body.get('entry', '')
+                entryFQID = body.get('entry') or body.get('entry_url') or ''
                 print(f"DEBUG: Extracted authorFQID: {authorFQID}")
                 print(f"DEBUG: Extracted comment_content: {comment_content}")
                 print(f"DEBUG: Extracted contentType: {contentType}")
@@ -1633,12 +1633,15 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
                 # Find the local entry
-                entry = Entry.objects.get(serial=entry_serial)
-                print(f"DEBUG: Found entry: {entry}")
-                # Create the comment
+                try:
+                    entry = Entry.objects.get(serial=entry_serial)
+                except Entry.DoesNotExist:
+                    entry = None  # Accept that it’s a remote entry
+
                 comment = Comment.objects.create(
                     entry=entry,
-                    author=requester,  # The comment is by the remote author
+                    entry_url=entryFQID,
+                    author=requester,
                     content=comment_content,
                     contentType=contentType,
                     is_local=False
