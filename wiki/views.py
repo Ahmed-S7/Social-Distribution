@@ -1565,7 +1565,7 @@ def user_inbox_api(request, author_serial):
                     # Serialize the like for the inbox
                     like_serializer = LikeSummarySerializer(entry_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
+                    type = "like"
                     
                 except Entry.DoesNotExist:
                     return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
