@@ -578,6 +578,15 @@ def get_or_edit_author_api(request, author_serial):
     else:
         return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+@api_view(['GET'])
+def get_author_fqid(request, author_fqid):
+    author_fqid = urllib.parse.unquote(author_fqid)
+    author_fqid = f'{author_fqid.rstrip("/")}/'
+    author = get_object_or_404(Author, id=author_fqid)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 @login_required   
 @require_GET 
 def view_local_authors(request):
@@ -587,7 +596,7 @@ def view_local_authors(request):
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
-@login_required 
+
 @require_GET  
 def view_external_profile(request, author_serial):
     '''Presents a view of a profile other than the one that is currently logged
@@ -3183,44 +3192,17 @@ def get_author_comments_api(request, author_serial):
 
 @api_view(['GET'])
 def get_entry_image_api(request, entry_fqid):
-    pass
-#     entry_fqid = unquote(entry_fqid) 
-#     entry = None
-#     try:
-#         entry = Entry.objects.get(id=entry_fqid)
-#     except Entry.DoesNotExist:
-#         pass
-    
-#     # REMOTE
-#     if entry is None:
-#         try:
-#             response = requests.get(entry_fqid, headers={"Accept": "application/json"})
-#             if response.status_code != 200:
-#                 return HttpResponse("Entry not found or remote entry does not exist.", status=404)
-            
-#             try:
-#                 data = response.json()
-#             except Exception:
-#                 return HttpResponse(f"Remote did not return valid JSON: {response.text}", status=502)
-#             content_type = data.get("contentType", "")
-#             content = data.get("content", "")
-#             if not content_type.startswith('image/'):
-#                 return HttpResponse("Content is not an image.", status=400)
-#             image_data = base64.b64decode(content)
-#             return HttpResponse(image_data, content_type=content_type)
-#         except Exception as e:
-#             print("Response content:", response.text)
-#             print("Content-Type:", response.headers.get("Content-Type"))
-#             return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
-        
-#     # LOCAL
-#     if not entry.contentType.startswith('image/'):
-#         return HttpResponse("Content is not an image.", status=400)
-#     try:
-#         image_data = base64.b64decode(entry.content)
-#         return HttpResponse(image_data, content_type=entry.contentType)
-#     except Exception as e:
-#         return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
+    entry_fqid = unquote(entry_fqid) 
+    entry_serial = entry_fqid.split('/')[-1].rstrip('/')  
+    entry = Entry.objects.get(serial=entry_serial)
+
+    if not entry.contentType.startswith('image/'):
+        return HttpResponse("Content is not an image.", status=400)
+    try:
+        image_data = base64.b64decode(entry.content)
+        return HttpResponse(image_data, content_type=entry.contentType)
+    except Exception as e:
+        return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
 
 @api_view(['GET'])
 def get_author_image_api(request, author_serial, entry_serial):
