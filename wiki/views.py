@@ -596,7 +596,7 @@ def view_local_authors(request):
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
     return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
 
-@login_required 
+
 @require_GET  
 def view_external_profile(request, author_serial):
     '''Presents a view of a profile other than the one that is currently logged
