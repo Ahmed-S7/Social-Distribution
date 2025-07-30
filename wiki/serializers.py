@@ -187,8 +187,8 @@ class CommentLikeSummarySerializer(serializers.Serializer):
 
     def get_object(self, obj):
         # If the comment is remote and has a stored remote_id, use that
-        if not obj.comment.is_local and obj.comment.remote_id:
-            return obj.comment.remote_id.rstrip("/")
+        if not obj.comment.is_local and obj.comment.remote_url:
+            return obj.comment.remote_url.rstrip("/")
 
         # fallback to local construction (your current logic)
         comment_author_host = obj.comment.author.host.rstrip('/')
