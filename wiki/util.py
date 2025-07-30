@@ -422,45 +422,16 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
         else:
             recipients.add(rel.friending)
     
-    # Create deletion notification payload - use DELETED visibility to indicate deletion
-    deletion_payload = {
-        "type": "entry",
-        "title": entry.title,
-        "id": entry.id,
-        "web": entry.web,
-        "description": f"entry by {entry.author}, titled: '{entry.title}'",
-        "contentType": entry.contentType,
-        "content": entry.content,
-        "author": {
-            "type": "author",
-            "id": entry.author.id,
-            "host": entry.author.host,
-            "displayName": entry.author.displayName,
-            "web": entry.author.web,
-            "github": entry.author.github,
-            "profileImage": entry.author.profileImage
-        },
-        "comments": {
-            "type": "comments",
-            "web": f"{entry.author.host.rstrip('/api')}/entries/{entry.serial}/",
-            "id": f"{entry.author.host.rstrip('/api')}/api/authors/{entry.author.serial}/entries/{entry.serial}/comments",
-            "page_number": 1,
-            "size": 0,
-            "count": 0,
-            "src": []
-        },
-        "likes": {
-            "type": "likes",
-            "web": f"{entry.author.host.rstrip('/api')}/authors/{entry.author.serial}/entries/{entry.serial}",
-            "id": f"{entry.author.host.rstrip('/api')}/api/authors/{entry.author.serial}/entries/{entry.serial}/likes",
-            "page_number": 1,
-            "size": 0,
-            "count": 0,
-            "src": []
-        },
-        "published": entry.created_at.isoformat(),
-        "visibility": "DELETED"  # Use DELETED visibility to indicate deletion
-    }
+    # Create deletion notification payload using existing serializer for consistency
+    # Temporarily set visibility to DELETED for the serializer
+    original_visibility = entry.visibility
+    entry.visibility = "DELETED"
+    
+    # Use the existing EntrySerializer to generate the payload
+    deletion_payload = EntrySerializer(entry, context={"request": request}).data
+    
+    # Restore original visibility
+    entry.visibility = original_visibility
     
     for recipient in recipients:
         try:
