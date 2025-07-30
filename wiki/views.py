@@ -203,8 +203,8 @@ def register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
-        github = request.POST.get('github') or None
-        profileImage = request.POST.get('profileImage') or None
+        github = request.POST.get('github') or ""
+        profileImage = request.POST.get('profileImage') or ""
 
         userIsValid = validUserName(username)
         
