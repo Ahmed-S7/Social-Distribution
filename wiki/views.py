@@ -1552,11 +1552,20 @@ def user_inbox_api(request, author_serial):
                     print(f"DEBUG: Comment like ID: {comment_like.id}")
                     print(f"DEBUG: Comment like comment: {comment_like.comment}")
                     print(f"DEBUG: Comment like user: {comment_like.user}")
+                    print(f"DEBUG: Comment like comment.id: {comment_like.comment.id}")
+                    print(f"DEBUG: Comment like comment.author: {comment_like.comment.author}")
+                    print(f"DEBUG: Comment like comment.author.id: {comment_like.comment.author.id}")
+                    print(f"DEBUG: Comment like comment.author.host: {comment_like.comment.author.host}")
+                    print(f"DEBUG: Comment like is_local: {comment_like.is_local}")
+                    print(f"DEBUG: Comment like created_at: {comment_like.created_at}")
+                    print(f"DEBUG: Comment like is_deleted: {comment_like.is_deleted}")
                     
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
                     body = like_serializer.data
                     type = "like"
+                    print(f"DEBUG: Serialized comment like data: {body}")
+                    print(f"DEBUG: Serialized comment like object field: {body.get('object', 'NOT_FOUND')}")
                     
                 except Comment.DoesNotExist:
                     return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
