@@ -392,12 +392,12 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
     Send entry deletion notification to remote followers and friends.
     This ensures deletions are propagated to all connected remote nodes.
     """
-    # Find all remote followers (not local)
+    # Finds all remote followers (not local)
     remote_followers = AuthorFollowing.objects.filter(
         following=entry.author,
     ).exclude(follower__is_local=True)
     
-    # Get all remote friends (mutual following)
+    # Gets all remote friends (mutual following)
     remote_friends = AuthorFriend.objects.filter(
         (Q(friending=entry.author) | Q(friended=entry.author)),
     ).exclude(
@@ -408,11 +408,9 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
         print(f"No remote followers or friends to send deletion notification to.")
         return
     
-    # Determine who should receive this deletion notification based on original visibility
     recipients = set()
     
-    # For deletions, we send to all remote followers and friends regardless of original visibility
-    # since they need to know the entry is deleted
+ 
     for rel in remote_followers:
         recipients.add(rel.follower)
     
@@ -422,8 +420,7 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
         else:
             recipients.add(rel.friending)
     
-    # Create deletion notification payload using existing serializer for consistency
-    # Temporarily set visibility to DELETED for the serializer
+
     original_visibility = entry.visibility
     entry.visibility = "DELETED"
     
