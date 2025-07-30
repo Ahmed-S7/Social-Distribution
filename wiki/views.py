@@ -579,13 +579,13 @@ def get_or_edit_author_api(request, author_serial):
         return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-@api_view(['GET'])
-def get_author_fqid(request, author_fqid):
-    author_fqid = urllib.parse.unquote(author_fqid)
-    author_fqid = f'{author_fqid.rstrip("/")}/'
-    author = get_object_or_404(Author, id=author_fqid)
-    serializer =AuthorSerializer(author)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+# @api_view(['GET'])
+# def get_author_fqid(request, author_fqid):
+#     author_fqid = urllib.parse.unquote(author_fqid)
+#     author_fqid = f'{author_fqid.rstrip("/")}/'
+#     author = get_object_or_404(Author, id=author_fqid)
+#     serializer =AuthorSerializer(author)
+#     return Response(serializer.data, status=status.HTTP_200_OK)
 
 @login_required   
 @require_GET 
