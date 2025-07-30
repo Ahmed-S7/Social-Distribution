@@ -26,7 +26,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model= Author
-        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web". 'profileImage']
+        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web". "profileImage"]
     
 
     def validate_displayName(self, value):
