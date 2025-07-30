@@ -305,19 +305,22 @@ def send_comment_like_to_comment_author(comment_like, request=None):
     try:
         # Extract host from the author ID and use the correct serial
         author_id = comment_author.id
+        author_id = author_id.rstrip('/')
+        print(f"DEBUG: Comment author ID: {author_id}")
+        print(f"DEBUG: Comment author is_local: {comment_author.is_local}")
+        
         # Remove the /api/authors/{wrong_serial} part to get just the host
         host = author_id.replace('/api/authors/' + author_id.split('/')[-1], '')
+        print(f"DEBUG: Extracted host: {host}")
         
         # Construct inbox url for the comment author using the correct serial
-        inbox_url = f"{host}/api/authors/{comment_author.serial}/inbox/"
+        inbox_url = f"{author_id}/inbox/"
+        print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
         serialized_like = CommentLikeSummarySerializer(comment_like, context={"request": request}).data
         
-        # Create payload in inbox format
-        payload = {
-            "type": "like",
-            "body": serialized_like,
-        }
+        # Create payload in inbox format - send the like data directly
+        payload = serialized_like
         
         # Send POST request to comment author's inbox
         response = requests.post(
@@ -361,7 +364,12 @@ def send_entry_like_to_entry_author(entry_like, request=None):
     
     try:
         # Use the entry author ID directly and add /inbox/
+        print(f"DEBUG: Entry author ID: {entry_author.id}")
+        print(f"DEBUG: Entry author serial: {entry_author.serial}")
+        print(f"DEBUG: Entry author is_local: {entry_author.is_local}")
+        
         inbox_url = entry_author.id.rstrip('/') + '/inbox/'
+        print(f"DEBUG: Constructed inbox URL: {inbox_url}")
         
         serialized_like = LikeSummarySerializer(entry_like, context={"request": request}).data
         

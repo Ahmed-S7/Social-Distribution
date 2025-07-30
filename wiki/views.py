@@ -1468,6 +1468,9 @@ def user_inbox_api(request, author_serial):
         
         elif type.lower() == 'like':
             
+            print(f"DEBUG: Processing like in inbox")
+            print(f"DEBUG: Request data: {request.data}")
+            
             try:
                 # like = request.data
                 # authorFQID = like['author']['id']
@@ -1506,22 +1509,34 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
-            if '/entries/' in objectFQID and '/comments/' in objectFQID:
+            if '/commented/' in objectFQID:
                 # This is a comment like
                 try:
                     print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
-                    # Parse the comment FQID to extract entry and comment info
-                    # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
+                    # Parse the comment FQID to extract comment info
+                    # Format: http://host/api/authors/{author_serial}/commented/{comment_id}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-4]  # author serial
-                    entry_serial = parts[-2]  # entry serial
-                    comment_serial = parts[-1]  # comment serial
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
                     
-                    # Find the local entry
-                    entry = Entry.objects.get(serial=entry_serial)
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        comment_author_serial = parts[-4]  # author serial (third from end)
+                        comment_id = parts[-2]  # comment id (second from end)
+                    else:
+                        comment_author_serial = parts[-3]  # author serial (second from end)
+                        comment_id = parts[-1]  # comment id (last)
+                    
+                    print(f"DEBUG: Extracted comment_author_serial: {comment_author_serial}")
+                    print(f"DEBUG: Extracted comment_id: {comment_id}")
                     
                     # Find the existing comment
-                    comment = Comment.objects.get(id=comment_serial)
+                    try:
+                        comment = Comment.objects.get(id=comment_id)
+                        print(f"DEBUG: Found comment with ID {comment_id}: {comment}")
+                    except Comment.DoesNotExist:
+                        print(f"DEBUG: Comment with ID {comment_id} does not exist!")
+                        return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
                     
                     # Check if like already exists
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
@@ -1533,11 +1548,24 @@ def user_inbox_api(request, author_serial):
                         user=requester,
                         is_local=False
                     )
+                    print(f"DEBUG: Created comment like: {comment_like}")
+                    print(f"DEBUG: Comment like ID: {comment_like.id}")
+                    print(f"DEBUG: Comment like comment: {comment_like.comment}")
+                    print(f"DEBUG: Comment like user: {comment_like.user}")
+                    print(f"DEBUG: Comment like comment.id: {comment_like.comment.id}")
+                    print(f"DEBUG: Comment like comment.author: {comment_like.comment.author}")
+                    print(f"DEBUG: Comment like comment.author.id: {comment_like.comment.author.id}")
+                    print(f"DEBUG: Comment like comment.author.host: {comment_like.comment.author.host}")
+                    print(f"DEBUG: Comment like is_local: {comment_like.is_local}")
+                    print(f"DEBUG: Comment like created_at: {comment_like.created_at}")
+                    print(f"DEBUG: Comment like is_deleted: {comment_like.is_deleted}")
                     
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
                     body = like_serializer.data
                     type = "like"
+                    print(f"DEBUG: Serialized comment like data: {body}")
+                    print(f"DEBUG: Serialized comment like object field: {body.get('object', 'NOT_FOUND')}")
                     
                 except Comment.DoesNotExist:
                     return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -1551,8 +1579,19 @@ def user_inbox_api(request, author_serial):
                     # Parse the entry FQID to extract entry info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-4]  # author serial (third from end)
-                    entry_serial = parts[-2]  # entry serial (last)
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
+                    
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        entry_author_serial = parts[-4]  # author serial (fourth from end)
+                        entry_serial = parts[-2]  # entry serial (second from end)
+                    else:
+                        entry_author_serial = parts[-3]  # author serial (third from end)
+                        entry_serial = parts[-1]  # entry serial (last)
+                    
+                    print(f"DEBUG: Extracted entry_author_serial: {entry_author_serial}")
+                    print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
@@ -1636,8 +1675,15 @@ def user_inbox_api(request, author_serial):
             try:
                 parts = entryFQID.split('/')
                 print(f"DEBUG: Split parts: {parts}")
-                entry_author_serial = parts[-4]  # author serial (third from end)
-                entry_serial = parts[-2]  # entry serial (last)
+                
+                # Check if there's a trailing slash and adjust indices accordingly
+                if entryFQID.endswith('/'):
+                    entry_author_serial = parts[-4]  # author serial (fourth from end)
+                    entry_serial = parts[-2]  # entry serial (second from end)
+                else:
+                    entry_author_serial = parts[-3]  # author serial (third from end)
+                    entry_serial = parts[-1]  # entry serial (last)
+                
                 print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
                 print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 

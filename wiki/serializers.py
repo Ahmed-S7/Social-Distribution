@@ -153,13 +153,13 @@ class LikeSummarySerializer(serializers.Serializer):
         return f"{host}/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
-
+        # Use the entry author's host instead of the current request's host
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        
         # Extract author UUID from the entry's author id URL
         entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
         entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
-        return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
+        return f"{entry_author_host}/authors/{entry_author_id}/entries/{entry_id}"
 
 
 class CommentLikeSummarySerializer(serializers.Serializer):
@@ -177,18 +177,20 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         return dt[:-2] + ':' + dt[-2:]  # ISO 8601 with colon in timezone
 
     def get_id(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+        # Use the like author's host instead of the current request's host
+        like_author_host = obj.user.host.rstrip('/')
 
+        # Extract author UUID (or last segment of URL)
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+
+        return f"{like_author_host}/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
-
+        # Use the comment author's host instead of the current request's host
+        comment_author_host = obj.comment.author.host.rstrip('/')
+        
         comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{comment_author_id}/commented/{obj.comment.id}"
+        return f"{comment_author_host}/authors/{comment_author_id}/commented/{obj.comment.serial}"
 
 
 class CommentSummarySerializer(serializers.Serializer):
@@ -211,13 +213,13 @@ class CommentSummarySerializer(serializers.Serializer):
         return dt[:-2] + ':' + dt[-2:]
     
     def get_id(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+        # Use the comment author's host instead of the current request's host
+        comment_author_host = obj.author.host.rstrip('/')
 
         # Extract author UUID (or last segment of URL)
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
 
-        return f"{host}/api/authors/{author_id}/commented/{obj.id}"
+        return f"{comment_author_host}/authors/{author_id}/commented/{obj.id}"
     
     def get_likes(self, obj):
         request = self.context.get('request')
