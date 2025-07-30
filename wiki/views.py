@@ -1521,10 +1521,10 @@ def user_inbox_api(request, author_serial):
                     
                     # Check if there's a trailing slash and adjust indices accordingly
                     if objectFQID.endswith('/'):
-                        comment_author_serial = parts[-3]  # author serial (third from end)
+                        comment_author_serial = parts[-4]  # author serial (third from end)
                         comment_id = parts[-2]  # comment id (second from end)
                     else:
-                        comment_author_serial = parts[-2]  # author serial (second from end)
+                        comment_author_serial = parts[-3]  # author serial (second from end)
                         comment_id = parts[-1]  # comment id (last)
                     
                     print(f"DEBUG: Extracted comment_author_serial: {comment_author_serial}")
