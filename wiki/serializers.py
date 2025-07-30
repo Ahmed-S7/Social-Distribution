@@ -151,6 +151,7 @@ class LikeSummarySerializer(serializers.Serializer):
         return f"{host}/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
+        print(f"DEBUG: obj.entry: {obj.entry}")
         return obj.entry.id
         # Use the entry author's host instead of the current request's host
         entry_author_host = obj.entry.author.host.rstrip('/')
