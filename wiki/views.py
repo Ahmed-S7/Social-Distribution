@@ -1405,7 +1405,7 @@ def user_inbox_api(request, author_serial):
             )
             print(f"DEBUG: entry ID: {entry_id}")
             print(f"DEBUG: entry serial: {entry_serial}")
-            print(f"DEBUG: author information: {author_data}")
+            print(f"DEBUG: entry author information (sender/creator): {author_data}")
             
            
 
