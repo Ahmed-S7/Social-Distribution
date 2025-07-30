@@ -393,3 +393,71 @@ def send_entry_like_to_entry_author(entry_like, request=None):
         print(f"Connection error sending entry like {entry_like.id} to entry author's inbox: {inbox_url}")
     except Exception as e:
         print(f"Exception sending entry like {entry_like.id} to entry author's inbox: {str(e)}")
+
+
+def send_entry_deletion_to_remote_followers(entry, request=None):
+    """
+    Send entry deletion notification to remote followers and friends.
+    This ensures deletions are propagated to all connected remote nodes.
+    """
+    # Finds all remote followers (not local)
+    remote_followers = AuthorFollowing.objects.filter(
+        following=entry.author,
+    ).exclude(follower__is_local=True)
+    
+    # Gets all remote friends (mutual following)
+    remote_friends = AuthorFriend.objects.filter(
+        (Q(friending=entry.author) | Q(friended=entry.author)),
+    ).exclude(
+        Q(friending__is_local=True) | Q(friended__is_local=True)
+    ) 
+    
+    if not remote_followers.exists() and not remote_friends.exists():
+        print(f"No remote followers or friends to send deletion notification to.")
+        return
+    
+    recipients = set()
+    
+ 
+    for rel in remote_followers:
+        recipients.add(rel.follower)
+    
+    for rel in remote_friends:
+        if rel.friending == entry.author:
+            recipients.add(rel.friended)
+        else:
+            recipients.add(rel.friending)
+    
+
+    original_visibility = entry.visibility
+    entry.visibility = "DELETED"
+    
+    deletion_payload = EntrySerializer(entry, context={"request": request}).data
+    
+    entry.visibility = original_visibility
+    
+    for recipient in recipients:
+        try:
+            inbox_url = recipient.id.rstrip('/') + '/inbox/'
+            
+            # Sends POST request to remote inbox
+            response = requests.post(
+                inbox_url,
+                json=deletion_payload,
+                auth=AUTHTOKEN,
+                headers={"Content-Type": "application/json"},
+            ) 
+    
+            if response.status_code in [200, 201]:
+                print(f"Successfully sent entry deletion to {inbox_url}")
+            else:
+                print(f"Failed to send entry deletion to {inbox_url}: {response.status_code} {response.text}")
+                
+        except requests.exceptions.Timeout:
+            print(f"Timeout sending entry deletion to {inbox_url}")
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error sending entry deletion to {inbox_url}")
+        except Exception as e:
+            print(f"Exception sending entry deletion to {inbox_url}: {str(e)}")
+    
+    print(f"Sent entry deletion notification to {len(recipients)} remote recipients")

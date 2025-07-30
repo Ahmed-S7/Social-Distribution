@@ -2390,6 +2390,9 @@ def delete_entry(request, entry_serial):
     if request.method == 'POST':
         entry.delete() 
         #post to remote followers/friends
+        from .util import send_entry_deletion_to_remote_followers
+        print("sending entry deletion to remote followers")
+        send_entry_deletion_to_remote_followers(entry, request)
         
         messages.success(request, "Entry deleted successfully.")
         return redirect('wiki:user-wiki', username=request.user.username)
