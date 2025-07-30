@@ -424,18 +424,15 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
     original_visibility = entry.visibility
     entry.visibility = "DELETED"
     
-    # Use the existing EntrySerializer to generate the payload
     deletion_payload = EntrySerializer(entry, context={"request": request}).data
     
-    # Restore original visibility
     entry.visibility = original_visibility
     
     for recipient in recipients:
         try:
-            # Construct inbox url
             inbox_url = recipient.id.rstrip('/') + '/inbox/'
             
-            # Send POST request to remote inbox
+            # Sends POST request to remote inbox
             response = requests.post(
                 inbox_url,
                 json=deletion_payload,
