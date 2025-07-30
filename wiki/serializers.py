@@ -177,13 +177,13 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         return dt[:-2] + ':' + dt[-2:]  # ISO 8601 with colon in timezone
 
     def get_id(self, obj):
-        # Use the comment author's host instead of the current request's host
-        comment_author_host = obj.author.host.rstrip('/')
+        # Use the like author's host instead of the current request's host
+        like_author_host = obj.user.host.rstrip('/')
 
         # Extract author UUID (or last segment of URL)
-        author_id = str(obj.author.id).rstrip('/').split('/')[-1]
+        author_id = str(obj.user.id).rstrip('/').split('/')[-1]
 
-        return f"{comment_author_host}/authors/{author_id}/liked/{obj.id}"
+        return f"{like_author_host}/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
         # Use the comment author's host instead of the current request's host
