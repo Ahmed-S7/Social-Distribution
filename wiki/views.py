@@ -958,7 +958,7 @@ def follow_profile(request, author_serial):
        
                     # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
                     # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
-                    if follow_request_response.status_code == 200:
+                    if follow_request_response.status_code in [200, 201]:
                         local_request = remote_follow_request
                         local_request.set_request_state(RequestState.ACCEPTED)
                         try:
