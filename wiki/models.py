@@ -293,9 +293,9 @@ class Comment(BaseModel):
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
     is_local = models.BooleanField(default=True)
+    remote_url = models.URLField(null=True, blank=True)
     
-    
-    
+
     def get_web_url(self):
         host = urlparse(self.author.host).netloc
         return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"

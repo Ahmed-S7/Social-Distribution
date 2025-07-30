@@ -1641,6 +1641,7 @@ def user_inbox_api(request, author_serial):
             print(f"DEBUG: Request data: {request.data}")
             
             try:
+                comment_id = request.data.get('id', '')
                 authorFQID = request.data.get('author', {}).get('id')
                 comment_content = request.data.get('comment', '')
                 contentType = request.data.get('contentType', 'text/plain')
@@ -1649,6 +1650,7 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Extracted comment_content: {comment_content}")
                 print(f"DEBUG: Extracted contentType: {contentType}")
                 print(f"DEBUG: Extracted entryFQID: {entryFQID}")
+                print(f"DEBUG: Extracted id: {request.data.get('id')}")
             except Exception as e:
                 print(f"DEBUG: Exception in comment processing: {e}")
                 return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1703,6 +1705,7 @@ def user_inbox_api(request, author_serial):
                     entry = None  # Accept that it’s a remote entry
                 print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 comment = Comment.objects.create(
+                    remote_url=comment_id,
                     entry=entry,
                     author=requester,
                     content=comment_content,
