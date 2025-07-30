@@ -1403,7 +1403,9 @@ def user_inbox_api(request, author_serial):
                     "is_local": False
                 }
             )
-            
+            print(f"DEBUG: entry ID: {entry_id}")
+            print(f"DEBUG: entry serial: {entry_serial}")
+            print(f"DEBUG: author information: {author_data}")
             
            
 
