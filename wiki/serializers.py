@@ -186,11 +186,15 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         return f"{like_author_host}/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
-        # Use the comment author's host instead of the current request's host
+        # If the comment is remote and has a stored remote_id, use that
+        if not obj.comment.is_local and obj.comment.remote_id:
+            return obj.comment.remote_id.rstrip("/")
+
+        # fallback to local construction (your current logic)
         comment_author_host = obj.comment.author.host.rstrip('/')
-        
         comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
-        return f"{comment_author_host}/authors/{comment_author_id}/commented/{obj.comment.serial}"
+        return f"{comment_author_host}/authors/{comment_author_id}/commented/{obj.comment.id}"
+
 
 
 class CommentSummarySerializer(serializers.Serializer):
