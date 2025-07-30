@@ -186,8 +186,11 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         return f"{like_author_host}/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
+        # Use the comment author's host instead of the current request's host
+        comment_author_host = obj.comment.author.host.rstrip('/')
         
-        return f"{obj.comment.id}"
+        comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
+        return f"{comment_author_host}/authors/{comment_author_id}/commented/{obj.comment.id}"
 
 
 class CommentSummarySerializer(serializers.Serializer):
