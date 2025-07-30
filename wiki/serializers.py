@@ -26,7 +26,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model= Author
-        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web", "description"]
+        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web"]
     
 
     def validate_displayName(self, value):
@@ -49,8 +49,6 @@ class AuthorSerializer(serializers.ModelSerializer):
         if 'github' in validated_data:
             instance.github = validated_data['github']
             
-        if 'description' in validated_data:
-            instance.description = validated_data['description']    
     
         if 'profileImage' in validated_data:
             instance.profileImage = validated_data['profileImage']
