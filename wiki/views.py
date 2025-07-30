@@ -1531,7 +1531,12 @@ def user_inbox_api(request, author_serial):
                     print(f"DEBUG: Extracted comment_id: {comment_id}")
                     
                     # Find the existing comment
-                    comment = Comment.objects.get(id=comment_id)
+                    try:
+                        comment = Comment.objects.get(id=comment_id)
+                        print(f"DEBUG: Found comment with ID {comment_id}: {comment}")
+                    except Comment.DoesNotExist:
+                        print(f"DEBUG: Comment with ID {comment_id} does not exist!")
+                        return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
                     
                     # Check if like already exists
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
@@ -1543,6 +1548,10 @@ def user_inbox_api(request, author_serial):
                         user=requester,
                         is_local=False
                     )
+                    print(f"DEBUG: Created comment like: {comment_like}")
+                    print(f"DEBUG: Comment like ID: {comment_like.id}")
+                    print(f"DEBUG: Comment like comment: {comment_like.comment}")
+                    print(f"DEBUG: Comment like user: {comment_like.user}")
                     
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
