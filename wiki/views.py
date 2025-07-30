@@ -582,7 +582,7 @@ def get_or_edit_author_api(request, author_serial):
 @api_view(['GET'])
 def get_author_fqid(request, author_fqid):
     author_fqid = urllib.parse.unquote(author_fqid)
-    author_fqid = author_fqid.rstrip('/')
+    author_fqid = f'{author_fqid.rstrip("/")}/'
     author = get_object_or_404(Author, id=author_fqid)
     serializer =AuthorSerializer(author)
     return Response(serializer.data, status=status.HTTP_200_OK)
