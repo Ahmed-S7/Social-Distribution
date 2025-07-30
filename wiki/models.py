@@ -95,13 +95,13 @@ class Author(BaseModel):
     
     displayName = models.CharField(max_length=150)
 
-    description = models.TextField(blank=True, null=True, default="")
+    description = models.TextField(blank=True, default="")
     
-    github = models.URLField(blank=True, null=True, default=None)
+    github = models.URLField(blank=True, default="")
     
     serial = models.UUIDField(default=uuid.uuid4, null=False, unique=True)
     
-    profileImage = models.URLField(blank=True, null=True)
+    profileImage = models.URLField(blank=True, default="")
     
     web = models.URLField(blank=True, null=False, default=None)
     
