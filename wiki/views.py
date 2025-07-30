@@ -578,6 +578,15 @@ def get_or_edit_author_api(request, author_serial):
     else:
         return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+@api_view(['GET'])
+def get_author_fqid(request, author_fqid):
+    author_fqid = urllib.parse.unquote(author_fqid)
+    author_fqid = author_fqid.rstrip('/')
+    author = get_object_or_404(Author, id=author_fqid)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 @login_required   
 @require_GET 
 def view_local_authors(request):
@@ -3184,7 +3193,7 @@ def get_author_comments_api(request, author_serial):
 @api_view(['GET'])
 def get_entry_image_api(request, entry_fqid):
     entry_fqid = unquote(entry_fqid) 
-    entry_serial = entry_fqid.split('/')[-1].rstrip('/')  # Extract the last part of the FQID as the serial
+    entry_serial = entry_fqid.split('/')[-1].rstrip('/')  
     entry = Entry.objects.get(serial=entry_serial)
 
     if not entry.contentType.startswith('image/'):
