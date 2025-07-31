@@ -1456,7 +1456,7 @@ def user_inbox_api(request, author_serial):
             if requester.is_already_requesting(requested_author):
                 return Response({"failed to save Inbox item":f"dev notes: you have already requested to follow this author."}, status=status.HTTP_400_BAD_REQUEST)    
 
-            remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author,  state=RequestState.REQUESTING)
+            remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
           
@@ -1546,10 +1546,11 @@ def user_inbox_api(request, author_serial):
                     
                     # Find the existing comment
                     try:
+                        objectFQID = objectFQID.rstrip('/')
                         comment = Comment.objects.get(remote_url=objectFQID)
-                        print(f"DEBUG: Found comment with ID {comment_id}: {comment}")
+                        print(f"DEBUG: Found comment with ID {objectFQID}: {comment}")
                     except Comment.DoesNotExist:
-                        print(f"DEBUG: Comment with ID {comment_id} does not exist!")
+                        print(f"DEBUG: Comment with ID {objectFQID} does not exist!")
                         return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
                     except Exception as e:
                         print(f"DEBUG: could not locate comment:{e}")
@@ -1714,14 +1715,19 @@ def user_inbox_api(request, author_serial):
                 except Entry.DoesNotExist:
                     entry = None  # Accept that it’s a remote entry
                 print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
-                comment = Comment.objects.create(
-                    remote_url=comment_id,
-                    entry=entry,
-                    author=requester,
-                    content=comment_content,
-                    contentType=contentType,
-                    is_local=False
-                )
+                
+                
+                if Comment.objects.filter(remote_url=comment_id).exists():
+                    comment = Comment.objects.create(
+                        remote_url=comment_id.strip('/'),
+                        entry=entry,
+                        author=requester,
+                        content=comment_content,
+                        contentType=contentType,
+                        is_local=False
+                    )
+                    return Response({"this comment already exists on our node."}, status=status.HTTP_200_OK)    
+                
                 print(f"DEBUG: Created comment: {comment}")
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
