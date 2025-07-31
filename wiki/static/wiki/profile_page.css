@@ -166,6 +166,14 @@ h3{
     border-color:black;
 }
 
+
+img{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 90%; 
+    border-radius: 0.625em;
+}
+
 /*entry image*/
 p img{
     display:block; 
