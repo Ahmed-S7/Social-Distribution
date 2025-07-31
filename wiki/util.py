@@ -151,8 +151,6 @@ def send_entry_to_remote_followers(entry, request=None):
     # Get all remote friends (mutual following)
     remote_friends = AuthorFriend.objects.filter(
         (Q(friending=entry.author) | Q(friended=entry.author)),
-    ).exclude(
-        Q(friending__is_local=True) | Q(friended__is_local=True)
     ) 
     print(f"THIS AUTHOR'S REMOTE FRIENDS ARE: {remote_friends}")
     print(f"THIS AUTHOR'S REMOTE FOLLOWERS ARE: {remote_followers}")
