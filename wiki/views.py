@@ -2332,6 +2332,8 @@ def entry_detail(request, author_serial, entry_serial):
             Q(friending=current_author, friended=entry.author) |
             Q(friending=entry.author, friended=current_author)
         ).exists()
+        print(f"is owner: {is_owner}")
+        print(f"is friend: {is_friend}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
