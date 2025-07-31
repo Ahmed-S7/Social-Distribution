@@ -2323,12 +2323,14 @@ def create_entry(request):
 def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     is_owner = (entry.author.user == request.user)
-    current_author = get_object_or_404(Author, serial=author_serial)
-    is_friend = current_author.is_friends_with(entry.author)
+    entry_author = get_object_or_404(Author, serial=author_serial)
+    request_author = get_object_or_404(Author, user=request.user)
+    is_friend = request_author.is_friends_with(entry_author)
 
     
     print(f"is owner: {is_owner}")
-    print(f"current author: {current_author}")
+    print(f"current author: {entry_author}")
+    print(f"request author: {request_author}")
     print(f"is friend: {is_friend}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
