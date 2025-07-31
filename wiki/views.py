@@ -1543,11 +1543,14 @@ def user_inbox_api(request, author_serial):
                     
                     # Find the existing comment
                     try:
-                        comment = Comment.objects.get(id=comment_id)
+                        comment = Comment.objects.get(remote_url=objectFQID)
                         print(f"DEBUG: Found comment with ID {comment_id}: {comment}")
                     except Comment.DoesNotExist:
                         print(f"DEBUG: Comment with ID {comment_id} does not exist!")
                         return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+                    except Exception as e:
+                        print(f"DEBUG: could not locate comment:{e}")
+                    
                     
                     # Check if like already exists
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
@@ -1643,6 +1646,8 @@ def user_inbox_api(request, author_serial):
             print(f"DEBUG: Request data: {request.data}")
             
             try:
+                
+                
                 comment_id = request.data.get('id', '')
                 authorFQID = request.data.get('author', {}).get('id')
                 comment_content = request.data.get('comment', '')
