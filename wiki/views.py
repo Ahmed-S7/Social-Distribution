@@ -311,7 +311,9 @@ class MyLoginView(LoginView):
         for remote_author_list in remote_authors_lists:
             for author_json in remote_author_list:
                 all_remote_authors.append(author_json)#contains a json of all of the remote authors 
-             
+        
+        print(f"AUTHORS PULLED: {all_remote_authors}")        
+         
         for remote_author in all_remote_authors:
             if remote_author.get("id"):
                 author_id = remote_author.get("id").rstrip('/')
@@ -349,7 +351,8 @@ class MyLoginView(LoginView):
                         
                 except Exception as e:
                     print(e)     
-            
+        
+        
         # redirects to the login if the redirection to the wiki page fails
         try:
             return redirect('wiki:user-wiki', username=username)

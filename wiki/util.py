@@ -164,7 +164,7 @@ def send_entry_to_remote_followers(entry, request=None):
         # Send to all remote followers
         for rel in remote_followers:
             recipients.add(rel.follower)
-    
+     
     elif entry.visibility == 'FRIENDS':
         # Send only to remote friends
         for rel in remote_friends:
