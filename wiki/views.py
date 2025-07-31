@@ -2324,16 +2324,12 @@ def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     is_owner = (entry.author.user == request.user)
     current_author = get_object_or_404(Author, serial=author_serial)
-    
+    is_friend = current_author.is_friends_with(entry.author)
 
-    is_friend = False
-    if current_author:  # if the current user is authenticated, check if they are friends with the entry author
-        is_friend = AuthorFriend.objects.filter(
-            Q(friending=current_author, friended=entry.author) |
-            Q(friending=entry.author, friended=current_author)
-        ).exists()
-        print(f"is owner: {is_owner}")
-        print(f"is friend: {is_friend}")
+    
+    print(f"is owner: {is_owner}")
+    print(f"current author: {current_author}")
+    print(f"is friend: {is_friend}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
