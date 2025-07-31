@@ -2282,12 +2282,11 @@ def create_entry(request):
         if image:
             image_data = image.read()
             encoded = base64.b64encode(image_data).decode('utf-8')
-            if image.content_type == 'image/png':
-                content_type = 'image/png;base64'
-            elif image.content_type == 'image/jpeg':
-                content_type = 'image/jpeg;base64'
+            mime_type = image.content_type 
+            if mime_type.startswith("image/"):
+                content_type = f"{mime_type};base64"
             else:
-                content_type = 'application/base64'  # fallback for unsupported images
+                content_type = "application/octet-stream;base64" 
             content = encoded
         elif text_content:
             content = text_content
@@ -2371,12 +2370,11 @@ def edit_entry(request, entry_serial):
             if image:
                 image_data = image.read()            
                 encoded = base64.b64encode(image_data).decode('utf-8')
-                if image.content_type == 'image/png':
-                    entry.contentType = 'image/png;base64'
-                elif image.content_type == 'image/jpeg':
-                    entry.contentType = 'image/jpeg;base64'
+                mime_type = image.content_type  
+                if mime_type.startswith("image/"):
+                    entry.contentType = f"{mime_type};base64"
                 else:
-                    entry.contentType = 'application/base64'
+                    entry.contentType = "application/octet-stream;base64" 
                 entry.content = encoded
             elif content:
                 entry.content = content

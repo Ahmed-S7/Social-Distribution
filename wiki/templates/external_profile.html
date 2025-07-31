@@ -181,10 +181,9 @@
                             </div>
                         
 
-
-                            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                            {% if entry.contentType|slice:":5" == "image" %}
                                <div class="post-content text-center">
-                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
                                </div>
                             {% elif entry.contentType == "text/markdown" %}
                                <div class="post-content markdown-content">
