@@ -2335,7 +2335,7 @@ def entry_detail(request, author_serial, entry_serial):
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
-        if not is_owner or not is_friend:
+        if not (is_owner or is_friend):
             return HttpResponse("This entry is private. You are not a friends or not a friend of the author.", status=403)
         if not request.user.is_authenticated:
             return HttpResponse("This entry is private. You must log in to view it.", status=403)
