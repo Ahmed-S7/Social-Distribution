@@ -40,7 +40,7 @@
         <h2 class="entry_title text-center mb-3">{{ entry.title }}</h2>
 
         <div class="entry_content text-center">
-          {% if entry.contentType|slice:":5" == "image" %}
+          {% if "base64" in entry.contentType %}
             <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
           {% else %}
             {{ rendered_content|safe }}

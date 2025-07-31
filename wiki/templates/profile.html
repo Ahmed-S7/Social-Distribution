@@ -154,7 +154,7 @@
                                 </div>
                             </div>
                             
-                            {% if entry.contentType|slice:":5" == "image" %}
+                            {% if "base64" in entry.contentType %}
                                <div class="post-content text-center">
                                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
                                </div>
