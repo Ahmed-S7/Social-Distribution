@@ -1717,7 +1717,7 @@ def user_inbox_api(request, author_serial):
                 print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 
                 
-                if Comment.objects.filter(remote_url=comment_id).exists():
+                if not Comment.objects.filter(remote_url=comment_id).exists():
                     comment = Comment.objects.create(
                         remote_url=comment_id.strip('/'),
                         entry=entry,
@@ -1725,9 +1725,13 @@ def user_inbox_api(request, author_serial):
                         content=comment_content,
                         contentType=contentType,
                         is_local=False
-                    )
-                    return Response({"this comment already exists on our node."}, status=status.HTTP_200_OK)    
-                
+                    ) 
+
+                else:
+                    print("this comment already exists")
+                    return Response({"This comment already exists in our node."}, status=status.HTTP_200_OK)
+                    
+                    
                 print(f"DEBUG: Created comment: {comment}")
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
