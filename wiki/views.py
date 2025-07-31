@@ -2334,11 +2334,11 @@ def entry_detail(request, author_serial, entry_serial):
         ).exists()
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
-    if entry.visibility == 'FRIENDS' and not (is_owner or (request.user.is_authenticated and is_friend)):
+    if entry.visibility == 'FRIENDS':
+        if not is_owner or not is_friend:
+            return HttpResponse("This entry is private. You are not a friends or not a friend of the author.", status=403)
         if not request.user.is_authenticated:
             return HttpResponse("This entry is private. You must log in to view it.", status=403)
-        else:
-            return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
     #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
     if entry.contentType == "text/markdown":
