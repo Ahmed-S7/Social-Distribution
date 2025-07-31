@@ -314,7 +314,7 @@ class MyLoginView(LoginView):
              
         for remote_author in all_remote_authors:
             if remote_author.get("id"):
-                author_id = remote_author.get("id")
+                author_id = remote_author.get("id").rstrip('/')
                 try:
                     
                     if author_exists(author_id):
