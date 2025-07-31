@@ -154,6 +154,9 @@ def send_entry_to_remote_followers(entry, request=None):
     ).exclude(
         Q(friending__is_local=True) | Q(friended__is_local=True)
     ) 
+    print(f"THIS AUTHOR'S REMOTE FRIENDS ARE: {remote_friends}")
+    print(f"THIS AUTHOR'S REMOTE FOLLOWERS ARE: {remote_followers}")
+    
     if not remote_followers.exists() and not remote_friends.exists():
         print(f"No remote followers or friends to send entry to.")
         return
@@ -166,7 +169,7 @@ def send_entry_to_remote_followers(entry, request=None):
             recipients.add(rel.follower)
      
     elif entry.visibility == 'FRIENDS':
-        print("ENTRY RECIPIENT IS A FRIEND")
+        print("VISIBILITY OF THE POST IS FRIENDS ONLY")
         # Send only to remote friends
         for rel in remote_friends:
             if rel.friending == entry.author:  
