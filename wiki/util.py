@@ -166,13 +166,16 @@ def send_entry_to_remote_followers(entry, request=None):
             recipients.add(rel.follower)
      
     elif entry.visibility == 'FRIENDS':
+        print("ENTRY RECIPIENT IS A FRIEND")
         # Send only to remote friends
         for rel in remote_friends:
-            if rel.friending == entry.author:
+            if rel.friending == entry.author:  
                 recipients.add(rel.friended)
+                print(f"FRIEND RECEIVING ENTRY: {rel.friended}")  
             else:
                 recipients.add(rel.friending)
-    
+                print(f"FRIEND RECEIVING ENTRY: {rel.friending}")
+                
     # Serialize entry
     serialized_entry = EntrySerializer(entry, context={"request": request}).data
     print(serialized_entry)
