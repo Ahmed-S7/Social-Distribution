@@ -2335,19 +2335,18 @@ def create_entry(request):
 
 def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
-    is_owner = (entry.author.user == request.user)
     entry_author = get_object_or_404(Author, serial=author_serial)
-    request_author = get_object_or_404(Author, user=request.user)
-    is_friend = request_author.is_friends_with(entry_author)
 
-    
-    print(f"is owner: {is_owner}")
     print(f"current author: {entry_author}")
-    print(f"request author: {request_author}")
-    print(f"is friend: {is_friend}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
+        is_owner = (entry.author.user == request.user)
+        request_author = get_object_or_404(Author, user=request.user)
+        is_friend = request_author.is_friends_with(entry_author)
+        print(f"request author: {request_author}")
+        print(f"is friend: {is_friend}")
+        print(f"is owner: {is_owner}")
         if not (is_owner or is_friend):
             return HttpResponse("This entry is private. You are not a friends or not a friend of the author.", status=403)
         if not request.user.is_authenticated:
