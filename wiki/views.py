@@ -2342,7 +2342,10 @@ def entry_detail(request, author_serial, entry_serial):
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
         is_owner = (entry.author.user == request.user)
-        request_author = get_object_or_404(Author, user=request.user)
+        try:
+            request_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            return HttpResponse("You are not an author. You must be logged in as an author to try and view this post.", status=403)
         is_friend = request_author.is_friends_with(entry_author)
         print(f"request author: {request_author}")
         print(f"is friend: {is_friend}")
