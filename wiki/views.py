@@ -2335,23 +2335,25 @@ def create_entry(request):
 
 def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
-    is_owner = (entry.author.user == request.user)
     entry_author = get_object_or_404(Author, serial=author_serial)
-    request_author = get_object_or_404(Author, user=request.user)
-    is_friend = request_author.is_friends_with(entry_author)
-
-    
+    is_owner = (entry.author.user == request.user)
     print(f"is owner: {is_owner}")
+
     print(f"current author: {entry_author}")
-    print(f"request author: {request_author}")
-    print(f"is friend: {is_friend}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
     if entry.visibility == 'FRIENDS':
+        try:
+            request_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            return HttpResponse("You are not an author. You must be logged in as an author to try and view this post.", status=403)
+        is_friend = request_author.is_friends_with(entry_author)
+        print(f"request author: {request_author}")
+        print(f"is friend: {is_friend}")
         if not (is_owner or is_friend):
-            return HttpResponse("This entry is private. You are not a friends or not a friend of the author.", status=403)
+            return HttpResponse("This entry is friends-only. You must be the author or be friends with the author of this entry to view it.", status=403)
         if not request.user.is_authenticated:
-            return HttpResponse("This entry is private. You must log in to view it.", status=403)
+            return HttpResponse("This entry is friends-only. You must log in to view it.", status=403)
 
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
     #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
