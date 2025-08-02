@@ -281,16 +281,23 @@ class MyLoginView(LoginView):
         active_nodes = RemoteNode.objects.filter(is_active=True)
         print("ACTIVE REMOTE NODES:", active_nodes,'\n')
         remote_authors_lists = []
+        
         for node in active_nodes:
                         
             normalized_url = node.url.rstrip("/")
             try:
                 
+                authors_endpoint = normalized_url+"/api/authors/"
                 #get the response from pulling another node's authors
-                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/", auth=AUTHTOKEN)
+                node_authors_pull_attempt = requests.get(authors_endpoint, auth=AUTHTOKEN)
+                
+                print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}")
                 
                 #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
-                if node_authors_pull_attempt.status_code == 200:
+                if not node_authors_pull_attempt.status_code == 200:
+                    print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}")
+
+                else:
                     print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
                     
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
@@ -301,8 +308,8 @@ class MyLoginView(LoginView):
                     
                     #add the json list of the authors to the complete list of authors
                     remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
-                    
-                print("\n")
+                        
+                    print("\n")
                 
             except Exception as e:
                 raise e
@@ -310,10 +317,11 @@ class MyLoginView(LoginView):
         all_remote_authors = []
         for remote_author_list in remote_authors_lists:
             for author_json in remote_author_list:
+                print(f"AUTHOR PULLED: {author_json}")
                 all_remote_authors.append(author_json)#contains a json of all of the remote authors 
+   
         
-        print(f"AUTHORS PULLED: {all_remote_authors}")        
-         
+        
         for remote_author in all_remote_authors:
             if remote_author.get("id"):
                 author_id = remote_author.get("id").rstrip('/')

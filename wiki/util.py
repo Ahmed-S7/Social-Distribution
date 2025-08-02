@@ -67,7 +67,7 @@ def saveNewAuthor(request, user, username, github, profileImage, is_local):
         
         serial = serial_id,
         
-        host=port+'://'+host+'/api',
+        host=port+'://'+host+'/api/',
 
         github=github,
     
@@ -179,7 +179,7 @@ def send_entry_to_remote_followers(entry, request=None):
                 
     # Serialize entry
     serialized_entry = EntrySerializer(entry, context={"request": request}).data
-    print(serialized_entry)
+
     
     
     for recipient in recipients:
