@@ -293,10 +293,11 @@ class MyLoginView(LoginView):
                 
                 print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}")
                 
-                #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
+               
                 if not node_authors_pull_attempt.status_code == 200:
                     print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}")
-
+                
+                #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
                 else:
                     print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
                     
