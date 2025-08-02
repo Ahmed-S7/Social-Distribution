@@ -291,15 +291,15 @@ class MyLoginView(LoginView):
                 #get the response from pulling another node's authors
                 node_authors_pull_attempt = requests.get(authors_endpoint, auth=AUTHTOKEN)
                 
-                print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}")
+                print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}, status code: {node_authors_pull_attempt.status_code}\n")
                 
                
                 if not node_authors_pull_attempt.status_code == 200:
-                    print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}")
+                    print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}\n")
                 
                 #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
                 else:
-                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
+                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}\n")
                     
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
@@ -318,7 +318,7 @@ class MyLoginView(LoginView):
         all_remote_authors = []
         for remote_author_list in remote_authors_lists:
             for author_json in remote_author_list:
-                print(f"AUTHOR PULLED: {author_json}")
+                print(f"AUTHOR PULLED: {author_json}\n")
                 all_remote_authors.append(author_json)#contains a json of all of the remote authors 
    
         
@@ -996,7 +996,7 @@ def follow_profile(request, author_serial):
                                 print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
                             except Exception as e:
                                  raise e
-      
+
                 except Exception as e:
                     raise e
                        
@@ -3251,7 +3251,7 @@ def get_author_image_api(request, author_serial, entry_serial):
     elif entry.contentType.startswith('image/jpeg'):
         mime_type = 'image/jpeg'
     else:
-        mime_type = 'application/octet-stream'  # fallback
+        mime_type = entry.contentType  # fallback
 
     # Decode the base64 image data
     try:
