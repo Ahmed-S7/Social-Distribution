@@ -976,7 +976,7 @@ def follow_profile(request, author_serial):
                     else:
                         print(f"SUCCESSFULLY SENT REMOTE FOLLOW REQUEST (STATUS CODE: {follow_request_response.status_code}), RESPONSE WAS GREATER THAN 300 CHARACTERS.")
                 else:
-                    print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO {inbox_url} REMOTELY.")
+                    print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO URL: {inbox_url} REMOTELY.")
             except Exception as e:
                 print(e)     
     except Exception as e:
@@ -1528,8 +1528,18 @@ def user_inbox_api(request, author_serial):
                         objectFQID = objectFQID.rstrip('/')
                         comment = Comment.objects.get(remote_url=objectFQID)
                         print(f"DEBUG: Found comment with ID {objectFQID}: {comment}")
+                    
+                    #If locating the comment using the full URL fails, attempt to find the comment using the number ID instead of the FQID (fallback)
                     except Comment.DoesNotExist:
                         print(f"DEBUG: Comment with ID {objectFQID} does not exist!")
+                        
+                        #Try to retrieve the comment using the number ID instead of the FQID
+                        try:
+                            comment = Comment.objects.get(id=comment_id)
+                            print(f"COMMENT WITH ID {comment_id} LOCATED, ATTEMPTING TO SAVE COMMENT LIKE")
+                        except Comment.DoesNotExist:
+                            print(f"DEBUG: Comment with ID {comment} Not found!")
+                            
                         return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
                     except Exception as e:
                         print(f"DEBUG: could not locate comment:{e}")
