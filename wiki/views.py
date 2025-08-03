@@ -1400,11 +1400,11 @@ def user_inbox_api(request, author_serial):
             
             try:
                 body = request.data
-                authorFQID = request.data['actor']['id']
+                authorFQID = request.data['actor']['id'].rstrip('/')
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch author object, improperly formatted author"}, status=status.HTTP_400_BAD_REQUEST)
             
-            print("AUTHOR FQID IS:")
+            print(f"AUTHOR FQID IS:{authorFQID}")
             remoteAuthorObject = remote_author_fetched(authorFQID)
 
             if not remoteAuthorObject or not authorFQID:
@@ -1468,7 +1468,7 @@ def user_inbox_api(request, author_serial):
                 # like = request.data
                 # authorFQID = like['author']['id']
                 objectFQID = request.data.get('object')
-                authorFQID = request.data.get('author', {}).get('id')
+                authorFQID = request.data.get('author', {}).get('id').rstrip('/')
                 print(f"DEBUG: Extracted authorFQID: {authorFQID}")
                 print(f"DEBUG: Extracted objectFQID: {objectFQID}")
             except Exception as e:
@@ -1498,7 +1498,7 @@ def user_inbox_api(request, author_serial):
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
-                requester = Author.objects.get(id=authorFQID)
+                requester = Author.objects.get(id=authorFQID.rsrtrip('/'))
                 print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
