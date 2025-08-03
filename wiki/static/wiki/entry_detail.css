@@ -56,10 +56,16 @@ h2, h3, .entry_details{
     font-size:1em;
 }
 
+.entry_content p img{
+    text-align: center;
+    justify-content: center;
+    display: inline-block;
+}
+
 .view_author_button:hover{
     background-color: var(--header-color);
 }
-.entry_content{
+p.img{
     text-align: center;
 }
 .entry_details.entry_author{
@@ -79,6 +85,7 @@ h2, h3, .entry_details{
     text-overflow:ellipsis;
     overflow:hidden;
 }
+
 div.comment-section{
     justify-content: center;
     text-align: left;

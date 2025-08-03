@@ -155,13 +155,12 @@ h3{
 }
 
 /*Image Profile Display*/
-.profile_image{
+ .profile_image{
     border-width: 0.15em;
     border-style:solid;
     border-radius:50%;
-    object-fit:cover;
     object-position: center;
-    width:8.2em;
+    width:8.8em;
     height:8.2em;
     border-color:black;
 }
@@ -180,6 +179,7 @@ p img{
     margin: 0 auto; 
     max-width: 90%; 
     border-radius: 0.625em;
+    text-align: center;
 }
 /*linked text*/
 a{
