@@ -89,7 +89,7 @@ def saveNewAuthor(request, user, username, github, profileImage, is_local):
 
 def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     '''retrieves a list of a remote authors followers or returns False'''
-    remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers", timeout=2)
+    remote_followers_fetch = requests.get(FOREIGN_AUTHOR_FQID+"/followers", auth=AUTHTOKEN timeout=2)
     if not remote_followers_fetch.status_code ==200:
         return False
     else:
@@ -97,7 +97,7 @@ def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     
 def remote_author_fetched(FOREIGN_AUTHOR_FQID):
     '''returns the author JSONified object from a remote author's FQID (if valid), false otherwise'''
-    remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID, timeout=2)
+    remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID,auth=AUTHTOKEN timeout=2)
     if not remote_author_fetch.status_code == 200:
        return False
     else:
