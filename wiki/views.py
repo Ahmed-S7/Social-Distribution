@@ -909,7 +909,6 @@ def follow_profile(request, author_serial):
         requested_account = Author.objects.get(serial=author_serial)
     except requested_account.DoesNotExist:
          print(e)
-        
 
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
@@ -923,8 +922,7 @@ def follow_profile(request, author_serial):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
         return redirect(query_with_friend_status)
-    
-    
+        
     if requesting_account.is_following(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
@@ -943,9 +941,9 @@ def follow_profile(request, author_serial):
         else:
             
             try:
-                follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
-                requesting = follow_request.requester
-                requested = follow_request.requested_account
+                follow_request_remote = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                requesting = follow_request_remote.requester
+                requested = follow_request_remote.requested_account
                 remote_serialized_request = FollowRequestSerializer(follow_request)
             except Exception as e:
                 print(e)
@@ -953,7 +951,7 @@ def follow_profile(request, author_serial):
             # attempt to save the follow request, and an associated following (by default)
             try:
                 #Automatically creates a following to the requested account since they are remote
-                create_automatic_following(requesting, requested,follow_request)    
+                create_automatic_following(requesting, requested,follow_request_remote)    
                 inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
                 print(f"sending request to {inbox_url}")
                 print(remote_serialized_request.data)
