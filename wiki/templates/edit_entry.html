@@ -72,8 +72,8 @@
           <div class="mb-3">
             <label for="contentType" class="form-label">Content Type</label>
             <select class="form-select" name="contentType" id="contentType" required>
-              <option value="text/plain">Plain Text</option>
-              <option value="text/markdown">Markdown</option>
+              <option value="text/plain" {% if entry.contentType == "text/plain" %}selected{% endif %}>Plain Text</option>
+              <option value="text/markdown" {% if entry.contentType == "text/markdown" %}selected{% endif %}>Markdown</option>
             </select>
           </div>
           <div class="mb-3">
