@@ -1539,8 +1539,7 @@ def user_inbox_api(request, author_serial):
                             print(f"COMMENT WITH ID {comment_id} LOCATED, ATTEMPTING TO SAVE COMMENT LIKE")
                         except Comment.DoesNotExist:
                             print(f"DEBUG: Comment with ID {comment} Not found!")
-                            
-                        return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+                            return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
                     except Exception as e:
                         print(f"DEBUG: could not locate comment:{e}")
                     
