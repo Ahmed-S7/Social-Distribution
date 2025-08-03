@@ -1,5 +1,5 @@
 import requests
-from .models import Author, Entry, RemoteNode, AuthorFollowing, AuthorFriend
+from .models import Author, Entry, RemoteNode, AuthorFollowing, AuthorFriend, RequestState
 from django.http import HttpResponse, Http404
 import uuid
 from django.shortcuts import redirect
@@ -137,7 +137,31 @@ def get_remote_followers(author):
         if not follower.follower.is_local
     ]
 
-
+def create_automatic_following(requesting, requested, local_request):
+    '''creates an automatic following between the requested and requesting author'''
+    local_request.set_request_state(RequestState.ACCEPTED)
+    try:
+        local_request.save()    
+    except Exception as e:
+        raise e
+    print("remote follow request was saved")
+    print(f"{requesting} is attempting to follow {requested}")
+    saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
+    print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")  
+    #save the new following
+    print("TRYING TO SAVE NEW FOLLOWING...")
+    saved_following_to_remote.save()
+    print("valid follow request, saved following for remote node.")
+    #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
+    print(f"requesting author: {requesting}, requested author: {requested}")   
+    if requesting.is_following(requested) and requested.is_following(requesting): 
+        newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)   
+        print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
+        try:
+            newRemoteFriendship.save()
+            print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
+        except Exception as e:
+            raise e
 
 def send_entry_to_remote_followers(entry, request=None):
     # Don't send deleted entries
