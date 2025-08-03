@@ -1498,7 +1498,7 @@ def user_inbox_api(request, author_serial):
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
-                requester = Author.objects.get(id=authorFQID.rsrtrip('/'))
+                requester = Author.objects.get(id=authorFQID)
                 print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
