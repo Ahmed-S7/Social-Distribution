@@ -1549,6 +1549,7 @@ def user_inbox_api(request, author_serial):
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
                         return Response({"failed to save Inbox item": "Comment like already exists"}, status=status.HTTP_400_BAD_REQUEST)
                     
+                    print("COMMENT LIKE DOES NOT EXIST, ATTEMPTING TO SAVE THE LIKE")
                     # Create the comment like
                     comment_like = CommentLike.objects.create(
                         comment=comment,
