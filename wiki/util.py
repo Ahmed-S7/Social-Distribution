@@ -97,7 +97,7 @@ def remote_followers_fetched(FOREIGN_AUTHOR_FQID):
     
 def remote_author_fetched(FOREIGN_AUTHOR_FQID):
     '''returns the author JSONified object from a remote author's FQID (if valid), false otherwise'''
-    authorFQID = FOREIGN_AUTHOR_FQID.rsrtrip('/')
+    authorFQID = FOREIGN_AUTHOR_FQID.rstrip('/')
     remote_author_fetch = requests.get(FOREIGN_AUTHOR_FQID,auth=AUTHTOKEN, timeout=5)
     if not remote_author_fetch.status_code == 200:
        return False
