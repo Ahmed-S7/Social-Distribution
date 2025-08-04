@@ -350,10 +350,6 @@ class MyLoginView(LoginView):
                         #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
                         print (f"AUTHOR ALREADY EXISTS ON THIS NODE:{author_exists(author_id)}")
                         
-                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXISTING AUTHORS
-                        #THIS WILL ALSO UPDATE AN EXISTING AUTHOR
-                        
-                        
                         #ALL AUTHORS FETCHED FROM THE REMOTE NODE
                         fetched_author = author_exists(author_id)
                         
