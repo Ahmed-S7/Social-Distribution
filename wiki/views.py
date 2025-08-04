@@ -1370,7 +1370,7 @@ def user_inbox_api(request, author_serial):
                 return Response({"error": "No author data in entry"}, status=status.HTTP_400_BAD_REQUEST)
             
             remote_author, _ = Author.objects.get_or_create(
-                id=author_data["id"],
+                id=author_data["id"].rstrip('/'),
                 defaults={
                     "displayName": author_data.get("displayName", ""),
                     "host": author_data.get("host", ""),
