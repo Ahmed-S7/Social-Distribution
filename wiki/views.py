@@ -351,6 +351,8 @@ class MyLoginView(LoginView):
                         if not author_exists(author_id):
                             print("AUTHOR OBJECT VALIDATED, SAVING TO DB")
                         else:
+                            profile.user.username = profile.displayName
+                            profile.user.save()
                             print("EXISTING AUTHOR UPDATED, SAVING TO DB")
                         #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXISTING AUTHORS
                         profile = account_serialized.save()
