@@ -109,7 +109,7 @@ def user_wiki_api(request, username):
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
-    
+    print(f"CURRENT USER IN REQUEST: {request.user.username}")
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
