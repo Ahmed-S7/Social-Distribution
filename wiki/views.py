@@ -1397,6 +1397,7 @@ def user_inbox_api(request, author_serial):
                     "is_local": False
                 }
             )
+            print(f"DEBUG: entry contentType: {entry_data.get("contentType")}")
             print(f"DEBUG: entry ID: {entry_id}")
             print(f"DEBUG: entry serial: {entry_serial}")
             print(f"DEBUG: entry author information (sender/creator): {author_data}")
