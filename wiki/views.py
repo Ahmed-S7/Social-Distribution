@@ -1654,7 +1654,7 @@ def user_inbox_api(request, author_serial):
                 
                 
                 comment_id = request.data.get('id', '')
-                authorFQID = request.data.get('author', {}).get('id')
+                authorFQID = request.data.get('author', {}).get('id').rstrip('/')
                 comment_content = request.data.get('comment', '')
                 contentType = request.data.get('contentType', 'text/plain')
                 entryFQID = request.data.get('entry')
@@ -1690,6 +1690,7 @@ def user_inbox_api(request, author_serial):
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
+            
                 requester = Author.objects.get(id=authorFQID)
             
             # Parse the entry FQID to extract entry info
