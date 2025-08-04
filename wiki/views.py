@@ -2258,7 +2258,7 @@ def edit_profile(request, username):
             request.user.username = new_username
             request.user.save()
             author.displayName = new_username
-
+            author.save()
         author.github = github
         author.description = description
 
