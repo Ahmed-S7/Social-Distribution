@@ -371,7 +371,7 @@ class MyLoginView(LoginView):
    
                             #A fetched remote author who is a local author from our current node will receive no updates
                             else:
-                                print("EXISTING AUTHOR FROM OUR NODE FOUND, UPDATES MADE.")
+                                print("EXISTING AUTHOR FROM OUR NODE FOUND, NO UPDATES MADE.")
                         
                         print(f"AUTHOR {profile} SAVED TO DATABASE")
         
