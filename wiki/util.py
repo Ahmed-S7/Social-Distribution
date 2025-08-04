@@ -15,7 +15,7 @@ from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
-from gethub import create_entries
+from .gethub import create_entries
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
 #YOU ALSO NEED A NODE CREDENTIALS OBJECT WITH THIS USERNAME AND PASSWORD, THIS IS HOW VALIDATION WILL BE DONE
