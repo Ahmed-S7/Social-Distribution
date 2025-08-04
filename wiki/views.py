@@ -347,22 +347,25 @@ class MyLoginView(LoginView):
                            
                     #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                     else:
+
+                        #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
+                        print (f"AUTHOR ALREADY EXISTS ON THIS NODE:{author_exists(author_id)}")
                         
-                        if not author_exists(author_id):
-                            print("AUTHOR OBJECT VALIDATED, SAVING TO DB")
-                        else:
-                            print("EXISTING AUTHOR UPDATED, SAVING TO DB")
                         #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXISTING AUTHORS
+                        #THIS WILL ALSO UPDATE AN EXISTING AUTHOR
                         profile = account_serialized.save()
                         
-                        #Update the corresponding author's username (user object)
-                        profile.user.username = profile.displayName
-                        profile.user.save()
+                        #remote authors
+                        if not author_exists(author_id):
+                            print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
+                            #Set the author as remote and save
+                            #GITHUB ENTRY AUTOMATION, CHECKED AFTER EVERY LOGIN FOR REMOTE PROFILES 
+                            profile.is_local=False 
+                            profile.save()
+                            create_entries(profile)
+                        else:
+                            print("EXISTING AUTHOR UPDATED, SAVING TO DB")
                         
-                        #Set the author as remote
-                        profile.is_local=False
-                        profile.save()
-                        create_entries(profile)
                         print(f"AUTHOR {profile} SAVED TO DATABASE")
         
                         
