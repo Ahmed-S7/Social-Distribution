@@ -247,7 +247,10 @@ def author_exists(id):
     - returns None if this is not a valid author
     
     '''
-    return Author.objects.filter(id=id)
+    try:
+        return Author.objects.get(id=id)
+    except Author.DoesNotExist:
+        return None
 
 
 

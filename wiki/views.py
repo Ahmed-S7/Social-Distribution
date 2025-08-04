@@ -340,10 +340,9 @@ class MyLoginView(LoginView):
                         
                     #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                     if not account_serialized.is_valid():
-                            print("NEW AUTHOR OBJECT STRUCTURE INVALID")
-                            print(account_serialized.errors)
-                            
-               
+                        print("NEW AUTHOR OBJECT STRUCTURE INVALID")
+                        print(account_serialized.errors)
+
                            
                     #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                     else:
@@ -353,18 +352,30 @@ class MyLoginView(LoginView):
                         
                         #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXISTING AUTHORS
                         #THIS WILL ALSO UPDATE AN EXISTING AUTHOR
-                        profile = account_serialized.save()
                         
-                        #remote authors
-                        if not author_exists(author_id):
+                        
+                        #ALL AUTHORS FETCHED FROM THE REMOTE NODE
+                        fetched_author = author_exists(author_id)
+                        
+                        #FOR A NEW REMOTE AUTHOR
+                        if not fetched_author:
+                            profile = account_serialized.save()
                             print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
                             #Set the author as remote and save
                             #GITHUB ENTRY AUTOMATION, CHECKED AFTER EVERY LOGIN FOR REMOTE PROFILES 
                             profile.is_local=False 
                             profile.save()
                             create_entries(profile)
+                        
+                        #FOR A FETCHED AUTHOR ALREADY ON OUR NODE
                         else:
-                            print("EXISTING AUTHOR UPDATED, SAVING TO DB")
+                            if not fetched_author.is_local:
+                                print("EXISTING AUTHOR REMOTE AUTHOR UPDATED, SAVING TO DB")
+                                profile = account_serialized.save()
+   
+                            #A fetched remote author who is a local author from our current node will receive no updates
+                            else:
+                                print("EXISTING AUTHOR FROM OUR NODE FOUND, UPDATES MADE.")
                         
                         print(f"AUTHOR {profile} SAVED TO DATABASE")
         
