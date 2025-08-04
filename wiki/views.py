@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -344,7 +344,6 @@ class MyLoginView(LoginView):
                         print(account_serialized.errors)
 
                            
-                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                     else:
 
                         #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
@@ -355,14 +354,8 @@ class MyLoginView(LoginView):
                         
                         #FOR A NEW REMOTE AUTHOR
                         if not fetched_author:
-                            profile = account_serialized.save()
-                            print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
-                            #Set the author as remote and save
-                            #GITHUB ENTRY AUTOMATION, CHECKED AFTER EVERY LOGIN FOR REMOTE PROFILES 
-                            profile.is_local=False 
-                            profile.save()
-                            create_entries(profile)
-                        
+                            process_new_remote_author(account_serialized)
+               
                         #FOR A FETCHED AUTHOR ALREADY ON OUR NODE
                         else:
                             if not fetched_author.is_local:

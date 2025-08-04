@@ -15,7 +15,7 @@ from django.urls import reverse
 import requests
 from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
-
+from gethub import create_entries
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
 #YOU ALSO NEED A NODE CREDENTIALS OBJECT WITH THIS USERNAME AND PASSWORD, THIS IS HOW VALIDATION WILL BE DONE
@@ -248,11 +248,19 @@ def author_exists(id):
     - returns None if this is not a valid author
     
     '''
+    id=id.rstrip('/')
     try:
         return Author.objects.get(id=id)
     except Author.DoesNotExist:
         return None
-
+def process_new_remote_author(account_serialized):
+    profile = account_serialized.save()
+    print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
+    #Set the author as remote and save
+    profile.is_local=False 
+    #GITHUB ENTRY AUTOMATION, CHECKED AFTER EVERY LOGIN FOR REMOTE PROFILES 
+    profile.save()
+    create_entries(profile)
 
 
 
