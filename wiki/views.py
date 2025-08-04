@@ -218,6 +218,7 @@ def register(request):
             
             #Save new author or raise an error
             newAuthor = saveNewAuthor(request, user, username, github, profileImage, is_local=True)
+            
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -351,10 +352,11 @@ class MyLoginView(LoginView):
                             print("AUTHOR OBJECT VALIDATED, SAVING TO DB")
                         else:
                             print("EXISTING AUTHOR UPDATED, SAVING TO DB")
-                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXIS
+                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE, SHOULD UPDATE EXISTING AUTHORS
                         profile = account_serialized.save()
                         profile.is_local=False
                         profile.save()
+                        create_entries(profile)
                         print(f"AUTHOR {profile} SAVED TO DATABASE")
         
                         
