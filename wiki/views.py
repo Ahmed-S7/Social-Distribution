@@ -381,7 +381,7 @@ def get_authors(request):
                 ]
             }
     """
-    #Authentication disabled for browser testing
+
     auth_header = request.META.get('HTTP_AUTHORIZATION')
      
     #need to have auth in request to connect with us
@@ -1727,12 +1727,6 @@ def user_inbox_api(request, author_serial):
             "author":requested_author.id,
             "body":body
         }, partial=True)
-                
-        #TODO: ADD VALIDATION FOR DIFFERENT TYPES OF INBOX OBJECTS:
-        # likes
-        # comments
-        # follows
-        # entry items
                 
         #This will be the final save once the specific type of inbox item is validated
         #validates general Inbox item structure
