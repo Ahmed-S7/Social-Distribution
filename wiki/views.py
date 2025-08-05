@@ -36,6 +36,7 @@ from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 from .gethub import create_entries
 from django.core.paginator import Paginator
+import filetype
 # Create your views here.
 
 
@@ -1380,7 +1381,15 @@ def user_inbox_api(request, author_serial):
                 }
             )
             # Find or create the entry
-            
+            #Find the content type to display
+            sent_content = entry_data.get("content", "")
+            sent_content_type = entry_data.get("contentType", "")
+            if "application" in sent_content_type: 
+                if sent_content and sent_content_type:
+                    decoded_content =  base64.b64decode(entry_data.get("contentType", ""))  
+                    file_type = filetype.guess(decoded_content)
+                    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type}")
+                 
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
                 defaults={
@@ -1389,7 +1398,7 @@ def user_inbox_api(request, author_serial):
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
-                    "contentType": entry_data.get("contentType", "text/plain"),
+                    "contentType": entry_data.get("contentType", "application/base64"),
                     "description": entry_data.get("description", ""),
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
@@ -1397,7 +1406,8 @@ def user_inbox_api(request, author_serial):
                     "is_local": False
                 }
             )
-            print(f"DEBUG: entry contentType: {entry_data.get("contentType")}")
+            print("DEBUG")
+            print(f"DEBUG: entry contentType:{entry_data.get('contentType')}")
             print(f"DEBUG: entry ID: {entry_id}")
             print(f"DEBUG: entry serial: {entry_serial}")
             print(f"DEBUG: entry author information (sender/creator): {author_data}")
@@ -2291,6 +2301,11 @@ def create_entry(request):
         image = request.FILES.get('image')
 
 
+        print(f"THE CONTENT TYPE IS: {content_type_input}")
+        # more robust type checking and handling for images
+       
+        
+        
         if not title:
             return HttpResponse("Title is required.")
 
