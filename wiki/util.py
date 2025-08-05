@@ -313,7 +313,7 @@ def add_or_update_fetched_authors(all_remote_authors):
                         #A fetched remote author who is a local author from our current node will receive no updates
                         else:
                             print("EXISTING AUTHOR FROM OUR NODE FOUND, NO UPDATES MADE.")
-                    print(f"AUTHOR {profile} SAVED TO DATABASE")
+                    print(f"AUTHOR {fetched_author.displayName} SAVED TO DATABASE")
             except Exception as e:
                 print(e)   
                   
