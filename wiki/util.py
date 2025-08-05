@@ -242,7 +242,7 @@ def send_entry_to_remote_followers(entry, request=None):
 def get_mime(sent_content):
     decoded_content =  base64.b64decode(sent_content)  
     file_type = filetype.guess(decoded_content)
-    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")                   
+    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")                 
     return file_type.mime        
 def author_exists(id):
     '''
@@ -255,7 +255,8 @@ def author_exists(id):
     try:
         return Author.objects.get(id=id)
     except Author.DoesNotExist:
-        return None
+        return False
+    
 def process_new_remote_author(account_serialized):
     profile = account_serialized.save()
     print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
@@ -264,6 +265,7 @@ def process_new_remote_author(account_serialized):
     #GITHUB ENTRY AUTOMATION, CHECKED AFTER EVERY LOGIN FOR REMOTE PROFILES 
     profile.save()
     create_entries(profile)
+    return profile
 
 
 

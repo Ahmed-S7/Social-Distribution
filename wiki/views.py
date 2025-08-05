@@ -339,7 +339,7 @@ class MyLoginView(LoginView):
                         #SERIALIZE AND SAVE IF THEIR DATA IS VALID
                         print("NEW AUTHOR FOUND")
                         account_serialized = AuthorSerializer(data=remote_author)    
-                        
+                        print(f"ACCOUNT SERIALIZED: {account_serialized}")
                     #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                     if not account_serialized.is_valid():
                         print("NEW AUTHOR OBJECT STRUCTURE INVALID")
@@ -351,12 +351,13 @@ class MyLoginView(LoginView):
                         #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
                         print (f"AUTHOR ALREADY EXISTS ON THIS NODE:{author_exists(author_id)}")
                         
-                        #ALL AUTHORS FETCHED FROM THE REMOTE NODE
+                        #CHECK THAT AUTHOR WAS FETCHED FROM THE REMOTE NODE
                         fetched_author = author_exists(author_id)
                         
                         #FOR A NEW REMOTE AUTHOR
                         if not fetched_author:
                             process_new_remote_author(account_serialized)
+                            
                
                         #FOR A FETCHED AUTHOR ALREADY ON OUR NODE
                         else:
