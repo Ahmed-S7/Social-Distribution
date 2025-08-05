@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -1380,15 +1380,16 @@ def user_inbox_api(request, author_serial):
                     "profileImage": author_data.get("profileImage", ""),
                 }
             )
+            
+            mime=None
             # Find or create the entry
             #Find the content type to display
             sent_content = entry_data.get("content", "")
             sent_content_type = entry_data.get("contentType", "")
             if "application" in sent_content_type: 
                 if sent_content and sent_content_type:
-                    decoded_content =  base64.b64decode(sent_content)  
-                    file_type = filetype.guess(decoded_content)
-                    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")
+                    mime = get_mime(sent_content)
+                           
                  
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
@@ -1398,7 +1399,7 @@ def user_inbox_api(request, author_serial):
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
-                    "contentType": entry_data.get("contentType", "application/base64"),
+                    "contentType": f"{mime};base64" if mime else "application/octet-stream;base64",
                     "description": entry_data.get("description", ""),
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
@@ -1406,7 +1407,7 @@ def user_inbox_api(request, author_serial):
                     "is_local": False
                 }
             )
-            print("DEBUG")
+            print(f"DEBUG: entry mime type parsed: {mime}")
             print(f"DEBUG: entry contentType:{entry_data.get('contentType')}")
             print(f"DEBUG: entry ID: {entry_id}")
             print(f"DEBUG: entry serial: {entry_serial}")

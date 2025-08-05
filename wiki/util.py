@@ -12,7 +12,7 @@ import traceback
 import sys
 from django.db.models import Q
 from django.urls import reverse
-import requests
+import requests, base64, filetype
 from requests.auth import HTTPBasicAuth
 from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
 from .gethub import create_entries
@@ -239,8 +239,11 @@ def send_entry_to_remote_followers(entry, request=None):
     print(f"Sent entry {entry.id} to {len(recipients)} remote recipients")
         
 
-                   
-            
+def get_mime(sent_content):
+    decoded_content =  base64.b64decode(sent_content)  
+    file_type = filetype.guess(decoded_content)
+    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")                   
+    return file_type.mime        
 def author_exists(id):
     '''
     - checks for an author's existence based on their id field
