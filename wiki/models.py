@@ -181,10 +181,6 @@ class Author(BaseModel):
             follow_id = None
             
         return follow_id
-   
-    def is_following_remote(self, remoteId):
-        pass
-            
       
     def __str__(self):
         return self.displayName
