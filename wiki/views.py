@@ -555,9 +555,25 @@ def get_or_edit_author_api(request, author_serial):
 def view_local_authors(request):
     current_user = request.user
     
+    # Get search query from request
+    search_query = request.GET.get('search', '').strip()
+    
     #retrieve all authors except for the current author
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
-    return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
+    
+    # Filter authors based on search query
+    if search_query:
+        authors = authors.filter(
+            Q(displayName__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    return render(request, 'authors.html', {
+        'authors': authors, 
+        'current_user': current_user,
+        'search_query': search_query
+    })
 
 
 @require_GET  
