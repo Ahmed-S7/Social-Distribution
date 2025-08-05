@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -282,100 +282,37 @@ class MyLoginView(LoginView):
         #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
         print("ACTIVE REMOTE NODES:", active_nodes,'\n')
-        remote_authors_lists = []
-        
-        for node in active_nodes:
-                        
+        remote_authors_lists = [] 
+        for node in active_nodes:            
             normalized_url = node.url.rstrip("/")
-            try:
-                
+            try: 
                 authors_endpoint = normalized_url+"/api/authors/"
                 #get the response from pulling another node's authors
                 node_authors_pull_attempt = requests.get(authors_endpoint, auth=AUTHTOKEN)
                 
                 print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}, status code: {node_authors_pull_attempt.status_code}\n")
-                
-               
                 if not node_authors_pull_attempt.status_code == 200:
                     print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}\n")
-                
                 #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
                 else:
                     print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}\n")
-                    
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
                         node_authors = node_authors_pull_attempt.json()
                     except Exception as e:
                         raise e
-                    
                     #add the json list of the authors to the complete list of authors
-                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
-                        
+                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]       
                     print("\n")
-                
             except Exception as e:
                 raise e
-            
-        all_remote_authors = []
-        for remote_author_list in remote_authors_lists:
-            for author_json in remote_author_list:
-                print(f"AUTHOR PULLED: {author_json}\n")
-                all_remote_authors.append(author_json)#contains a json of all of the remote authors 
-   
         
+        #collect all of the individual authors in a JSON list -> ( [{author objects}] )  
+        all_remote_authors = get_remote_authors_list(remote_authors_lists)    
         
-        for remote_author in all_remote_authors:
-            if remote_author.get("id"):
-                remote_author['id'] = remote_author.get("id").rstrip('/')
-                author_id = remote_author['id']
-                try:
-                    
-                    if author_exists(author_id):
-                        print("EXISTING AUTHOR FOUND")
-                        existing_author = Author.objects.get(id=author_id)
-                        account_serialized = AuthorSerializer(existing_author, data=remote_author, partial=True)
-                    else:
-                        #SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                        print("NEW AUTHOR FOUND")
-                        account_serialized = AuthorSerializer(data=remote_author)    
-                        print(f"ACCOUNT SERIALIZED: {account_serialized}")
-                    #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
-                    if not account_serialized.is_valid():
-                        print("NEW AUTHOR OBJECT STRUCTURE INVALID")
-                        print(account_serialized.errors)
-
-                           
-                    else:
-
-                        #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
-                        print (f"AUTHOR ALREADY EXISTS ON THIS NODE:{author_exists(author_id)}")
-                        
-                        #CHECK THAT AUTHOR WAS FETCHED FROM THE REMOTE NODE
-                        fetched_author = author_exists(author_id)
-                        
-                        #FOR A NEW REMOTE AUTHOR
-                        if not fetched_author:
-                            process_new_remote_author(account_serialized)
-                            
-               
-                        #FOR A FETCHED AUTHOR ALREADY ON OUR NODE
-                        else:
-                            if not fetched_author.is_local:
-                                print("EXISTING AUTHOR REMOTE AUTHOR UPDATED, SAVING TO DB")
-                                profile = account_serialized.save()
-   
-                            #A fetched remote author who is a local author from our current node will receive no updates
-                            else:
-                                print("EXISTING AUTHOR FROM OUR NODE FOUND, NO UPDATES MADE.")
-                        
-                        print(f"AUTHOR {profile} SAVED TO DATABASE")
-        
-                        
-                except Exception as e:
-                    print(e)     
-        
-        
+        #process existing and new authors with logs 
+        add_or_update_fetched_authors(all_remote_authors)
+ 
         # redirects to the login if the redirection to the wiki page fails
         try:
             return redirect('wiki:user-wiki', username=username)

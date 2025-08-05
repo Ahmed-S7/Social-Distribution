@@ -14,7 +14,7 @@ from django.db.models import Q
 from django.urls import reverse
 import requests, base64, filetype
 from requests.auth import HTTPBasicAuth
-from .serializers import EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
+from .serializers import AuthorSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
 from .gethub import create_entries
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
@@ -205,8 +205,7 @@ def send_entry_to_remote_followers(entry, request=None):
     # Serialize entry
     serialized_entry = EntrySerializer(entry, context={"request": request}).data
 
-    
-    
+
     for recipient in recipients:
         try:
             # Construct inbox url
@@ -216,7 +215,6 @@ def send_entry_to_remote_followers(entry, request=None):
             payload = serialized_entry
             
             # Send POST request to remote inbox
-        
             response = requests.post(
                 inbox_url,
                 json=payload,
@@ -240,6 +238,7 @@ def send_entry_to_remote_followers(entry, request=None):
         
 
 def get_mime(sent_content):
+    '''gets the mimetype of an entry using the filetype library'''
     decoded_content =  base64.b64decode(sent_content)  
     file_type = filetype.guess(decoded_content)
     print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")                 
@@ -258,6 +257,7 @@ def author_exists(id):
         return False
     
 def process_new_remote_author(account_serialized):
+    '''handles the creation of a new remote author'''
     profile = account_serialized.save()
     print("NEW AUTHOR OBJECT VALIDATED, SAVING TO DB")
     #Set the author as remote and save
@@ -267,8 +267,56 @@ def process_new_remote_author(account_serialized):
     create_entries(profile)
     return profile
 
+def get_remote_authors_list(remote_authors_lists):
+    '''creates a list of every remote author's json object'''
+    all_remote_authors = []
+    for remote_author_list in remote_authors_lists:
+        for author_json in remote_author_list:
+            print(f"AUTHOR PULLED: {author_json}\n")
+            all_remote_authors.append(author_json)#contains a json of all of the remote authors 
+    return all_remote_authors
 
-
+def add_or_update_fetched_authors(all_remote_authors):
+    '''add new authors to the database or updates existing remote authors, existing local authors are left untouched'''
+    for remote_author in all_remote_authors:
+        if remote_author.get("id"):
+            remote_author['id'] = remote_author.get("id").rstrip('/')
+            author_id = remote_author['id']
+            try:
+                
+                if author_exists(author_id):
+                    print("EXISTING AUTHOR FOUND")
+                    existing_author = Author.objects.get(id=author_id)
+                    account_serialized = AuthorSerializer(existing_author, data=remote_author, partial=True)
+                else:
+                    #SERIALIZE AND SAVE IF THEIR DATA IS VALID
+                    print("NEW AUTHOR FOUND")
+                    account_serialized = AuthorSerializer(data=remote_author)    
+                    print(f"ACCOUNT SERIALIZED: {account_serialized}")
+                #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
+                if not account_serialized.is_valid():
+                    print("NEW AUTHOR OBJECT STRUCTURE INVALID")
+                    print(account_serialized.errors)    
+                else:
+                    #CHECK IF THE AUTHOR IS ALREADY ON THIS NODE
+                    print (f"AUTHOR ALREADY EXISTS ON THIS NODE:{author_exists(author_id)}")
+                    #CHECK THAT AUTHOR WAS FETCHED FROM THE REMOTE NODE
+                    fetched_author = author_exists(author_id)
+                    #FOR A NEW REMOTE AUTHOR
+                    if not fetched_author:
+                        process_new_remote_author(account_serialized)
+                    #FOR A FETCHED AUTHOR ALREADY ON OUR NODE
+                    else:
+                        if not fetched_author.is_local:
+                            print("EXISTING AUTHOR REMOTE AUTHOR UPDATED, SAVING TO DB")
+                            profile = account_serialized.save()
+                        #A fetched remote author who is a local author from our current node will receive no updates
+                        else:
+                            print("EXISTING AUTHOR FROM OUR NODE FOUND, NO UPDATES MADE.")
+                    print(f"AUTHOR {profile} SAVED TO DATABASE")
+            except Exception as e:
+                print(e)   
+                  
 def send_comment_to_entry_author(comment, request=None):
     """
     Send a comment to the entry author's inbox.
