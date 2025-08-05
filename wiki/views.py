@@ -1386,9 +1386,9 @@ def user_inbox_api(request, author_serial):
             sent_content_type = entry_data.get("contentType", "")
             if "application" in sent_content_type: 
                 if sent_content and sent_content_type:
-                    decoded_content =  base64.b64decode(entry_data.get("content", ""))  
+                    decoded_content =  base64.b64decode(sent_content)  
                     file_type = filetype.guess(decoded_content)
-                    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type}")
+                    print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")
                  
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
