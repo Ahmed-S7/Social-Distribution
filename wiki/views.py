@@ -850,7 +850,6 @@ def node_valid(username, password):
 @require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
     
-    
     if request.user.is_staff or request.user.is_superuser:
         return redirect('wiki:login')
 
@@ -927,7 +926,7 @@ def follow_profile(request, author_serial):
                     else:
                         print(f"SUCCESSFULLY SENT REMOTE FOLLOW REQUEST (STATUS CODE: {follow_request_response.status_code}), RESPONSE WAS GREATER THAN 300 CHARACTERS.")
                 else:
-                    print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO URL: {inbox_url} REMOTELY.")
+                    print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO URL: {inbox_url} REMOTELY, STATUS CODE: {follow_request_response.status_code}.")
             except Exception as e:
                 print(e)     
     except Exception as e:
