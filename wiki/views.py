@@ -1352,7 +1352,7 @@ def user_inbox_api(request, author_serial):
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
-                    "contentType": f"{mime};base64" if mime else "application/octet-stream;base64",
+                    "contentType": f"{mime};base64" if mime else sent_content_type,
                     "description": entry_data.get("description", ""),
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
