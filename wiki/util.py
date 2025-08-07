@@ -5,6 +5,7 @@ import uuid
 from django.shortcuts import redirect
 import traceback
 from rest_framework.response import Response
+from rest_framework import status
 import urllib
 from urllib.parse import urlparse, unquote
 from django.http import Http404, HttpResponseRedirect, HttpResponseServerError, HttpResponse
@@ -554,3 +555,68 @@ def send_entry_deletion_to_remote_followers(entry, request=None):
             print(f"Exception sending entry deletion to {inbox_url}: {str(e)}")
     
     print(f"Sent entry deletion notification to {len(recipients)} remote recipients")
+
+
+def validated_auth(auth_header):
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+    
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
+
+    #for an invalid node
+    if not node_valid(username, password):
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes", "detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
+
+    currentNodes = RemoteNode.objects.all()
+    print(f"CONNECTED NODES {currentNodes}")
+    return True
+    
+def node_valid(username, password):
+    '''checks if the node associated with a given host is valid'''
+    
+    #Log the information of the node attempting to connect to this node
+    print("\nUSERNAME",username,"\nPASSWORD:","*" * len(password))
+    #check if the following conditions are met by the connecting node:
+    #the host is one of the active remote nodes currently in our database
+    #the credentials in the BASIC auth token match our current Node Connection Credentials
+    remoteNodes = RemoteNode.objects.filter(is_active=True)
+    print(f"ACTIVE NODES: {remoteNodes}")
+
+    if RemoteNode.objects.filter(username=username, password=password).exists():
+        return True #access is granted to the node
+         
+    print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
+    return False #access denied
+
+def decoded_auth_token(auth_header):
+    if isinstance(auth_header, str):
+        print("AUTH ENCODED IN UTF-8")
+        print("AUTH ENCODED AS BYTES, DECODED TO STRING")
+        auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
+        auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
+        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
+        decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
+    else:
+        return False
+        
+    #print(f"AUTH INFO SPLIT: {auth_header_split}")
+    #print(f"ENCODED AUTH INFO: {auth}")
+    #print(f"DECODED AUTH : {decoded_auth}")
+    #print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
+    
+    return decoded_username, decoded_pass

@@ -12,11 +12,16 @@ html, body, h1,h2,p{
     padding:1em;
     margin: 1.5em auto;
     background-color: #fff;
-    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.208);
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.086);
     text-decoration: none;
     justify-content: center;
     align-content: center;
-    max-width:40em;
+    width:50em;
+    max-height: 60em;
+}
+
+.post-card.shadow-sm {
+       box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.357) !important;
 }
 
 div.d-flex.align-items-center.mb-2.post-header{
@@ -99,7 +104,7 @@ div.post-content {
     width:100%;
     font-size:1.2em;
     text-overflow: ellipsis;
-    padding:1em;
+    padding:0.3em;
 
 }
 

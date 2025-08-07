@@ -18,7 +18,11 @@ body {
     
 }
 
-
+.entry_author{
+    color:gray;
+    padding-top:0.5em;
+    
+}
 .mt-4{
     font-family: 'Nunito', sans-serif;
 }

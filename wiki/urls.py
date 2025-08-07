@@ -38,7 +38,7 @@ urlpatterns = [
   
      
     # Author Related API 
-    path('api/authors/', get_authors, name='get_authors'),
+    path('api/authors/', get_authors, name='get_authors'),  
     path('api/authors/<str:author_serial>/', get_or_edit_author_api, name='get_or_edit_author'),    
     path('api/authors/<str:author_serial>/liked/', get_author_likes_api, name='get_author_likes_api'),
     path('api/authors/<str:author_serial>/liked/<int:like_serial>/', get_single_like_api, name='get_single_like_api'),

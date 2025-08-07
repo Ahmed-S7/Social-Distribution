@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -351,7 +351,6 @@ def login_api(request):
     return Response({"detail": "Login successful"}, status=200)
 
 @api_view(['GET'])
-@authentication_classes([]) #DJANGO was causing most of our problems. the 403 was caused by django enforcing a user object to exist for every request that gets sent
 def get_authors(request):
     """
     Gets the list of all authors on the application
@@ -381,33 +380,12 @@ def get_authors(request):
                 ]
             }
     """
-
     auth_header = request.META.get('HTTP_AUTHORIZATION')
-     
-    #need to have auth in request to connect with us
-    if not auth_header:
-         return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {'*' * len(auth_header)}")
-     
-     
-    #If the auth header has basic auth token in it
-    if not auth_header.startswith("Basic"):
-         return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-     
-    #Gets the user and pass using basic auth
-    username, password = decoded_auth_token(auth_header)
-     
-    #make sure the auth is properly formatted
-    if not (username and password):
-         print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
-         return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-     
-    if not node_valid(username, password):
-         return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes","detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
-     
-    print("AUTHENTICATION COMPLETE.")
-    print(f"{username} may now access the node.")
+    if not request.user.is_authenticated and not validated_auth(auth_header):
+        print(f"USER THAT ATTEMPTED TO CONNECT TO THE NODE IS: {request.user}")
+        return Response({"Forbidden": "Your credentials are not validated on this site."}, status=status.HTTP_403_FORBIDDEN)
+    
+    #If (at minimum) the node has valid credentials, they may access this endpoint
     authors = Author.objects.all()
     
      # Get pagination parameters
@@ -453,7 +431,35 @@ def get_authors(request):
     else:
         return Response({"type":"authors", "authors": []}, status=status.HTTP_200_OK)
 
+def validated_auth(auth_header):
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+    
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
+    #for an invalid node
+    if not node_valid(username, password):
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes", "detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
+
+    currentNodes = RemoteNode.objects.all()
+    print(f"CONNECTED NODES {currentNodes}")
+
+    
 
 @api_view(['GET', "PUT"])
 def get_or_edit_author_api(request, author_serial):
@@ -548,10 +554,11 @@ def get_author_fqid(request, author_fqid):
     '''retrieve an author by their FQID, only allowed for authenticated users
     GET api/authors/<path:author_fqid>
     '''
+    print(author_fqid)
+    author_fqid = author_fqid.rstrip('/')
     if not request.user.is_authenticated:
         return Response({"Unauthorized": "You are not authorized to view this content"}, status=status.HTTP_401_UNAUTHORIZED)
     author_fqid = urllib.parse.unquote(author_fqid)
-    author_fqid = f'{author_fqid.rstrip("/")}/'
     author = get_object_or_404(Author, id=author_fqid)
     serializer =AuthorSerializer(author)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -850,23 +857,6 @@ def view_entry_author(request, entry_serial):
 
             
         
-def node_valid(username, password):
-    '''checks if the node associated with a given host is valid'''
-    
-    #Log the information of the node attempting to connect to this node
-    print("\nUSERNAME",username,"\nPASSWORD:","*" * len(password))
-    #check if the following conditions are met by the connecting node:
-    #the host is one of the active remote nodes currently in our database
-    #the credentials in the BASIC auth token match our current Node Connection Credentials
-    remoteNodes = RemoteNode.objects.filter(is_active=True)
-    print(f"ACTIVE NODES: {remoteNodes}")
-
-    if RemoteNode.objects.filter(username=username, password=password).exists():
-        return True #access is granted to the node
-         
-    print("CREDENTIALS NOT VALIDATED WITHIN OUR DATABASE, ACCESS DENIED.")
-    return False #access denied
-        
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
@@ -1107,23 +1097,6 @@ def process_follow_request(request, author_serial, request_id):
 
 
 
-def decoded_auth_token(auth_header):
-    if isinstance(auth_header, str):
-        print("AUTH ENCODED IN UTF-8")
-        print("AUTH ENCODED AS BYTES, DECODED TO STRING")
-        auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
-        auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
-        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
-        decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
-    else:
-        return False
-        
-    #print(f"AUTH INFO SPLIT: {auth_header_split}")
-    #print(f"ENCODED AUTH INFO: {auth}")
-    #print(f"DECODED AUTH : {decoded_auth}")
-    #print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
-    
-    return decoded_username, decoded_pass
     
     
 @csrf_exempt
@@ -1262,32 +1235,7 @@ def user_inbox_api(request, author_serial):
     
     auth_header = request.META.get('HTTP_AUTHORIZATION')
 
-    #need to have auth in request to connect with us
-    if not auth_header:
-        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
-    
-    #If the auth header has basic auth token in it
-    if not auth_header.startswith("Basic"):
-        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-    
-    #Gets the user and pass using basic auth
-    username, password = decoded_auth_token(auth_header)
-    
-    #make sure the auth is properly formatted
-    if not (username and password):
-        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
-        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-
-    #for an invalid node
-    if not node_valid(username, password):
-        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes", "detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
-    print("AUTHENTICATION COMPLETE.")
-    print(f"{username} may now access the node.")
-
-    currentNodes = RemoteNode.objects.all()
-    print(f"CONNECTED NODES {currentNodes}")
+    validated_auth(auth_header)
     
     requested_author = get_object_or_404(Author, serial=author_serial)
 
