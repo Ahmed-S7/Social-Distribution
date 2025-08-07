@@ -16,8 +16,8 @@ html, body, h1,h2,p{
     text-decoration: none;
     justify-content: center;
     align-content: center;
-    width:50em;
-    max-height: 60em;
+    width:45em;
+    max-height: 55em;
 }
 
 .post-card.shadow-sm {

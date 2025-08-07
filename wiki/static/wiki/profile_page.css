@@ -347,45 +347,83 @@ a{
 /* For small screens (phones) */
 @media (max-width: 600px) {
   .profile_image_logged_user {
-    width: 6em;
-    height: 6em;
+    width: 5em;
+    height: 5em;
+    object-fit: cover;
+    border-radius: 50%;
   }
 
   .follow_button,
   .unfollow_button,
   .unfriend_button,
   .unrequest_button {
-    font-size: 1.4em;
-    padding: 0.5em 1em;
+    font-size: 1.2em;
+    padding: 0.6em 1.2em;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.5em 0;
   }
 
   .profile_buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6em;
     height: auto;
-    padding: 0.8em 0;
+    padding: 1em 0;
+  }
+
+  .bar-title {
+    font-size: 1.2em;
+    padding: 0.5em;
+    word-wrap: break-word;
   }
 }
 
 /* For tablets and mid-range */
 @media (max-width: 900px) {
   .profile_image_logged_user {
-    width: 7em;
-    height: 7em;
+    width: 6em;
+    height: 6em;
+    object-fit: cover;
+    border-radius: 50%;
   }
 
   .profile_buttons {
-    font-size: 0.9em;
-    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8em;
+    font-size: 1em;
+    padding: 1em 0;
+  }
+
+  .follow_button,
+  .unfollow_button,
+  .unfriend_button,
+  .unrequest_button {
+    font-size: 1em;
+    padding: 0.5em 1.2em;
+  }
+
+  .bar-title {
+    font-size: 1.3em;
+    padding: 0.5em;
+    text-align: center;
   }
 }
+
+/* Keep this unchanged as per your request */
 .bar-title {
-    font-family: 'Nunito', sans-serif;
-    font-weight: Normal;
-    font-size: 1em;
-    color: #14213d;
-    margin: 0;
-    padding: 0 1em;
-    letter-spacing: 0.01em;
-    text-align: center;
-    background: none;
-    box-shadow: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: normal;
+  font-size: 1em;
+  color: #14213d;
+  margin: 0;
+  padding: 0 1em;
+  letter-spacing: 0.01em;
+  text-align: center;
+  background: none;
+  box-shadow: none;
 }
+
