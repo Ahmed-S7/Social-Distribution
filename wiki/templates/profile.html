@@ -63,11 +63,11 @@
                                 <!--Make profile picture lead to pfp editing-->
                                 {% if author.profileImage %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
+                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
                                 </a>
                                 {% else %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                 </a>
                                 {% endif %}
                                     <!--end of profile image check-->
@@ -75,11 +75,11 @@
                         <!--Authenticated user check fails, then make the profile picture non-clickable -->
                         {% else %}
                                     
-                        {% if author.profileImage %}
-                            <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
-                        {% else %}
-                            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-                        {% endif %}
+                                {% if author.profileImage %}
+                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
+                                {% else %}
+                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                {% endif %}
                         {% endif %}
 
                         <h3 class="display_name">{{ author.displayName }}</h3>

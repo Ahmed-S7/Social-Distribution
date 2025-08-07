@@ -171,15 +171,16 @@ h3{
 
 /*Image Profile Display On Profile Pages*/
 .profile_image_page{
-    border-width: 0.15em;
+    border: 0.0625em solid black;
     border-style:solid;
-    border-radius:50%;
+    border-radius:4.5em;
     object-position: center;
-    min-width:8.4em;
-    max-width:8.4em;
-    min-height:8.4em;
-    max-height:8.4em;
+    min-width:9em;
+    max-width:9em;
+    min-height:9em;
+    max-height:9em;
     border-color:black;
+    display: block;
 }
 
 
