@@ -5,7 +5,7 @@ from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, 
 from .views import MyLoginView, user_wiki, register,user_inbox_api,foreign_followers_api,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_local_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api, get_entry_comments_fqid_api, get_comment_fqid_api, author_comments_fqid, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api, get_single_comment_fqid, get_author_comment_by_serial, get_entry_likes_by_fqid, get_comment_likes_by_fqid, get_author_likes_by_fqid, get_single_like_by_fqid, get_author_entries_api, get_comment_likes_api
-from .views import friends_list, followers_list, following_list
+from .views import friends_list, followers_list, following_list, entry_detail_fqid_api
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -35,34 +35,6 @@ urlpatterns = [
     path('authors/<str:author_serial>', view_external_profile, name="view_external_profile"),
    
   
-  
-     
-    # Author Related API 
-    path('api/authors/', get_authors, name='get_authors'),  
-    path('api/authors/<str:author_serial>/', get_or_edit_author_api, name='get_or_edit_author'),    
-    path('api/authors/<str:author_serial>/liked/', get_author_likes_api, name='get_author_likes_api'),
-    path('api/authors/<str:author_serial>/liked/<int:like_serial>/', get_single_like_api, name='get_single_like_api'),
-    path('api/authors/<str:author_serial>/commented/', get_author_comments_api, name='get_author_comments_api'),
-    path('api/authors/<str:author_serial>/commented/<int:comment_serial>/', get_author_comment_by_serial, name='get_author_comment_by_serial'),
-    path('api/authors/<path:author_fqid>/liked/', get_author_likes_by_fqid, name='get_author_likes_by_fqid'),
-    path('api/authors/<path:author_fqid>/commented/', author_comments_fqid, name='author_entry_comments_fqid'),
-    path('api/authors/<path:author_fqid>/', get_author_fqid, name='get_author_fqid'),
-     
-    # Profile related API
-    path('api/register/', register_api, name='register_api'),
-    path('api/login/', login_api, name='login_api'),
-    path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
-
-    # Entry Related URLs
-    path('authors/<uuid:author_serial>/entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
-    path('entries/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
-    path('comment/<int:comment_id>/like/', like_comment, name='like-comment'),
-    path('entries/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),
-    path('create_entry/', create_entry, name='create_entry'),
-    path('entries/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
-    path('entries/<uuid:entry_serial>/delete/', delete_entry, name='delete_entry'),
-    path('entries/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
-
     # Entry Related API
     path('api/authors/<str:author_serial>/entries/', get_author_entries_api, name='get_author_entries_api'),
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/', entry_detail_api, name='entry_detail_api'),
@@ -79,17 +51,44 @@ urlpatterns = [
     path('api/liked/<path:like_fqid>/', get_single_like_by_fqid, name='get_single_like_by_fqid'),
     path('api/comment/<int:comment_id>/like/', like_comment_api, name='like_comment_api'),
     path('api/authors/<str:author_serial>/comments/<int:comment_id>/likes/', get_comment_likes_api, name='get_comment_likes_api'),
+     
+    # Author Related API 
+    path('api/authors/', get_authors, name='get_authors'),  
+    path('api/authors/<str:author_serial>/', get_or_edit_author_api, name='get_or_edit_author'),    
+    path('api/authors/<str:author_serial>/liked/', get_author_likes_api, name='get_author_likes_api'),
+    path('api/authors/<str:author_serial>/liked/<int:like_serial>/', get_single_like_api, name='get_single_like_api'),
+    path('api/authors/<str:author_serial>/commented/', get_author_comments_api, name='get_author_comments_api'),
+    path('api/authors/<str:author_serial>/commented/<int:comment_serial>/', get_author_comment_by_serial, name='get_author_comment_by_serial'),
+    path('api/authors/<path:author_fqid>/liked/', get_author_likes_by_fqid, name='get_author_likes_by_fqid'),
+    path('api/authors/<path:author_fqid>/commented/', author_comments_fqid, name='author_entry_comments_fqid'),
+     
+    # Profile related API
+    path('api/register/', register_api, name='register_api'),
+    path('api/login/', login_api, name='login_api'),
+    path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
+
+    # Entry Related URLs
+    path('authors/<uuid:author_serial>/entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
+    path('entries/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
+    path('comment/<int:comment_id>/like/', like_comment, name='like-comment'),
+    path('entries/<uuid:entry_serial>/comment/', add_comment, name='add_comment'),
+    path('create_entry/', create_entry, name='create_entry'),
+    path('entries/<uuid:entry_serial>/edit/', edit_entry, name='edit_entry'),
+    path('entries/<uuid:entry_serial>/delete/', delete_entry, name='delete_entry'),
+    path('entries/<uuid:entry_serial>/author/', view_entry_author, name="view_entry_author"),
+
 
     # Image Entries API
     path('api/authors/<str:author_serial>/entries/<uuid:entry_serial>/image/', get_author_image_api, name='get_author_image_api'),
     path('api/entries/<path:entry_fqid>/image/', get_entry_image_api, name='get_entry_image_api'),
+    path('api/entries/<path:entry_fqid>/', entry_detail_fqid_api, name='entry_detail_fqid_api'),
 
     #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),
     path('api/authors/<str:author_serial>/followers/<path:FOREIGN_AUTHOR_FQID>/', foreign_followers_api, name='foreign_followers_api'),
     path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers' ),
     path('api/authors/local/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
-   
+    path('api/authors/<path:author_fqid>/', get_author_fqid, name='get_author_fqid'),
    
    #Follow Requests/Followers URLS 
     path('authors/<str:author_serial>/follow/', follow_profile, name="follow_profile"),
