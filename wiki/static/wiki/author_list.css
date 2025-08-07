@@ -50,6 +50,7 @@ p{
     text-overflow: ellipsis;
     overflow:hidden;
     max-width: 8em;
+    max-height: 1.3em;
     text-align: center;
 }
 section .author {
