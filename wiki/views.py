@@ -2453,28 +2453,6 @@ def entry_detail_fqid_api(request, entry_fqid):
         return Response(serializer.data, status=status.HTTP_200_OK)
         
 
-    elif request.method == 'PUT':
-        serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
-        if serializer and serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        if current_author!=entry.author:
-            return Response({
-                "error": "You are not authorized to delete this entry."
-            })
-        try:
-            entry.delete()
-            deleted_entry = Entry._base_manager.get(serial=entry.serial, is_deleted=True)
-            deleted_entry.visibility='DELETED'
-            serializer = EntrySerializer(deleted_entry, context={"request": request})
-            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
         
 @require_POST
 @login_required
