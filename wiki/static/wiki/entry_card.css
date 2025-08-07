@@ -76,7 +76,6 @@ div.post-content.markdown-content img{
     margin-left:auto;
     margin-right:auto;
     width: 100%;
-    max-height:45em;
 }
 
 
@@ -85,7 +84,6 @@ div.post-content img{
     text-align: center;
     margin-left:auto;
     margin-right:auto;
-
 }
 
 .container.mt-4{

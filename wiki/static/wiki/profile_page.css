@@ -271,10 +271,8 @@ a{
     text-align: center;
 }
 
-.post-content img{
+.post-content{
     text-align: center;
-    max-width: 45em;
-    max-height: 45em;
 }
 
 
