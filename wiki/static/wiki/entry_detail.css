@@ -66,14 +66,13 @@ h2, h3, .entry_details{
     display: inline-block;
 }
 
-img.entry_image{
+.card-entry-detail .card-body .entry_content .entry_image{
     max-width: 100%;
     width: auto;
     height: auto;
     border-radius: 8px;
     margin: auto;
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: block;
 }
 
