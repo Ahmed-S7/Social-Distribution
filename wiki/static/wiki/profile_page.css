@@ -271,6 +271,11 @@ a{
     text-align: center;
 }
 
+.post-content img{
+    text-align: center;
+    max-width: 45em;
+    max-height: 45em;
+}
 
 
 .post-footer{
