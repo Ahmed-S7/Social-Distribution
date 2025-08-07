@@ -119,15 +119,16 @@
             <section class="description_content">
             
                 {% if author.description  %}
-                    <p>{{ author.description }} </p>
+                    <p class="description">{{ author.description|truncatechars:100 }}</p>
+
                 {% else  %}
-                    <p>No Description</p>
+                    <p class='description'>No Description.</p>
                 {% endif %}
 
                 {% if author.github %}
-                <p>{{ author.github}} </p>
+                <p class="github">{{ author.github|truncatechars:100}} </p>
                 {% else  %}
-                <p>GitHub Profile Not Found</p>
+                <p class="github">GitHub Profile Not Found</p>
                 {% endif %}
 
             </section>

@@ -511,12 +511,13 @@ def get_or_edit_author_api(request, author_serial):
         - returns error details if they arise    
     
     """
-    if 'http' in author_serial:
-        author_serial = author_serial.split('/')[-1]
+   
     author = get_object_or_404(Author, serial=author_serial)
     
+    if not (request.user.is_authenticated and author.user == request.user):
+        return Response({"Forbidden":"You are not authorized to retrieve this content"}, status=status.HTTP_401_UNAUTHORIZED)
+    
     if request.method=="GET":
-        # CHANGED FOR TESTING
         
         serializer =AuthorSerializer(author)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -542,13 +543,18 @@ def get_or_edit_author_api(request, author_serial):
         return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-# @api_view(['GET'])
-# def get_author_fqid(request, author_fqid):
-#     author_fqid = urllib.parse.unquote(author_fqid)
-#     author_fqid = f'{author_fqid.rstrip("/")}/'
-#     author = get_object_or_404(Author, id=author_fqid)
-#     serializer =AuthorSerializer(author)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
+@api_view(['GET'])
+def get_author_fqid(request, author_fqid):
+    '''retrieve an author by their FQID, only allowed for authenticated users
+    GET api/authors/<path:author_fqid>
+    '''
+    if not request.user.is_authenticated:
+        return Response({"Unauthorized": "You are not authorized to view this content"}, status=status.HTTP_401_UNAUTHORIZED)
+    author_fqid = urllib.parse.unquote(author_fqid)
+    author_fqid = f'{author_fqid.rstrip("/")}/'
+    author = get_object_or_404(Author, id=author_fqid)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @login_required   
 @require_GET 
@@ -1749,6 +1755,8 @@ def user_inbox_api(request, author_serial):
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
 
+    if not request.user.is_authenticated:
+        return Response({"Forbidden":"You do not have access to this user's following information"},status=status.HTTP_403_FORBIDDEN)
     current_user = request.user
     try:
         current_author = Author.objects.get(serial=author_serial)
@@ -1828,6 +1836,8 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
                 return Response({"error": f"We were unable to add this follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
         else:
             return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_400_BAD_REQUEST) 
+    
+    'DELETE api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
     if request.method == "DELETE":
         if current_user != current_author.user:
                 return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_403_FORBIDDEN)
@@ -1996,7 +2006,7 @@ def get_local_followers(request, author_serial):
     """
     if request.method =='GET':
        
-        
+
         '''
         uncheck for now
         #If the user is local, make sure they're logged in 

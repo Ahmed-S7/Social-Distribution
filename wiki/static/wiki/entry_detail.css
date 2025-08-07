@@ -68,6 +68,17 @@ h2, h3, .entry_details{
 p.img{
     text-align: center;
 }
+
+.entry_content.text-center{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 95%; 
+    border-radius: 0.625em;
+    align-items: center;
+    margin-left:2em;
+    margin-right:2em;
+
+}
 .entry_details.entry_author{
     text-align: left;
 }

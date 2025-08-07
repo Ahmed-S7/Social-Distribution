@@ -105,11 +105,15 @@ h3{
 
 /*User Description and Github*/
 .description_content{
-    border-color:rgba(221, 221, 221, 0.215);
+    border-color:rgba(221, 221, 221, 0.433);
   
     text-align: center;
-    
-    border-style:ridge;
+    max-width: 100%;
+    border-style:double;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    color:rgb(81, 80, 80);
+
 
 }
 /*entries*/
@@ -162,6 +166,19 @@ h3{
     object-position: center;
     max-width:8.8em;
     height:8.2em;
+    border-color:black;
+}
+
+/*Image Profile Display On Profile Pages*/
+.profile_image_page{
+    border-width: 0.15em;
+    border-style:solid;
+    border-radius:50%;
+    object-position: center;
+    min-width:8.4em;
+    max-width:8.4em;
+    min-height:8.4em;
+    max-height:8.4em;
     border-color:black;
 }
 
@@ -253,13 +270,7 @@ a{
     text-align: center;
 }
 
-.post-header {
-  display: flex;
-  align-items: center;    
-  justify-content: space-evenly;
-  text-align: left;
-  padding-bottom:2em;
-}
+
 
 .post-footer{
   display: flex;
