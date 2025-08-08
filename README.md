@@ -16,17 +16,14 @@ See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 The authors claiming copyright, if they wish to be known, can list their names here...
 
-* Kevin Wan
+* Ahmed Shittu
+* Nina Han
+* Luis Martinez
 * Abdullah Faisal
 * Maro Erivona
-* Ahmed Shittu
-* Luis Martinez
-* Nina Han
 
+Note: One contributor has withdrawn from the course and has been removed as a contributor with their written consent. Their code remains cited where used.
 
-
-# **DOCUMENTATION:**
-
-### FOLLOWING/FRIENDS API:
+API Documentaation can be found in the [Project Wiki](https://github.com/uofa-cmput404/s25-project-white/wiki/API-Documentation)
 
 
