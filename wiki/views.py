@@ -1785,6 +1785,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
         else:
             return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_400_BAD_REQUEST) 
     
+    #Delete Endpoint by Kevin Wan
     'DELETE api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
     if request.method == "DELETE":
         if current_user != current_author.user:
@@ -2416,6 +2417,7 @@ def entry_detail_api(request, entry_serial, author_serial):
         except Exception as e:
             return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+#Code partly completed by Kevin Wan
 @login_required
 @api_view(['GET'])
 def entry_detail_fqid_api(request, entry_fqid):

@@ -1,3 +1,5 @@
+
+#Code By Kevin Wan
 import requests
 from .models import Entry, Author
 def create_entries(author: Author):
