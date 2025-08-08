@@ -24,6 +24,6 @@ The authors claiming copyright, if they wish to be known, can list their names h
 
 Note: One contributor has withdrawn from the course and has been removed as a contributor with their written consent. Their code remains cited where used.
 
-API Documentaation can be found in the [Project Wiki](https://github.com/uofa-cmput404/s25-project-white/wiki/API-Documentation)
+API Documentation can be found in the [Project Wiki](https://github.com/uofa-cmput404/s25-project-white/wiki/API-Documentation)
 
 
