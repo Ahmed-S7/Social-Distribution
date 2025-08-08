@@ -248,7 +248,7 @@ def register_api(request):
     username = request.data.get('username')
     password = request.data.get('password')
     confirm_password = request.data.get('confirm_password', "").strip()
-    github = request.data.get('github') or None
+    github = request.data.get('github') or ""
 
     if not username or not password or not confirm_password:
         return Response({"detail": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
@@ -264,7 +264,7 @@ def register_api(request):
 
     user = User.objects.create_user(username=username, password=password, is_active=False)
 
-    author = saveNewAuthor(request, user, username, github, profileImage=None)
+    author = saveNewAuthor(request, user, username, github, profileImage=None, is_local=True)
     if not author:
         return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -520,7 +520,7 @@ def get_or_edit_author_api(request, author_serial):
    
     author = get_object_or_404(Author, serial=author_serial)
     
-    if not (request.user.is_authenticated and author.user == request.user):
+    if not (request.user.is_authenticated):
         return Response({"Forbidden":"You are not authorized to retrieve this content"}, status=status.HTTP_401_UNAUTHORIZED)
     
     if request.method=="GET":
@@ -2102,10 +2102,8 @@ def profile_view(request, username):
     View the profile of the currently logged in user.
     """
     author = Author.objects.get(user__username=username)
-    if not request.user.is_authenticated or request.user.username != username:
-        if not author:
-            return HttpResponse("Author profile does not exist.")
-        return redirect('wiki:view_external_profile', author_serial=author.serial)
+    if not author:
+        return HttpResponse("Author profile does not exist.")
     # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
     followers = author.followers.all()#stores all of the followers a given author has
@@ -2304,6 +2302,8 @@ def entry_detail(request, author_serial, entry_serial):
 def edit_entry(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
     author = get_object_or_404(Author, serial=entry.author.serial)
+    if not request.user == author.user:
+        return HttpResponse("You are not allowed to edit this entry")
     author_serial=entry.author.serial
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -2968,7 +2968,10 @@ def get_author_comments_api(request, author_serial):
 
     if request.method == 'POST':
         # Get the authenticated user's author object
-        authenticated_author = get_object_or_404(Author, user=request.user)
+        try:
+            authenticated_author = get_object_or_404(Author, user=request.user)
+        except Exception as e:
+            raise e
         
         # Validate that the request contains a comment object
         if not isinstance(request.data, dict):
