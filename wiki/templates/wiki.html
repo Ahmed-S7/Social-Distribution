@@ -27,15 +27,6 @@
       .top-nav-btns .btn {
         margin-left: 0.5em;
       }
-      .post-content img {
-        max-width: 100%;
-        width: auto;
-        height: auto;
-        border-radius: 8px;
-        margin: 1em 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        display: block;
-      }
       .post-content em {
         font-style: italic;
       }
@@ -51,9 +42,11 @@
 <body>
   <div class="default_buttons d-flex justify-content-between align-items-center px-4">
     <h2 class="bar-title">Welcome to SocialDistribution, {{ request.user.username }}!</h2>
+    <section class="nav_bottons_top">
     <a href="{% url 'wiki:profile' request.user.username %}" class="btn btn-primary">Go to Profile</a>
     <a href="{% url 'wiki:view_local_authors' %}" class="btn btn-primary">Browse Authors</a>
     <a href="{% url 'wiki:create_entry' %}" class="btn btn-primary">Create New Entry</a>
+    </section>
   </div>
   <div style="height:5.5em"></div>
   <div class="container mt-4">
@@ -61,8 +54,8 @@
       {% for entry, rendered in entries %}
       <div class="card mb-4 shadow-sm post-card">
         <div class="card-body">
-          <a href="{% url 'wiki:entry_detail' entry.serial %}" style="text-decoration:none;color:inherit;">
-            <div class="d-flex align-items-center mb-2 post-header">
+          <a href="{% url 'wiki:entry_detail' entry.author.serial entry.serial %}" style="text-decoration:none;color:inherit;">
+            <div class="post-header">
               {% if entry.author.profileImage %}
                 <img class="profile_image" src="{{ entry.author.profileImage }}" alt="Profile image">
               {% else %}
@@ -70,26 +63,29 @@
               {% endif %}
               <div>
                 <div class="post-title">{{ entry.title }}</div>
-                <small class="text-muted">
+               
+              </div>
+              <section class="post-info">
+              <small class="text-muted">
                   Posted by <strong>{{ entry.author.displayName }}</strong>
                   on {{ entry.created_at|date:"M d, Y H:i" }}
-                </small>
-              </div>
+              </small>
+            </section>
             </div>
 
-            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
-                <div class="post-content text-center">
-                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
-                </div>
-            {% elif entry.contentType == "text/markdown" %}
-                <div class="post-content markdown-content">
-                    {{ rendered|safe }}
-                </div>
-            {% else %}
-                <div class="post-content">
-                    {{ entry.content }}
-                </div>
-            {% endif %}
+          {% if "base64" in entry.contentType %}
+              <div class="post-content text-center">
+                  <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
+              </div>
+          {% elif entry.contentType == "text/markdown" %}
+              <div class="post-content markdown-content">
+                  {{ rendered|safe }}
+              </div>
+          {% else %}
+              <div class="post-content">
+                  {{ entry.content }}
+              </div>
+          {% endif %}
 
           </a>
           <div class="d-flex align-items-center gap-3 post-footer mt-2">
@@ -100,11 +96,13 @@
               </button>
               <span class="ms-1">{{ entry.likes.count }}</span>
             </form>
-            <a href="{% url 'wiki:entry_detail' entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
+            <a href="{% url 'wiki:entry_detail' entry.author.serial entry.serial %}#comments" class="btn btn-outline-secondary btn-sm comment-btn-custom">
               💬 Comment ({{ entry.comments.count }})
             </a>
-            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
+            <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.author.serial entry.serial %}">🔗 Share Link</button> 
+                 
           </div>
+          
         </div>
       </div>
       {% endfor %}

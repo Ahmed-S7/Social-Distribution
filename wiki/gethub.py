@@ -16,7 +16,7 @@ def create_entries(author: Author):
 
     for event in reversed(events):
         event_id = event.get('id')
-        if not Entry.objects.filter(title__icontains=event_id).exists():
+        if not Entry.all_objects.filter(title__icontains=event_id).exists():
             event_type = event.get('type')
             created_at = event.get('created_at')
             

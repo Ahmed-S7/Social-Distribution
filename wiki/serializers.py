@@ -26,7 +26,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model= Author
-        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web", "description"]
+        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web"]
     
 
     def validate_displayName(self, value):
@@ -48,9 +48,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
         if 'github' in validated_data:
             instance.github = validated_data['github']
-            
-        if 'description' in validated_data:
-            instance.description = validated_data['description']    
+        
     
         if 'profileImage' in validated_data:
             instance.profileImage = validated_data['profileImage']
@@ -60,7 +58,7 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         displayName = validated_data.get("id")
-        user = User.objects.create(username=displayName, password="whitepass")
+        user = User.objects.create(username=displayName, password="uniquepass")
 
         # Now create the Author and link the new user
         author = Author.objects.create(user=user, **validated_data)
@@ -153,13 +151,15 @@ class LikeSummarySerializer(serializers.Serializer):
         return f"{host}/api/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
-
+        print(f"DEBUG: obj.entry: {obj.entry}")
+        return obj.entry.id
+        # Use the entry author's host instead of the current request's host
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        
         # Extract author UUID from the entry's author id URL
         entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
         entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
-        return f"{host}/api/authors/{entry_author_id}/entries/{entry_id}"
+        return f"{entry_author_host}/authors/{entry_author_id}/entries/{entry_id}"
 
 
 class CommentLikeSummarySerializer(serializers.Serializer):
@@ -177,18 +177,24 @@ class CommentLikeSummarySerializer(serializers.Serializer):
         return dt[:-2] + ':' + dt[-2:]  # ISO 8601 with colon in timezone
 
     def get_id(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+        # Use the like author's host instead of the current request's host
+        like_author_host = obj.user.host.rstrip('/')
 
+        # Extract author UUID (or last segment of URL)
         author_id = str(obj.user.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{author_id}/liked/{obj.id}"
+
+        return f"{like_author_host}/authors/{author_id}/liked/{obj.id}"
 
     def get_object(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+        # If the comment is remote and has a stored remote_id, use that
+        if not obj.comment.is_local and obj.comment.remote_url:
+            return obj.comment.remote_url.rstrip("/")
 
+        # fallback to local construction (your current logic)
+        comment_author_host = obj.comment.author.host.rstrip('/')
         comment_author_id = str(obj.comment.author.id).rstrip('/').split('/')[-1]
-        return f"{host}/api/authors/{comment_author_id}/commented/{obj.comment.id}"
+        return f"{comment_author_host}/authors/{comment_author_id}/commented/{obj.comment.id}"
+
 
 
 class CommentSummarySerializer(serializers.Serializer):
@@ -211,13 +217,13 @@ class CommentSummarySerializer(serializers.Serializer):
         return dt[:-2] + ':' + dt[-2:]
     
     def get_id(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri('/')[:-1] if request else 'http://localhost'
+        # Use the comment author's host instead of the current request's host
+        comment_author_host = obj.author.host.rstrip('/')
 
         # Extract author UUID (or last segment of URL)
         author_id = str(obj.author.id).rstrip('/').split('/')[-1]
 
-        return f"{host}/api/authors/{author_id}/commented/{obj.id}"
+        return f"{comment_author_host}/authors/{author_id}/commented/{obj.id}"
     
     def get_likes(self, obj):
         request = self.context.get('request')
@@ -228,8 +234,8 @@ class CommentSummarySerializer(serializers.Serializer):
         likes = obj.likes.filter(is_deleted=False)
         return {
             "type": "likes",
-            "id":  f"{host}/s25-project-white/api/authors/{author_id}/commented/{obj.id}",
-            "web": f"{host}/s25-project-white/entries/{obj.entry.serial}",
+            "id": f"{host}/api/authors/{author_id}/comments/{obj.id}/likes",
+            "web": f"{host}/entries/{obj.entry.serial}",
             "page_number": 1,
             "size": 50,
             "count": likes.count(),
@@ -243,10 +249,18 @@ class CommentSummarySerializer(serializers.Serializer):
         return f"{host}/entries/{obj.entry.serial}"
     
     def get_entry(self, obj):
-        request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
+        # If the entry is remote, use its true FQID
+        if not obj.entry.is_local:
+            print(f"DEBUG: Remote entry URL: {obj.entry.serial}")
+            print(f"DEBUG: Remote entry ID: {obj.entry.id}")
+            return str(obj.entry.id)
+        
+        # Otherwise construct local URL
+        entry_author_host = obj.entry.author.host.rstrip('/')
+        if entry_author_host.endswith('/api'):
+            entry_author_host = entry_author_host[:-4]
 
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.entry.serial}"
+        return f"{entry_author_host}/api/authors/{obj.entry.author.serial}/entries/{obj.entry.serial}"
 
 
 VISIBILITY_CHOICES = [
@@ -257,7 +271,6 @@ VISIBILITY_CHOICES = [
     ]
 class EntrySerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
     web = serializers.SerializerMethodField()
     title = serializers.CharField(required=True, min_length=5)
     description = serializers.SerializerMethodField()
@@ -268,31 +281,26 @@ class EntrySerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     published = serializers.DateTimeField(source='created_at')
     visibility = serializers.ChoiceField(required=True, choices=VISIBILITY_CHOICES)
-    is_local = serializers.SerializerMethodField(read_only=True)
-    origin_url = serializers.CharField(read_only=True)
     class Meta:
         model = Entry
         fields = [
             'type', 'title', 'id', 'web', 'description', 'contentType', 'content',
-            'author', 'comments', 'likes', 'published', 'visibility', 'is_local', 'origin_url' 
+            'author', 'comments', 'likes', 'published', 'visibility'
         ]
-    def get_id(self, obj):
-        request = self.context.get('request')
-        if request is None: 
-            return None
-        host = request.build_absolute_uri("/").rstrip("/")
-        return f"{host}/api/authors/{obj.author.serial}/entries/{obj.serial}"
 
     def get_type(self, obj):
-        return 'entry'
+        return "entry"
+    
     def get_web(self,obj):
-        return obj.author.web
+        request = self.context.get('request')
+        host = request.build_absolute_uri("/").rstrip("/")
+        return f"{host}/authors/{obj.author.serial}/entries/{obj.serial}"
+    
     def get_description(self,obj):
         return f"entry by {obj.author}, titled: '{obj.title}"
     
     content = serializers.SerializerMethodField()
-    def get_is_local(self, obj):
-        return obj.is_local
+    
     def get_content(self, obj):
         return obj.content  
 

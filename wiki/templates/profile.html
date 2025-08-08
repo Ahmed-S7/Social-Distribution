@@ -63,11 +63,11 @@
                                 <!--Make profile picture lead to pfp editing-->
                                 {% if author.profileImage %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
+                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
                                 </a>
                                 {% else %}
                                 <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                 </a>
                                 {% endif %}
                                     <!--end of profile image check-->
@@ -75,11 +75,11 @@
                         <!--Authenticated user check fails, then make the profile picture non-clickable -->
                         {% else %}
                                     
-                        {% if author.profileImage %}
-                            <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
-                        {% else %}
-                            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-                        {% endif %}
+                                {% if author.profileImage %}
+                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
+                                {% else %}
+                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                {% endif %}
                         {% endif %}
 
                         <h3 class="display_name">{{ author.displayName }}</h3>
@@ -92,36 +92,43 @@
                     <p class="follow_and_entry_title"> Entries</p>
                 </section>    
 
-                 <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{friend_count}} </p>
-                    <p class="follow_and_entry_title"> Friends</p>
-                </section>    
+                <a href="{% url 'wiki:friends_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ friend_count }}</p>
+                      <p class="follow_and_entry_title">Friends</p>
+                  </section>
+                </a>    
 
 
-                <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{follower_count}} </p>
-                    <p class="follow_and_entry_title"> Followers</p>
-                </section>     
+                <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ follower_count }}</p>
+                      <p class="follow_and_entry_title">Followers</p>
+                  </section>
+                </a>    
                     
-                <section class="follow_and_entry_labels">
-                    <p class="folow_and_entry_count"> {{following_count}} </p>
-                    <p class="follow_and_entry_title"> Following</p>
-                </section> 
+                <a href="{% url 'wiki:following_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                  <section class="follow_and_entry_labels">
+                      <p class="folow_and_entry_count">{{ following_count }}</p>
+                      <p class="follow_and_entry_title">Following</p>
+                  </section>
+                </a>
 
             </section>
 
             <section class="description_content">
             
                 {% if author.description  %}
-                    <p>{{ author.description }} </p>
+                    <p class="description">{{ author.description|truncatechars:100 }}</p>
+
                 {% else  %}
-                    <p>No Description</p>
+                    <p class='description'>No Description.</p>
                 {% endif %}
 
                 {% if author.github %}
-                <p>{{ author.github}} </p>
+                <p class="github">{{ author.github|truncatechars:100}} </p>
                 {% else  %}
-                <p>GitHub Profile Not Found</p>
+                <p class="github">GitHub Profile Not Found</p>
                 {% endif %}
 
             </section>
@@ -136,7 +143,7 @@
                     {% for entry, rendered in entries %}   
                      <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
-                        <a href="{% url 'wiki:entry_detail' entry.serial %}">
+                        <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
                             <div class="post-header">
 
                                 <div>
@@ -147,11 +154,10 @@
                                     </small>
                                 </div>
                             </div>
-                        
-
-                            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                            
+                            {% if "base64" in entry.contentType %}
                                <div class="post-content text-center">
-                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
                                </div>
                             {% elif entry.contentType == "text/markdown" %}
                                <div class="post-content markdown-content">
@@ -173,8 +179,8 @@
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
-                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
+                                <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
+                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' author.serial entry.serial %}">🔗 Share Link</button>
                                 </div>
                             </div>
                     {% endfor %}

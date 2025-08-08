@@ -89,24 +89,26 @@ class Author(BaseModel):
     
     user = models.OneToOneField(User, on_delete= models.CASCADE, related_name="author")
      
-    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/[authorID]"
+    id = models.URLField(unique=True, primary_key=True)# formatted as: "http://{node}/api/authors/{AUTHOR_SERIAL}"
      
-    host = models.URLField(default=f"http://127.0.0.1:8000/")
+    host = models.URLField(default=f"http://127.0.0.1:8000/api")
     
     displayName = models.CharField(max_length=150)
 
-    description = models.TextField(blank=True, null=True, default="")
+    description = models.TextField(blank=True, default="")
     
-    github = models.URLField(blank=True, null=True, default=None)
+    github = models.URLField(blank=True, default="")
     
     serial = models.UUIDField(default=uuid.uuid4, null=False, unique=True)
     
-    profileImage = models.URLField(blank=True, null=True)
+    profileImage = models.URLField(blank=True, default="")
     
     web = models.URLField(blank=True, null=False, default=None)
     
     is_local = models.BooleanField(default=True)
     
+    class Meta:
+        ordering = ['displayName']
     
 
     def get_follow_requests_sent(self):
@@ -179,10 +181,6 @@ class Author(BaseModel):
             follow_id = None
             
         return follow_id
-   
-    def is_following_remote(self, remoteId):
-        pass
-            
       
     def __str__(self):
         return self.displayName
@@ -196,6 +194,13 @@ def update_author_name(sender, instance, **kwargs):
         author.save()
     except Author.DoesNotExist:
         pass
+    
+@receiver(post_save, sender=Author)
+def update_user_username(sender, instance, **kwargs):
+    user = instance.user
+    if user and user.username != instance.displayName:
+        user.username = instance.displayName
+        user.save()
          
 class Entry(BaseModel):
     '''Used to represent entries inside of the application '''
@@ -219,15 +224,11 @@ class Entry(BaseModel):
     description = models.TextField(blank=True, null=True, default="")
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
-    is_local = models.BooleanField(default=True)
+    is_local = models.BooleanField(default=False)
     
-    
-    @property
-    def is_local(self):
-        return self.author.is_local
     def get_entry_url(self):
         host = urlparse(self.author.host).netloc
-        return f"http://{host}/authors/{self.author.serial}/entries/{self.serial}"
+        return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"
     
     def get_web_url(self):
         host = urlparse(self.author.host).netloc
@@ -288,9 +289,9 @@ class Comment(BaseModel):
     contentType = models.CharField(max_length=50, default="text/plain")
     web = models.URLField(blank=True, null=True, default=None)
     is_local = models.BooleanField(default=True)
+    remote_url = models.URLField(null=True, blank=True)
     
-    
-    
+
     def get_web_url(self):
         host = urlparse(self.author.host).netloc
         return f"http://{host}/api/authors/{self.author.serial}/entries/{self.serial}"

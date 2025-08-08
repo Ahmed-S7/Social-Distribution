@@ -18,7 +18,11 @@ body {
     
 }
 
+.entry_author{
+    color:gray;
+    padding-top:0.5em;
 
+}
 .mt-4{
     font-family: 'Nunito', sans-serif;
 }
@@ -56,11 +60,38 @@ h2, h3, .entry_details{
     font-size:1em;
 }
 
+.entry_content p img{
+    text-align: center;
+    justify-content: center;
+    display: inline-block;
+}
+
+.card-entry-detail .card-body .entry_content .entry_image{
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    margin: auto;
+    text-align: center;
+    display: block;
+}
+
 .view_author_button:hover{
     background-color: var(--header-color);
 }
-.entry_content{
+p.img{
     text-align: center;
+}
+
+.entry_content.text-center{
+    display:block; 
+    margin: 0 auto; 
+    max-width: 95%; 
+    border-radius: 0.625em;
+    align-items: center;
+    margin-left:2em;
+    margin-right:2em;
+
 }
 .entry_details.entry_author{
     text-align: left;
@@ -79,6 +110,7 @@ h2, h3, .entry_details{
     text-overflow:ellipsis;
     overflow:hidden;
 }
+
 div.comment-section{
     justify-content: center;
     text-align: left;

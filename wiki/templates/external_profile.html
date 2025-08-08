@@ -50,9 +50,9 @@
                                     
                                             <!--Make profile picture lead to pfp editing-->
                                         {% if author.profileImage %}
-                                            <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
+                                            <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
                                         {% else %}
-                                            <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                            <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                         {% endif %}
                                         <!--end of profile image check-->
 
@@ -61,9 +61,9 @@
                                         
                                         {% if author.profileImage %}
                                         
-                                                <img class="profile_image" src="{{ author.profileImage }}" alt="Profile Picture">
+                                                <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
                                         {% else %}
-                                                <img class="profile_image" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
+                                                <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
                                         {% endif %}
 
                                     {% endif %}
@@ -168,7 +168,7 @@
                     {% for entry, rendered in entries %}   
                      <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
-                        <a href="{% url 'wiki:entry_detail' entry.serial %}">
+                        <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
                             <div class="post-header">
 
                                 <div>
@@ -181,10 +181,9 @@
                             </div>
                         
 
-
-                            {% if entry.contentType == "image/jpeg;base64" or entry.contentType == "image/png;base64" %}
+                            {% if "base64" in entry.contentType %}
                                <div class="post-content text-center">
-                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="Base64 Image" class="img-fluid" />
+                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
                                </div>
                             {% elif entry.contentType == "text/markdown" %}
                                <div class="post-content markdown-content">
@@ -205,8 +204,8 @@
                                         </form>
                                         <!--<p>{{ entry.likes.count }} likes</p>-->
 
-                                <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
-                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.serial %}">🔗 Share Link</button>
+                                <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
+                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' entry.author.serial entry.serial %}">🔗 Share Link</button>
                                 </div>
                             </div>
                     {% endfor %}

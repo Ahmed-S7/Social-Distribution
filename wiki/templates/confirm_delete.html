@@ -8,7 +8,7 @@
     {% csrf_token %}
     <div class="confirmation_buttons d-flex gap-3">
       <button class="btn btn-danger px-4" type="submit">Yes, delete</button>
-      <a href="{% url 'wiki:entry_detail' entry.serial %}" class="btn btn-secondary px-4">Cancel</a>
+      <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}" class="btn btn-secondary px-4">Cancel</a>
     </div>
   </form>
 </section>

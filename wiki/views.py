@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid
+from .util import  decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -35,6 +35,8 @@ import markdown
 from django.utils.safestring import mark_safe
 from django.middleware.csrf import get_token
 from .gethub import create_entries
+from django.core.paginator import Paginator
+import filetype
 # Create your views here.
 
 
@@ -60,10 +62,10 @@ class RemotePostReceiver(APIView):
 
 @api_view(['GET'])
 def user_wiki_api(request, username):
-    if request.user.username != username or request.user.is_superuser:
-        raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
-
+    if request.user.username != username:
+        return redirect("wiki:login")
+    
     # Followed
     followed_ids = AuthorFollowing.objects.filter(
         follower=current_author
@@ -108,7 +110,7 @@ def user_wiki_api(request, username):
 @login_required
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
-    
+    print(f"CURRENT USER IN REQUEST: {request.user.username}")
     if request.user.username != username or request.user.is_superuser:
         raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
@@ -175,31 +177,8 @@ def like_entry(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=author)
 
     if created:
-        # Check if the entry is remote (not local) and send like to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
@@ -212,7 +191,7 @@ def like_entry(request, entry_serial):
     #Redirect to the entry's details's page if the entry was liked from its details  
     if request.POST.get("liked_from_details") == "true":
 
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry.serial)
     
     #regular stream entry like
     return redirect('wiki:user-wiki', username=request.user.username)
@@ -225,8 +204,8 @@ def register(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password', "").strip()
-        github = request.POST.get('github') or None
-        profileImage = request.POST.get('profileImage') or None
+        github = request.POST.get('github') or ""
+        profileImage = request.POST.get('profileImage') or ""
 
         userIsValid = validUserName(username)
         
@@ -239,7 +218,8 @@ def register(request):
             user = User.objects.create_user(username=username, password=password, is_active=False)
             
             #Save new author or raise an error
-            newAuthor = saveNewAuthor(request, user, username, github, profileImage)
+            newAuthor = saveNewAuthor(request, user, username, github, profileImage, is_local=True)
+            
             if newAuthor:
                 return redirect('wiki:login') 
             return HttpResponseServerError("Unable to save profile")
@@ -268,7 +248,7 @@ def register_api(request):
     username = request.data.get('username')
     password = request.data.get('password')
     confirm_password = request.data.get('confirm_password', "").strip()
-    github = request.data.get('github') or None
+    github = request.data.get('github') or ""
 
     if not username or not password or not confirm_password:
         return Response({"detail": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
@@ -284,7 +264,7 @@ def register_api(request):
 
     user = User.objects.create_user(username=username, password=password, is_active=False)
 
-    author = saveNewAuthor(request, user, username, github, profileImage=None)
+    author = saveNewAuthor(request, user, username, github, profileImage=None, is_local=True)
     if not author:
         return Response({"detail": "Failed to create author"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -293,68 +273,52 @@ def register_api(request):
 class MyLoginView(LoginView):
     def form_valid(self, form):
         login(self.request, form.get_user())
-        username = self.request.user.username
-        
+        user = form.get_user()
+        author = Author.objects.filter(user=user).first()
+        if not author:
+            return redirect("wiki:register")
+        else:
+            username = author.displayName
         #Populate the db with users from other valid (active) nodes
         active_nodes = RemoteNode.objects.filter(is_active=True)
         print("ACTIVE REMOTE NODES:", active_nodes,'\n')
-        remote_authors_lists = []
-        for node in active_nodes:
-            
+        remote_authors_lists = [] 
+        for node in active_nodes:            
             normalized_url = node.url.rstrip("/")
-            try:
-                
+            try: 
+                authors_endpoint = normalized_url+"/api/authors/"
                 #get the response from pulling another node's authors
-                node_authors_pull_attempt = requests.get(normalized_url+"/api/authors/")
+                node_authors_pull_attempt = requests.get(authors_endpoint, auth=AUTHTOKEN)
                 
+                print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}, status code: {node_authors_pull_attempt.status_code}\n")
+                if not node_authors_pull_attempt.status_code == 200:
+                    print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}\n")
                 #If the request was successful (got a 200) we can move on to storing the JSON and converting them into author objects
-                if node_authors_pull_attempt.status_code == 200:
-                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}")
-                    
+                else:
+                    print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}\n")
                     #retrieve any valid JSON if the GET request was successful, store them in a list of the authors to convert to author objects
                     try:
-                        node_authors = requests.get(normalized_url+"/api/authors/").json()
+                        node_authors = node_authors_pull_attempt.json()
                     except Exception as e:
                         raise e
-                    
                     #add the json list of the authors to the complete list of authors
-                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]
-                    
-                print("\n")
-                
+                    remote_authors_lists.append(node_authors['authors']) #->[[{node1 authors}], [[{node2 authors}]]       
+                    print("\n")
             except Exception as e:
                 raise e
-            
-        all_remote_authors = []
-        for remote_author_list in remote_authors_lists:
-            for author_json in remote_author_list:
-                all_remote_authors.append(author_json)#contains a json of all of the remote authors 
-             
-        for remote_author in all_remote_authors:
-            if remote_author.get("id"):
-                author_id = remote_author.get("id")
-                try:
-                    #SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                    new_account_serialized = AuthorSerializer(data=remote_author)
-                    
-                    if not author_exists(author_id): 
-                           
-                        #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
-                        if not new_account_serialized.is_valid():
-                            print("AUTHOR OBJECT STRUCTURE INVALID")
-                            
-                        #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
-                        new_profile = new_account_serialized.save()
-                        new_profile.is_local=False
-                        new_profile.save()
-                        print(f"NEW AUTHOR {new_profile} SAVED TO DATABASE")
-                except Exception as e:
-                    print(e)     
-            
-            
         
-        return redirect('wiki:user-wiki', username=username)
-
+        #collect all of the individual authors in a JSON list -> ( [{author objects}] )  
+        all_remote_authors = get_remote_authors_list(remote_authors_lists)    
+        
+        #process existing and new authors with logs 
+        add_or_update_fetched_authors(all_remote_authors)
+ 
+        # redirects to the login if the redirection to the wiki page fails
+        try:
+            return redirect('wiki:user-wiki', username=username)
+        except Exception as e:
+            return redirect("wiki:login")
+        
     def form_invalid(self, form):
         username = self.request.POST.get('username')
         password = self.request.POST.get('password')
@@ -416,16 +380,86 @@ def get_authors(request):
                 ]
             }
     """
-  
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    if not request.user.is_authenticated and not validated_auth(auth_header):
+        print(f"USER THAT ATTEMPTED TO CONNECT TO THE NODE IS: {request.user}")
+        return Response({"Forbidden": "Your credentials are not validated on this site."}, status=status.HTTP_403_FORBIDDEN)
+    
+    #If (at minimum) the node has valid credentials, they may access this endpoint
     authors = Author.objects.all()
-    if authors:
-        serializer =AuthorSerializer(authors, many=True) 
-        return Response({"type": "authors",
-                            "authors":serializer.data}, status=status.HTTP_200_OK)  
+    
+     # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 50)), 50)  # Cap at 50 items per page
+    
+    # Paginate the results
+    paginator = Paginator(authors, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the authors
+    authors_data = []
+    for author in page_obj:
+        serializer = AuthorSerializer(author, context={'request': request})
+        authors_data.append(serializer.data)
+    
+
+
+    # Build response
+    host = request.build_absolute_uri('/').rstrip('/')
+    response_data = {
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "type": "authors",  
+        "authors": authors_data
+    }
+    
+    # Add pagination URLs if needed
+    if page_obj.has_next():
+        response_data["next_url"] = f"?page={page_obj.next_page_number()}&size={page_size}"
+    if page_obj.has_previous():
+        response_data["previous_url"] = f"?page={page_obj.previous_page_number()}&size={page_size}"
+    
+    if authors_data:     
+        return Response(response_data, status=status.HTTP_200_OK)  
     else:
         return Response({"type":"authors", "authors": []}, status=status.HTTP_200_OK)
 
+def validated_auth(auth_header):
+    #need to have auth in request to connect with us
+    if not auth_header:
+        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
+    
+    #If the auth header has basic auth token in it
+    if not auth_header.startswith("Basic"):
+        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
+    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
+    
+    #Gets the user and pass using basic auth
+    username, password = decoded_auth_token(auth_header)
+    
+    #make sure the auth is properly formatted
+    if not (username and password):
+        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
+        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
 
+    #for an invalid node
+    if not node_valid(username, password):
+        return Response({"Node Unauthorized": "This node does not match the credentials of any validated remote nodes", "detail":"please check your authorization details (case-sensitive)"}, status=status.HTTP_401_UNAUTHORIZED)
+    print("AUTHENTICATION COMPLETE.")
+    print(f"{username} may now access the node.")
+
+    currentNodes = RemoteNode.objects.all()
+    print(f"CONNECTED NODES {currentNodes}")
+
+    
 
 @api_view(['GET', "PUT"])
 def get_or_edit_author_api(request, author_serial):
@@ -483,12 +517,13 @@ def get_or_edit_author_api(request, author_serial):
         - returns error details if they arise    
     
     """
-    if 'http' in author_serial:
-        author_serial = author_serial.split('/')[-1]
+   
     author = get_object_or_404(Author, serial=author_serial)
     
+    if not (request.user.is_authenticated):
+        return Response({"Forbidden":"You are not authorized to retrieve this content"}, status=status.HTTP_401_UNAUTHORIZED)
+    
     if request.method=="GET":
-        # CHANGED FOR TESTING
         
         serializer =AuthorSerializer(author)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -513,14 +548,46 @@ def get_or_edit_author_api(request, author_serial):
     else:
         return Response({"Failed to update author info":f"You must log in as '{author}' to update this information"}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+@api_view(['GET'])
+def get_author_fqid(request, author_fqid):
+    '''retrieve an author by their FQID, only allowed for authenticated users
+    GET api/authors/<path:author_fqid>
+    '''
+    print(author_fqid)
+    author_fqid = author_fqid.rstrip('/')
+    if not request.user.is_authenticated:
+        return Response({"Unauthorized": "You are not authorized to view this content"}, status=status.HTTP_401_UNAUTHORIZED)
+    author_fqid = urllib.parse.unquote(author_fqid)
+    author = get_object_or_404(Author, id=author_fqid)
+    serializer =AuthorSerializer(author)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 @login_required   
 @require_GET 
 def view_local_authors(request):
     current_user = request.user
     
+    # Get search query from request
+    search_query = request.GET.get('search', '').strip()
+    
     #retrieve all authors except for the current author
     authors = Author.objects.filter(user__is_active=True).exclude(user=current_user)
-    return render(request, 'authors.html', {'authors':authors, 'current_user':current_user})
+    
+    # Filter authors based on search query
+    if search_query:
+        authors = authors.filter(
+            Q(displayName__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    return render(request, 'authors.html', {
+        'authors': authors, 
+        'current_user': current_user,
+        'search_query': search_query
+    })
+
 
 @require_GET  
 def view_external_profile(request, author_serial):
@@ -547,7 +614,7 @@ def view_external_profile(request, author_serial):
         friends_a = profile_viewing.friend_a.all()if logged_in_author else Author.objects.none()
         friends_b = profile_viewing.friend_b.all()if logged_in_author else Author.objects.none()
         total_friends = (friends_a | friends_b)
-
+        is_local =  profile_viewing.is_local
         
         # VISUAL REPRESENTATION TEST
         '''
@@ -564,7 +631,8 @@ def view_external_profile(request, author_serial):
         # Followed
         followed_ids = AuthorFollowing.objects.filter(
             following=profile_viewing
-        ).values_list('follower', flat=True)
+        ).values_list('following', flat=True)
+        print(followed_ids)
         
         # Friends
         friend_pairs = AuthorFriend.objects.filter(
@@ -584,10 +652,12 @@ def view_external_profile(request, author_serial):
         author=profile_viewing
         ).filter(
             Q(visibility='PUBLIC') |
-            (Q(visibility='FRIENDS') & Q(author__id__in=friend_ids)) |
+            (Q(visibility='FRIENDS') & Q(author__id__in=friend_ids))|
             (Q(visibility='UNLISTED') & Q(author__id__in=followed_ids))
+            
         ).order_by('-created_at')
         
+        print(f"entries after filtering:{all_entries}")
         #store existing follow request if it exists
         try:
             if logged_in_author:
@@ -615,12 +685,12 @@ def view_external_profile(request, author_serial):
             
             
         #CHECK VALUES
-        '''
+        
         print("Following ID is:",following_id)
         print("Friendship ID is:",friendship_id)
         print("The current request is:", current_request_id) 
         print("List of User's Entries:", all_entries)
-        '''
+       
         rendered_entries = []
         for entry in all_entries:
          rendered = (
@@ -629,12 +699,10 @@ def view_external_profile(request, author_serial):
             else entry.content
          )
          rendered_entries.append((entry, rendered)) 
-         print(logged_in_author)
-         print(profile_viewing)
-         print(is_following)
-        
+
         return render(request, "external_profile.html", 
                       {
+                       'is_local': is_local,
                        'author': profile_viewing,
                        'entries': rendered_entries,
                        "followers": followers,
@@ -722,7 +790,7 @@ def unfollow_profile(request, author_serial, following_id):
     except Author.DoesNotExist:
         #print(f"{following_id} is not a valid existing following id")
         return redirect(reverse("wiki:view_local_authors"))
-
+        
     
     try:
         #retrieve the current follow request
@@ -736,6 +804,7 @@ def unfollow_profile(request, author_serial, following_id):
      
     # ID of friendship object or None
     active_friendship_id = current_author.get_friendship_id_with(followed_author)
+    
     
     '''#VISUAL REPRESENTATION TEST
     print("Current Author is:",current_author,followed_author)
@@ -788,34 +857,25 @@ def view_entry_author(request, entry_serial):
 
             
         
-def node_valid(host, username, password):
-    '''checks if the node associated with a given host is valid'''
- 
-    remoteNodes = RemoteNode.objects.all()
-    for remoteNode in remoteNodes:
-        if host == urlparse(remoteNode.url).netloc and NodeConnectionCredentials.filter(username=username, password=password):
-            return True
-
-    return False
-        
 
 @login_required  
 @require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
     
     if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please use a regular account associated with an Author.")
+        return redirect('wiki:login')
 
     current_user = request.user
-    
-    requesting_account = get_object_or_404(Author, user=current_user)
-    requested_account = get_object_or_404(Author, serial=author_serial)
-    
+    try:
+        requesting_account = Author.objects.get(user=current_user)
+        requested_account = Author.objects.get(serial=author_serial)
+    except requested_account.DoesNotExist:
+         print(e)
 
     follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
     follow_request.summary = str(follow_request)
     
-    ##CHECK REQUESTING AND REQUESTED ACCOUNT##
+    ##CHECK REQUESTING AND REQUESTED ACCOUNT#
     #print(requesting_account)
     #print(requested_account)
     ##########################################
@@ -824,107 +884,68 @@ def follow_profile(request, author_serial):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
         return redirect(query_with_friend_status)
-    
-    
+        
     if requesting_account.is_following(requested_account):
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
     
     #if the author is not following or friends with the receiving author:        
-    try:
-        serialized_follow_request = FollowRequestSerializer(
-        follow_request, data={
-        "type":"follow",
-        },partial=True
-
-        )
-         # Valid follow requests will lead to an attempted saving of the corresponding respective inbox item
-        if not serialized_follow_request.is_valid():
-            return HttpResponseServerError(f"We were unable to send your follow request: {serialized_follow_request.errors}")
+    try:   
+        #local user = regular flow of a local follow request
+        if requested_account.is_local:
+            try:
+                follow_request.save()
+            except Exception as e:
+                print(e)
         
         #remote profiles will automatically send a following
-        if not requested_account.is_local:
-            print("requested isn't local")
-                
-            inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
-            print(f"sending request to {inbox_url}")
-            print(serialized_follow_request.data)
-                
-            try:
-                    
-                remote_follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
-                requesting = remote_follow_request.requester
-                requested = remote_follow_request.requested_account
-                remote_serialized_request = FollowRequestSerializer(remote_follow_request)
-
-                #attempt to save the follow request
-                try:
-                    
-                    # try to push the follow request to the remote inbox to send them a follow request, then automatically follow them if succeeds
-                    try:
-                            follow_request_response = requests.post(
-                            inbox_url,
-                            json=remote_serialized_request.data,  
-                            auth=AUTHTOKEN,
-                            timeout=1
-                            )
-                    except Exception as e:
-                        print(e)
-                   
-                    print(f"RESPONSE: {follow_request_response.content}")
-                        
-                    if follow_request_response.status_code == 200:
-                        #print("THE FOLLOW REQUEST RESPONSE STATUS IS:", follow_request_response.status_code, f"THE REMOTE FOLLOW REQUEST BEING SAVED IS: {remote_follow_request}, {remote_follow_request.state}")
-                        local_request = remote_follow_request
-                        local_request.set_request_state(RequestState.ACCEPTED)
-                        try:
-                            local_request.save()    
-                        except Exception as e:
-                            raise e
-                        print("remote follow request was saved")
-                        print(f"{requesting} is attempting to follow {requested}")
-                        saved_following_to_remote = AuthorFollowing(follower=requesting, following=requested)
-                        print(f"ATTEMPTED TO SAVE FOLLOWING: {saved_following_to_remote}")
-                            
-                        #save the new following
-                        print("TRYING TO SAVE NEW FOLLOWING...")
-                        saved_following_to_remote.save()
-                        print("valid follow request, saved following for remote node.")
-                        print(saved_following_to_remote)
-                        
-                        #CHECK FOR A FRIENDSHIP AND MAKE ONE IF THERE IS A MUTUAL FOLLOWING
-                        print(f"requesting author: {requesting}, requested author: {requested}")
-                            
-                        if requesting.is_following(requested) and requested.is_following(requesting): 
-                            newRemoteFriendship = AuthorFriend(friending=requested, friended=requesting)
-                                
-                            print("MUTUAL FOLLOWING FOUND! MAKING FRIENDS NOW...")
-                            try:
-                                newRemoteFriendship.save()
-                                print("SUCCESSFULLY CREATED MUTUAL REMOTE FOLLOWING, THESE AUTHORS ARE NOW FRIENDS")
-                            except Exception as e:
-                                 raise e
-                        
-                            
-                except Exception as e:
-                    raise e
-                       
-            except Exception as e:
-                raise e
-                
-                
-    except Exception as e:
-                return HttpResponseServerError(f"Failed to save follow request: {e}")
-      
+        else:
             
-    try:
-        follow_request.save()
-        print("REMOTE REQUEST FAILED, YOU MAY STILL BE FOLLOWING THIS AUTHOR ON THEIR NODE, SWITCHING TO MANUAL FOLLOW REQUEST")
-        return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))
+            try:
+                follow_request_remote = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                requesting = follow_request_remote.requester
+                requested = follow_request_remote.requested_account
+                remote_serialized_request = FollowRequestSerializer(follow_request)
+            except Exception as e:
+                print(e)
+            
+            # attempt to save the follow request, and an associated following (by default)
+            try:
+                #Automatically creates a following to the requested account since they are remote
+                create_automatic_following(requesting, requested,follow_request_remote)    
+                inbox_url = str(requested_account.id).rstrip('/')+"/inbox/"
+                print(f"sending request to {inbox_url}")
+                print(remote_serialized_request.data)
+        
+                    
+                # try to push the follow request to the remote inbox to send them a follow request, then automatically follow them if succeeds
+                try:
+                    follow_request_response = requests.post(
+                    inbox_url,
+                    json=remote_serialized_request.data,  
+                    auth=AUTHTOKEN,
+                    timeout=2
+                    )
+                except Exception as e:
+                    print(f"WE WERE UNABLE TO POST YOUR FOLLOW REQUEST TO {inbox_url} REMOTELY, dev notes:{e}\n")
+                    
+                # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
+                # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
+                if follow_request_response.status_code in [200, 201]:        
+                    if len(follow_request_response.content) < 300:
+                        print(f"RESPONSE FROM ({inbox_url}): {follow_request_response.content}")
+                    else:
+                        print(f"SUCCESSFULLY SENT REMOTE FOLLOW REQUEST (STATUS CODE: {follow_request_response.status_code}), RESPONSE WAS GREATER THAN 300 CHARACTERS.")
+                else:
+                    print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO URL: {inbox_url} REMOTELY, STATUS CODE: {follow_request_response.status_code}.")
+            except Exception as e:
+                print(e)     
     except Exception as e:
-        raise(e)
-                   
+        print(e)    
+        
+    return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))                
+    
         
     
         
@@ -986,51 +1007,52 @@ def process_follow_request(request, author_serial, request_id):
     
     choice = request.POST.get("action")
     if choice.lower() == "accept":
-        
+    
         #if follow request gets accepted, 
         follow_request = FollowRequest.objects.filter(id=request_id).first()
         print(f"THE STATE OF THE SELECTED FOLLOW REQUEST IS: {follow_request.state}")
     
         try:
-            #set the following accoun, and store whether they are local or not
-            
+            #set the following account, and store whether they are local or not
             follower = follow_request.requester
-            new_follower_local = follower.is_local
             followed_account_remote = follow_request.requested_account.is_local == False
+            print(f"this account is remote: {followed_account_remote}")
             print("succeeded in setting follower and followed account")
             print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
         except follower.DoesNotExist:
             return Http404("Follow request was not found between you and this author")
         
-        #set the follow request state to accepted (only if the requested author is isn't remote, otherwise it will be accepted by default so the state is already accepted)
-        #followings are also only newly made when we don't have any type of account making a follow request to a remote account, otherwise the normal flow of logic applies
-        #if a remote account follows a local account, everything should work as normal
-        if not (followed_account_remote): # -> NOT (any type of account FOLLOWING remote account)
+        # create a following after accepted request
+        try:
             
             #create a following from requester to requested (for local author object, because remote author objects will already have an automatic following once requested)
             follow_request.set_request_state(RequestState.ACCEPTED)
             new_following = AuthorFollowing(follower=follower, following=requestedAuthor)
             new_following_serializer = AuthorFollowingSerializer(new_following, data={
-                "follower":new_following.follower.id,
-                "following":new_following.following.id,
+                    "follower":new_following.follower.id,
+                    "following":new_following.following.id,
             }, partial=True)
-            
-            
+                
+                
             if new_following_serializer.is_valid():
                 try:
-                    new_following_serializer.save()
-                    # Send all appropriate entries to new remote follower
-                    # from .util import send_all_entries_to_follower
-                    # send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
-                        
+                        new_following_serializer.save()
+                        # Send all appropriate entries to new remote follower
+                        # from .util import send_all_entries_to_follower
+                        # send_all_entries_to_follower(local_author=requestedAuthor, remote_follower=follower, request=request)
+                            
                 except Exception as e:
-                    print(e)
-                    return check_follow_requests(request, request.user.username)
+                        print(e)
+                        return check_follow_requests(request, request.user.username)
 
             else:
-                
-                return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")
-           
+                    
+                return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")  
+        
+        except Exception as e:
+            print(e) 
+            
+             
         # check if there is now a mutual following
         if follower.is_following(requestedAuthor) and requestedAuthor.is_following(follower):
             print("there is a mutual following between these authors")
@@ -1048,7 +1070,7 @@ def process_follow_request(request, author_serial, request_id):
                 #set the follow  request state to requested
                 follow_request.set_request_state(RequestState.REQUESTING)
         
-                #create a following from requester to requested
+                #delete the new following
                 new_following.delete()
                 
                 #print the exception
@@ -1068,7 +1090,6 @@ def process_follow_request(request, author_serial, request_id):
         
          #Reject the follow request and delete it 
          follow_request.set_request_state(RequestState.REJECTED)
-         
          follow_request.delete()
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
@@ -1076,23 +1097,6 @@ def process_follow_request(request, author_serial, request_id):
 
 
 
-def decoded_auth_token(auth_header):
-    if isinstance(auth_header, str):
-        print("AUTH ENCODED IN UTF-8")
-        print("AUTH ENCODED AS BYTES, DECODED TO STRING")
-        auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
-        auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
-        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
-        decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
-    else:
-        return False
-        
-    #print(f"AUTH INFO SPLIT: {auth_header_split}")
-    #print(f"ENCODED AUTH INFO: {auth}")
-    #print(f"DECODED AUTH : {decoded_auth}")
-    #print(f"USDERNAME AND PASSWORD: {decoded_username, decoded_pass}")
-    
-    return decoded_username, decoded_pass
     
     
 @csrf_exempt
@@ -1174,7 +1178,7 @@ def user_inbox_api(request, author_serial):
     Vary: Accept
     
     {
-    "Error": "We were unable to locate the user who made this request, dev notes: ['“99f5-a05e-497f-afd4-5af96cf3b0b4” is not a valid UUID.']"
+    "Error": "We were unable to locate the user who made this request, dev notes: ['"99f5-a05e-497f-afd4-5af96cf3b0b4" is not a valid UUID.']"
     }
     
     POST:
@@ -1231,40 +1235,10 @@ def user_inbox_api(request, author_serial):
     
     auth_header = request.META.get('HTTP_AUTHORIZATION')
 
-    #need to have auth in request to connect with us
-    if not auth_header:
-        return Response({"unauthorized": "please include authentication with your requests"}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER FOUND.\nENCODED AUTH HEADER: {auth_header}")
-    
-    
-    #If the auth header has basic auth token in it
-    if not auth_header.startswith("Basic"):
-        return Response({"Poorly formatted auth": "please include BASIC authentication with your requests to access the inbox."}, status=status.HTTP_401_UNAUTHORIZED)
-    print(f"AUTH HEADER STARTS WITH BASIC: {auth_header.startswith('Basic')}")
-    
-    #Gets the user and pass using basic auth
-    username, password = decoded_auth_token(auth_header)
-    
-    #make sure the auth is properly formatted
-    if not (username and password):
-        print("COULD NOT PARSE USER AND PASS FROM POORLY FORMATTED AUTH.")
-        return Response({"ERROR" :"Poorly formed authentication header. please send a valid auth token so we can verify your access"}, status = status.HTTP_400_BAD_REQUEST)
-
-
-
-    print("AUTHENTICATION COMPLETE.")
-    print(f"{username} may now access the node.")
-    
-    #NEXT IMPLEMENTATION WILL CHECK AGAINST OUR AGREED UPON CREDENTIALS AND THE VALIDITY OF THE REMOTE NODE
-    currentNodes = RemoteNode.objects.all()
-    print(currentNodes)
+    validated_auth(auth_header)
     
     requested_author = get_object_or_404(Author, serial=author_serial)
-    #TODO
-    #check the node validity
-    #populate the local node with all of the foreign node's users
-    
-    
+
     #retrieve all of the author's inbox objects
     if request.method =="GET":
         
@@ -1278,11 +1252,7 @@ def user_inbox_api(request, author_serial):
         
     #sends an inbox object to a specific author
     elif request.method =="POST": 
-        print("Processing a POST request to the inbox")
-        is_local = request.get_host() == requested_author.host
-        if is_local:
-            print("THIS REQUEST WAS DENIED BECAUSE IT WAS MARKED AS LOCAL, THE RETRIEVED HOST IS:", request.get_host())
-            return Response({"failed to save Inbox item":f"dev notes: Posting to inbox is forbidden to local users."}, status=status.HTTP_403_FORBIDDEN)
+        
         #################################TEST##################################### 
         print(f"\n\n\n\n\n\n\n\n\nTHIS IS THE REQUEST:\n\n{request.data}\n\n\n")
         #########################################################################
@@ -1290,17 +1260,15 @@ def user_inbox_api(request, author_serial):
         
         if not type:
             return Response({"failed to save Inbox item":f"dev notes: inbox objects require a 'type' field."}, status=status.HTTP_400_BAD_REQUEST)    
-
-
-        
-        
         
         ############## PROCESSES  FOLLOW REQUEST INBOX OBJECTS ###################################################################################################################
         
 
         # Handle remote entry
         if type.lower() == "entry":
-            entry_data = request.data.get("body")
+            entry_data = request.data
+            entry_id = entry_data.get("id")
+            entry_serial = entry_id.rstrip('/').split('/')[-1]
             if not entry_data:
                 return Response({"error": "No entry data provided"}, status=status.HTTP_400_BAD_REQUEST)
             origin_url = entry_data.get("id")
@@ -1310,7 +1278,7 @@ def user_inbox_api(request, author_serial):
                 return Response({"error": "No author data in entry"}, status=status.HTTP_400_BAD_REQUEST)
             
             remote_author, _ = Author.objects.get_or_create(
-                id=author_data["id"],
+                id=author_data["id"].rstrip('/'),
                 defaults={
                     "displayName": author_data.get("displayName", ""),
                     "host": author_data.get("host", ""),
@@ -1319,22 +1287,39 @@ def user_inbox_api(request, author_serial):
                     "profileImage": author_data.get("profileImage", ""),
                 }
             )
-            # Find or create the entry
             
+            mime=None
+            # Find or create the entry
+            #Find the content type to display
+            sent_content = entry_data.get("content", "")
+            sent_content_type = entry_data.get("contentType", "")
+            if "application" in sent_content_type: 
+                if sent_content and sent_content_type:
+                    mime = get_mime(sent_content)
+                           
+                 
             entry, created = Entry.objects.update_or_create(
                 origin_url=origin_url,
                 defaults={
+                    "id": entry_id,
+                    "serial": entry_serial,
                     "author": remote_author,
                     "title": entry_data.get("title", ""),
                     "content": entry_data.get("content", ""),
-                    "contentType": entry_data.get("contentType", "text/plain"),
+                    "contentType": f"{mime};base64" if mime else sent_content_type,
                     "description": entry_data.get("description", ""),
                     "visibility": entry_data.get("visibility", "PUBLIC"),
                     "web": entry_data.get("web", ""),
                     "is_deleted": False,
-                    "is_local": False,
+                    "is_local": False
                 }
             )
+            print(f"DEBUG: entry mime type parsed: {mime}")
+            print(f"DEBUG: entry contentType:{entry_data.get('contentType')}")
+            print(f"DEBUG: entry ID: {entry_id}")
+            print(f"DEBUG: entry serial: {entry_serial}")
+            print(f"DEBUG: entry author information (sender/creator): {author_data}")
+            
            
 
             return Response({"success": "Entry received and stored", "created": created}, status=status.HTTP_200_OK)
@@ -1346,11 +1331,11 @@ def user_inbox_api(request, author_serial):
             
             try:
                 body = request.data
-                authorFQID = request.data['actor']['id']
+                authorFQID = request.data['actor']['id'].rstrip('/')
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch author object, improperly formatted author"}, status=status.HTTP_400_BAD_REQUEST)
             
-            print("AUTHOR FQID IS:")
+            print(f"AUTHOR FQID IS:{authorFQID}")
             remoteAuthorObject = remote_author_fetched(authorFQID)
 
             if not remoteAuthorObject or not authorFQID:
@@ -1367,7 +1352,7 @@ def user_inbox_api(request, author_serial):
                 
                 #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
-                    return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_200_OK)
                 
                 #IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
@@ -1379,9 +1364,9 @@ def user_inbox_api(request, author_serial):
                 requester = Author.objects.get(id=authorFQID)
               
             if requester.is_already_requesting(requested_author):
-                return Response({"failed to save Inbox item":f"dev notes: you have already requested to follow this author."}, status=status.HTTP_400_BAD_REQUEST)    
+                return Response({"failed to save Inbox item":f"dev notes: you have already requested to follow this author."}, status=status.HTTP_200_OK)    
 
-            remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author,  state=RequestState.REQUESTING)
+            remote_follow_request = FollowRequest(requester=requester, requested_account=requested_author, state=RequestState.REQUESTING)
             remote_serialized_request = FollowRequestSerializer(remote_follow_request)
 
           
@@ -1391,8 +1376,8 @@ def user_inbox_api(request, author_serial):
                 type="Follow"
                 print("valid follow request")
             except Exception as e:
-                print(remote_serialized_request.data)
-                return Response({"Unable to save follow request" : f"dev notes:{e}"}, status=status.HTTP_400_BAD_REQUEST)
+                print(remote_serialized_request.data, e)
+                return Response({"Unable to save follow request" : f"dev notes:{e}"}, status=status.HTTP_200_OK)
                 
             #set the inbox body to the validated inbox object 
             #This goes in the inbox item body now so WE can retrieve it later wherever need be
@@ -1405,12 +1390,18 @@ def user_inbox_api(request, author_serial):
         
         ############## PROCESSES LIKE INBOX OBJECTS ###################################################################################################################
         
-        elif type == "like" or type == "Like":
+        elif type.lower() == 'like':
+            
+            print(f"DEBUG: Processing like in inbox")
+            print(f"DEBUG: Request data: {request.data}")
             
             try:
-                body = request.data
-                authorFQID = request.data['author']['id']
-                objectFQID = request.data['object']
+                # like = request.data
+                # authorFQID = like['author']['id']
+                objectFQID = request.data.get('object')
+                authorFQID = request.data.get('author', {}).get('id').rstrip('/')
+                print(f"DEBUG: Extracted authorFQID: {authorFQID}")
+                print(f"DEBUG: Extracted objectFQID: {objectFQID}")
             except Exception as e:
                 return Response({"failed to save Inbox item": "could not fetch like object, improperly formatted like"}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -1422,55 +1413,97 @@ def user_inbox_api(request, author_serial):
             
             # CHECK FOR THE EXISTENCE OF THE AUTHOR
             if not author_exists(authorFQID):
-                
+                print(f"DEBUG: Author {authorFQID} does not exist, creating new author object")
                 # SERIALIZE AND SAVE IF THEIR DATA IS VALID
                 requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
-                
+                print(f"DEBUG: Serialized author data: {requesting_account_serialized.data}")
                 # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
                     return Response({"failed to save Inbox item":f"dev notes: {requesting_account_serialized.errors}"}, status=status.HTTP_400_BAD_REQUEST)
                 
                 # IF THEY DO NOT ALREADY EXIST, SAVE THEM TO THE NODE
                 requester = requesting_account_serialized.save()
+                print(f"DEBUG: Saved new author object: {requester}")
                 requester.is_local=False
                 requester.save()
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
                 requester = Author.objects.get(id=authorFQID)
+                print(f"DEBUG: Found existing author object: {requester}")
             
             # Check if the like is for an entry or comment
-            if '/entries/' in objectFQID and '/comments/' in objectFQID:
+            if '/commented/' in objectFQID:
                 # This is a comment like
                 try:
-                    # Parse the comment FQID to extract entry and comment info
-                    # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}/comments/{comment_serial}
+                    print(f"DEBUG: Processing comment like for objectFQID: {objectFQID}")
+                    # Parse the comment FQID to extract comment info
+                    # Format: http://host/api/authors/{author_serial}/commented/{comment_id}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-4]  # author serial
-                    entry_serial = parts[-2]  # entry serial
-                    comment_serial = parts[-1]  # comment serial
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
                     
-                    # Find the local entry
-                    entry = Entry.objects.get(serial=entry_serial)
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        comment_author_serial = parts[-4]  # author serial (third from end)
+                        comment_id = parts[-2]  # comment id (second from end)
+                    else:
+                        comment_author_serial = parts[-3]  # author serial (second from end)
+                        comment_id = parts[-1]  # comment id (last)
+                    
+                    print(f"DEBUG: Extracted comment_author_serial: {comment_author_serial}")
+                    print(f"DEBUG: Extracted comment_id: {comment_id}")
                     
                     # Find the existing comment
-                    comment = Comment.objects.get(id=comment_serial)
+                    try:
+                        objectFQID = objectFQID.rstrip('/')
+                        comment = Comment.objects.get(remote_url=objectFQID)
+                        print(f"DEBUG: Found comment with ID {objectFQID}: {comment}")
+                    
+                    #If locating the comment using the full URL fails, attempt to find the comment using the number ID instead of the FQID (fallback)
+                    except Comment.DoesNotExist:
+                        print(f"DEBUG: Comment with ID {objectFQID} does not exist!")
+                        
+                        #Try to retrieve the comment using the number ID instead of the FQID
+                        try:
+                            comment = Comment.objects.get(id=comment_id)
+                            print(f"COMMENT WITH ID {comment_id} LOCATED, ATTEMPTING TO SAVE COMMENT LIKE")
+                        except Comment.DoesNotExist:
+                            print(f"DEBUG: Comment with ID {comment} Not found!")
+                            return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+                        except Exception as e:
+                                print(f"DEBUG: could not locate comment:{e}")
+                    
                     
                     # Check if like already exists
                     if CommentLike.objects.filter(comment=comment, user=requester, is_deleted=False).exists():
                         return Response({"failed to save Inbox item": "Comment like already exists"}, status=status.HTTP_400_BAD_REQUEST)
                     
+                    print("COMMENT LIKE DOES NOT EXIST, ATTEMPTING TO SAVE THE LIKE")
                     # Create the comment like
                     comment_like = CommentLike.objects.create(
                         comment=comment,
                         user=requester,
                         is_local=False
                     )
+                    print(f"DEBUG: Created comment like: {comment_like}")
+                    print(f"DEBUG: Comment like ID: {comment_like.id}")
+                    print(f"DEBUG: Comment like comment: {comment_like.comment}")
+                    print(f"DEBUG: Comment like user: {comment_like.user}")
+                    print(f"DEBUG: Comment like comment.id: {comment_like.comment.id}")
+                    print(f"DEBUG: Comment like comment.author: {comment_like.comment.author}")
+                    print(f"DEBUG: Comment like comment.author.id: {comment_like.comment.author.id}")
+                    print(f"DEBUG: Comment like comment.author.host: {comment_like.comment.author.host}")
+                    print(f"DEBUG: Comment like is_local: {comment_like.is_local}")
+                    print(f"DEBUG: Comment like created_at: {comment_like.created_at}")
+                    print(f"DEBUG: Comment like is_deleted: {comment_like.is_deleted}")
                     
                     # Serialize the like for the inbox
                     like_serializer = CommentLikeSummarySerializer(comment_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
+                    type = "like"
+                    print(f"DEBUG: Serialized comment like data: {body}")
+                    print(f"DEBUG: Serialized comment like object field: {body.get('object', 'NOT_FOUND')}")
                     
                 except Comment.DoesNotExist:
                     return Response({"failed to save Inbox item": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -1480,15 +1513,27 @@ def user_inbox_api(request, author_serial):
             elif '/entries/' in objectFQID:
                 # This is an entry like
                 try:
+                    print(f"DEBUG: Processing entry like for objectFQID: {objectFQID}")
                     # Parse the entry FQID to extract entry info
                     # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
                     parts = objectFQID.split('/')
-                    entry_author_serial = parts[-2]  # author serial
-                    entry_serial = parts[-1]  # entry serial
+                    print(f"DEBUG: Split parts: {parts}")
+                    print(f"DEBUG: Has trailing slash: {objectFQID.endswith('/')}")
+                    
+                    # Check if there's a trailing slash and adjust indices accordingly
+                    if objectFQID.endswith('/'):
+                        entry_author_serial = parts[-4]  # author serial (fourth from end)
+                        entry_serial = parts[-2]  # entry serial (second from end)
+                    else:
+                        entry_author_serial = parts[-3]  # author serial (third from end)
+                        entry_serial = parts[-1]  # entry serial (last)
+                    
+                    print(f"DEBUG: Extracted entry_author_serial: {entry_author_serial}")
+                    print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                     
                     # Find the local entry
                     entry = Entry.objects.get(serial=entry_serial)
-                    
+                    print(f"DEBUG: Found entry with serial {entry_serial}: {entry}")
                     # Check if like already exists
                     if Like.objects.filter(entry=entry, user=requester, is_deleted=False).exists():
                         return Response({"failed to save Inbox item": "Like already exists"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1499,12 +1544,12 @@ def user_inbox_api(request, author_serial):
                         user=requester,
                         is_local=False
                     )
-                    
+                    print(f"DEBUG: Created entry like: {entry_like}")
                     # Serialize the like for the inbox
                     like_serializer = LikeSummarySerializer(entry_like, context={'request': request})
                     body = like_serializer.data
-                    type = "Like"
-                    
+                    type = "like"
+                    print(f"DEBUG: Serialized like for inbox: {body}")
                 except Entry.DoesNotExist:
                     return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
                 except Exception as e:
@@ -1518,17 +1563,27 @@ def user_inbox_api(request, author_serial):
             
         ##################################### END OF LIKE PROCESSING ######################################################################################################################################
         
-        ############## PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
+        ################################ PROCESSES COMMENT INBOX OBJECTS ###################################################################################################################
         
         elif type == "comment" or type == "Comment":
+            print(f"DEBUG: Processing comment in inbox")
+            print(f"DEBUG: Request data: {request.data}")
             
             try:
-                body = request.data
-                authorFQID = request.data['author']['id']
+                
+                
+                comment_id = request.data.get('id', '')
+                authorFQID = request.data.get('author', {}).get('id').rstrip('/')
                 comment_content = request.data.get('comment', '')
                 contentType = request.data.get('contentType', 'text/plain')
-                entryFQID = request.data.get('entry', '')
+                entryFQID = request.data.get('entry')
+                print(f"DEBUG: Extracted authorFQID: {authorFQID}")
+                print(f"DEBUG: Extracted comment_content: {comment_content}")
+                print(f"DEBUG: Extracted contentType: {contentType}")
+                print(f"DEBUG: Extracted entryFQID: {entryFQID}")
+                print(f"DEBUG: Extracted id: {request.data.get('id')}")
             except Exception as e:
+                print(f"DEBUG: Exception in comment processing: {e}")
                 return Response({"failed to save Inbox item": "could not fetch comment object, improperly formatted comment"}, status=status.HTTP_400_BAD_REQUEST)
             
             print("COMMENT REQUEST BODY:", "\n\n\n", request.data, '\n\n\n')
@@ -1554,32 +1609,56 @@ def user_inbox_api(request, author_serial):
                    
             # OTHERWISE GET THE AUTHOR SINCE THEY MUST EXIST
             else:
+            
                 requester = Author.objects.get(id=authorFQID)
             
             # Parse the entry FQID to extract entry info
             # Format: http://host/api/authors/{author_serial}/entries/{entry_serial}
+            print(f"DEBUG: Parsing entryFQID: {entryFQID}")
             try:
                 parts = entryFQID.split('/')
-                entry_author_serial = parts[-2]  # author serial
-                entry_serial = parts[-1]  # entry serial
+                print(f"DEBUG: Split parts: {parts}")
+                
+                # Check if there's a trailing slash and adjust indices accordingly
+                if entryFQID.endswith('/'):
+                    entry_author_serial = parts[-4]  # author serial (fourth from end)
+                    entry_serial = parts[-2]  # entry serial (second from end)
+                else:
+                    entry_author_serial = parts[-3]  # author serial (third from end)
+                    entry_serial = parts[-1]  # entry serial (last)
+                
+                print(f"DEBUG: Extracted author_serial: {entry_author_serial}")
+                print(f"DEBUG: Extracted entry_serial: {entry_serial}")
                 
                 # Find the local entry
-                entry = Entry.objects.get(serial=entry_serial)
+                try:
+                    entry = Entry.objects.get(serial=entry_serial)
+                except Entry.DoesNotExist:
+                    entry = None  # Accept that it’s a remote entry
+                print(f"DEBUG: Saving comment with entry_url={entryFQID}, entry={entry}")
                 
-                # Create the comment
-                comment = Comment.objects.create(
-                    entry=entry,
-                    author=requester,  # The comment is by the remote author
-                    content=comment_content,
-                    contentType=contentType,
-                    is_local=False
-                )
                 
+                if not Comment.objects.filter(remote_url=comment_id).exists():
+                    comment = Comment.objects.create(
+                        remote_url=comment_id.strip('/'),
+                        entry=entry,
+                        author=requester,
+                        content=comment_content,
+                        contentType=contentType,
+                        is_local=False
+                    ) 
+
+                else:
+                    print("this comment already exists")
+                    return Response({"This comment already exists in our node."}, status=status.HTTP_200_OK)
+                    
+                    
+                print(f"DEBUG: Created comment: {comment}")
                 # Serialize the comment for the inbox
                 comment_serializer = CommentSummarySerializer(comment, context={'request': request})
                 body = comment_serializer.data
-                type = "Comment"
-                
+                type = "comment"
+                print(f"DEBUG: Serialized comment for inbox: {body}")
             except Entry.DoesNotExist:
                 return Response({"failed to save Inbox item": "Entry not found"}, status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
@@ -1591,23 +1670,17 @@ def user_inbox_api(request, author_serial):
             
         ##################################### END OF COMMENT PROCESSING ######################################################################################################################################
         else:
-            return Response({"succeeded to post":"other methods are not yet implemented"}, status=status.HTTP_200_OK) 
+            return Response({"Invalid inbox object":"must send 'like', 'comment', 'follow' or 'entry'."}, status=status.HTTP_400_BAD_REQUEST) 
         
         # This follows successful validation of the inbox post request, and inbox object will be saved, and the recieving author's ID will be the ID field
         # this allows us to track all of an author's inbox items, as well as the sender's ID if we want to retrieve the author object
         # Use author.inboxitems to retrieve all of an author's inbox items
-        print(requested_author)
+        print("this is the requested author: " + str(requested_author))
         newItemSerializer = InboxItemSerializer(data= {
             "type":type,
             "author":requested_author.id,
             "body":body
         }, partial=True)
-                
-        #TODO: ADD VALIDATION FOR DIFFERENT TYPES OF INBOX OBJECTS:
-        # likes
-        # comments
-        # follows
-        # entry items
                 
         #This will be the final save once the specific type of inbox item is validated
         #validates general Inbox item structure
@@ -1630,6 +1703,8 @@ def user_inbox_api(request, author_serial):
 def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     'GET api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
 
+    if not request.user.is_authenticated:
+        return Response({"Forbidden":"You do not have access to this user's following information"},status=status.HTTP_403_FORBIDDEN)
     current_user = request.user
     try:
         current_author = Author.objects.get(serial=author_serial)
@@ -1638,7 +1713,7 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     
     #decode the foreign author's ID
     decodedId = decoded_fqid(FOREIGN_AUTHOR_FQID)
-     
+    
 
     remote_author_object = remote_author_fetched(decodedId)
     
@@ -1651,8 +1726,8 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
     try:  
         #get the response at the author followers endpoint
             followers_uri =decodedId + "/followers"
-            response = requests.get(followers_uri)
-            if response.status_code != 200:
+            response = requests.get(followers_uri,auth=AUTHTOKEN)
+            if response.status_code not in [200, 201]:
                 response_data = response.json()
                 return Response(response_data, response.status_code)
         
@@ -1709,10 +1784,24 @@ def foreign_followers_api(request, author_serial, FOREIGN_AUTHOR_FQID):
                 return Response({"error": f"We were unable to add this follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
         else:
             return Response({"error": f"We were unable to add this follower: {newFollowingSerialized.errors}"}, status=status.HTTP_400_BAD_REQUEST) 
-        
     
-        
-       
+    'DELETE api/authors/{AUTHOR_SERIAL}/followers/{FOREIGN_AUTHOR_FQID}'
+    if request.method == "DELETE":
+        if current_user != current_author.user:
+                return Response({"Unauthorized": "You do not have permission to use this method"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            # Find the remote author in your DB (should exist if they were a follower)
+            remote_author = Author.objects.get(id=remote_author_object['id'])
+            # Find the following relationship
+            following = AuthorFollowing.objects.filter(follower=remote_author, following=current_author).first()
+            if not following:
+                return Response({"error": "This author is not a follower."}, status=status.HTTP_404_NOT_FOUND)
+            following.delete()
+            return Response({"success": "Follower removed."}, status=status.HTTP_204_NO_CONTENT)
+        except Author.DoesNotExist:
+            return Response({"error": "Remote author not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Failed to remove follower: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
            
         
         
@@ -1865,7 +1954,7 @@ def get_local_followers(request, author_serial):
     """
     if request.method =='GET':
        
-        
+
         '''
         uncheck for now
         #If the user is local, make sure they're logged in 
@@ -1950,7 +2039,62 @@ def get_local_follow_requests(request, author_serial):
         else:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
     
+
+def friends_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    friendships = AuthorFriend.objects.filter(
+        Q(friending=author) | Q(friended=author),
+        is_deleted=False
+    )
+
+    friends = []
+    for friendship in friendships:
+        if friendship.friending == author:
+            friends.append(friendship.friended)
+        else:
+
+            friends.append(friendship.friending)
+    return render(request, "relationship_list.html", {
+        "title": "Friends",
+        "people": friends,
+    })
+
+def followers_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    follower_relationships = AuthorFollowing.objects.filter(
+        following=author,
+        is_deleted=False
+    )
+
+    followers = []
+    for relationship in follower_relationships:
+        follower = relationship.follower
+        followers.append(follower)
+
+    return render(request, "relationship_list.html", {
+        "title": "Followers",
+        "people": followers,
+    })
+
+def following_list(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    # Get all people this author is following
+    following_relationships = AuthorFollowing.objects.filter(
+        follower=author,
+        is_deleted=False
+    )
     
+    following = []
+    for relationship in following_relationships:
+        followed_author = relationship.following
+        following.append(followed_author)
+
+    return render(request, "relationship_list.html", {
+        "title": "Following",
+        "people": following,
+    })
 
 
 def profile_view(request, username):
@@ -1958,10 +2102,8 @@ def profile_view(request, username):
     View the profile of the currently logged in user.
     """
     author = Author.objects.get(user__username=username)
-    if not request.user.is_authenticated or request.user.username != username:
-        if not author:
-            return HttpResponse("Author profile does not exist.")
-        return redirect('wiki:view_external_profile', author_serial=author.serial)
+    if not author:
+        return HttpResponse("Author profile does not exist.")
     # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
     followers = author.followers.all()#stores all of the followers a given author has
@@ -2033,7 +2175,7 @@ def edit_profile(request, username):
             request.user.username = new_username
             request.user.save()
             author.displayName = new_username
-
+            author.save()
         author.github = github
         author.description = description
 
@@ -2063,6 +2205,11 @@ def create_entry(request):
         image = request.FILES.get('image')
 
 
+        print(f"THE CONTENT TYPE IS: {content_type_input}")
+        # more robust type checking and handling for images
+       
+        
+        
         if not title:
             return HttpResponse("Title is required.")
 
@@ -2075,12 +2222,11 @@ def create_entry(request):
         if image:
             image_data = image.read()
             encoded = base64.b64encode(image_data).decode('utf-8')
-            if image.content_type == 'image/png':
-                content_type = 'image/png;base64'
-            elif image.content_type == 'image/jpeg':
-                content_type = 'image/jpeg;base64'
+            mime_type = image.content_type 
+            if mime_type.startswith("image/"):
+                content_type = f"{mime_type};base64"
             else:
-                content_type = 'application/base64'  # fallback for unsupported images
+                content_type = "application/octet-stream;base64" 
             content = encoded
         elif text_content:
             content = text_content
@@ -2101,35 +2247,39 @@ def create_entry(request):
         
         if visibility in ["PUBLIC", "FRIENDS", "UNLISTED"]:
             from .util import send_entry_to_remote_followers
+            print("sending entry to remote followers")
             send_entry_to_remote_followers(entry, request)
+            print(request.get_host())
         
-        return redirect('wiki:entry_detail', entry_serial=entry.serial)
+        return redirect('wiki:entry_detail',author_serial=author.serial, entry_serial=entry.serial)
 
     return render(request, 'create_entry.html')
 
-def entry_detail(request, entry_serial):
+def entry_detail(request, author_serial, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial)
+    entry_author = get_object_or_404(Author, serial=author_serial)
     is_owner = (entry.author.user == request.user)
+    print(f"is owner: {is_owner}")
 
-    current_author = (
-        get_object_or_404(Author, user=request.user)
-        if request.user.is_authenticated
-        else None
-    )
-
-    is_friend = False
-    if current_author:  # if the current user is authenticated, check if they are friends with the entry author
-        is_friend = AuthorFriend.objects.filter(
-            Q(friending=current_author, friended=entry.author) |
-            Q(friending=entry.author, friended=current_author)
-        ).exists()
+    print(f"current author: {entry_author}")
 
     # if entry is FRIENDS and user is not the owner or a friend, return 403
-    if entry.visibility == 'FRIENDS' and not (is_owner or (request.user.is_authenticated and is_friend)):
+    if entry.visibility == 'FRIENDS':
+        try:
+            request_author = Author.objects.get(user=request.user)
+        except Author.DoesNotExist:
+            return HttpResponse("You are not an author. You must be logged in as an author to try and view this post.", status=403)
+        except Exception as e:
+            print(e)
+            return redirect("wiki:login")
+        is_friend = request_author.is_friends_with(entry_author)
+        print(f"request author: {request_author}")
+        print(f"is friend: {is_friend}")
+        if not (is_owner or is_friend):
+            return HttpResponse("This entry is friends-only. You must be the author or be friends with the author of this entry to view it.", status=403)
         if not request.user.is_authenticated:
-            return HttpResponse("This entry is private. You must log in to view it.", status=403)
-        else:
-            return HttpResponse("This entry is private. You are not allowed to view it.", status=403)
+            return HttpResponse("This entry is friends-only. You must log in to view it.", status=403)
+
     comments = entry.comments.filter(is_deleted=False).order_by('created_at')
     #return render(request, 'entry_detail.html', {'entry': entry, 'is_owner': is_owner, 'comments': comments})
     if entry.contentType == "text/markdown":
@@ -2150,8 +2300,11 @@ def entry_detail(request, entry_serial):
 
 @login_required
 def edit_entry(request, entry_serial):
-    author = get_object_or_404(Author, user=request.user)
-    entry = get_object_or_404(Entry, serial=entry_serial, author=author)
+    entry = get_object_or_404(Entry, serial=entry_serial)
+    author = get_object_or_404(Author, serial=entry.author.serial)
+    if not request.user == author.user:
+        return HttpResponse("You are not allowed to edit this entry")
+    author_serial=entry.author.serial
     if request.method == 'POST':
         title = request.POST.get('title')
         content = request.POST.get('content')
@@ -2165,20 +2318,24 @@ def edit_entry(request, entry_serial):
             if image:
                 image_data = image.read()            
                 encoded = base64.b64encode(image_data).decode('utf-8')
-                if image.content_type == 'image/png':
-                    entry.contentType = 'image/png;base64'
-                elif image.content_type == 'image/jpeg':
-                    entry.contentType = 'image/jpeg;base64'
+                mime_type = image.content_type  
+                if mime_type.startswith("image/"):
+                    entry.contentType = f"{mime_type};base64"
                 else:
-                    entry.contentType = 'application/base64'
+                    entry.contentType = "application/octet-stream;base64" 
                 entry.content = encoded
             elif content:
                 entry.content = content
                 entry.contentType = content_type
 
             entry.save()
+            #post to remote followers/friends
+            from .util import send_entry_to_remote_followers
+            print("sending entry to remote followers")
+            send_entry_to_remote_followers(entry, request)
+            
             #print(entry.serial)
-            return redirect('wiki:entry_detail', entry_serial=entry.serial)
+            return redirect('wiki:entry_detail', author_serial=author_serial, entry_serial=entry.serial)
         else:
             return HttpResponse("Either text content or an image is required.")
         
@@ -2189,15 +2346,20 @@ def edit_entry(request, entry_serial):
 @login_required
 def delete_entry(request, entry_serial):
     entry = get_object_or_404(Entry, serial=entry_serial, author__user=request.user)
-    
+    author = get_object_or_404(Author, serial=entry.author.serial)
     if request.method == 'POST':
         entry.delete() 
+        #post to remote followers/friends
+        from .util import send_entry_deletion_to_remote_followers
+        print("sending entry deletion to remote followers")
+        send_entry_deletion_to_remote_followers(entry, request)
+        
         messages.success(request, "Entry deleted successfully.")
         return redirect('wiki:user-wiki', username=request.user.username)
     
-    return render(request, 'confirm_delete.html', {'entry': entry})
+    return render(request, 'confirm_delete.html', {'entry': entry, 'author':author})
 
-@login_required
+
 @api_view(['GET', 'PUT', 'DELETE'])
 def entry_detail_api(request, entry_serial, author_serial):
     """
@@ -2291,28 +2453,6 @@ def entry_detail_fqid_api(request, entry_fqid):
         return Response(serializer.data, status=status.HTTP_200_OK)
         
 
-    elif request.method == 'PUT':
-        serializer = EntrySerializer(entry, data=request.data, partial=True, context={"request": request})  
-        if serializer and serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        if current_author!=entry.author:
-            return Response({
-                "error": "You are not authorized to delete this entry."
-            })
-        try:
-            entry.delete()
-            deleted_entry = Entry._base_manager.get(serial=entry_serial, is_deleted=True)
-            deleted_entry.visibility='DELETED'
-            serializer = EntrySerializer(deleted_entry, context={"request": request})
-            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response(e, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
         
 @require_POST
 @login_required
@@ -2331,33 +2471,10 @@ def add_comment(request, entry_serial):
             content=content
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code in [200, 201, 301, 302]:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
     
-    return redirect('wiki:entry_detail', entry_serial=entry_serial)
+    return redirect('wiki:entry_detail', author_serial=entry.author.serial, entry_serial=entry_serial)
 
 
 
@@ -2369,37 +2486,14 @@ def like_comment(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
 
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
 
     if not created:
         like.delete()  # Toggle like off
 
 
-    return redirect('wiki:entry_detail', entry_serial=comment.entry.serial)
+    return redirect('wiki:entry_detail', author_serial=comment.entry.author.serial, entry_serial=comment.entry.serial)
 
 
 
@@ -2486,32 +2580,8 @@ def like_entry_api(request, entry_serial):
     like, created = Like.objects.get_or_create(entry=entry, user=current_author)
     
     if created:
-        # Check if the entry is remote (not local)
-        if not entry.author.is_local:
-            # Send the like to the remote author's inbox
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = LikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending like to remote inbox: {str(e)}")
+        # Send like to entry author's inbox if remote
+        send_entry_like_to_entry_author(like, request)
         
         # Return the properly formatted like object
         serializer = LikeSummarySerializer(like, context={'request': request})
@@ -2557,31 +2627,8 @@ def like_comment_api(request, comment_id):
     like, created = CommentLike.objects.get_or_create(comment=comment, user=author)
     
     if created:
-        # Check if the comment is remote (not local) and send like to remote inbox
-        if not comment.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = comment.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the like object to send
-                like_serializer = CommentLikeSummarySerializer(like, context={'request': request})
-                like_data = like_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=like_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment like to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment like to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment like to remote inbox: {str(e)}")
+        # Send comment like to comment author's inbox
+        send_comment_like_to_comment_author(like, request)
         
         # Return the properly formatted like object
         serializer = CommentLikeSummarySerializer(like, context={'request': request})
@@ -2921,7 +2968,10 @@ def get_author_comments_api(request, author_serial):
 
     if request.method == 'POST':
         # Get the authenticated user's author object
-        authenticated_author = get_object_or_404(Author, user=request.user)
+        try:
+            authenticated_author = get_object_or_404(Author, user=request.user)
+        except Exception as e:
+            raise e
         
         # Validate that the request contains a comment object
         if not isinstance(request.data, dict):
@@ -2989,31 +3039,8 @@ def get_author_comments_api(request, author_serial):
             contentType=content_type
         )
         
-        # Check if the entry is remote (not local) and send comment to remote inbox
-        if not entry.author.is_local:
-            try:
-                # Get the remote author's inbox URL
-                remote_author_id = entry.author.id
-                inbox_url = f"{remote_author_id}/inbox"
-                
-                # Create the comment object to send
-                comment_serializer = CommentSummarySerializer(comment, context={'request': request})
-                comment_data = comment_serializer.data
-                
-                # Send POST request to remote inbox
-                response = requests.post(
-                    inbox_url,
-                    json=comment_data,
-                    headers={"Content-Type": "application/json"}
-                )
-                
-                if response.status_code == 200:
-                    print(f"Successfully sent comment to remote inbox: {inbox_url}")
-                else:
-                    print(f"Failed to send comment to remote inbox: {inbox_url}, status: {response.status_code}")
-                    
-            except Exception as e:
-                print(f"Error sending comment to remote inbox: {str(e)}")
+        # Send comment to entry author's inbox
+        send_comment_to_entry_author(comment, request)
         
         # Return the properly formatted comment object
         serializer = CommentSummarySerializer(comment, context={'request': request})
@@ -3097,44 +3124,17 @@ def get_author_comments_api(request, author_serial):
 
 @api_view(['GET'])
 def get_entry_image_api(request, entry_fqid):
-    pass
-#     entry_fqid = unquote(entry_fqid) 
-#     entry = None
-#     try:
-#         entry = Entry.objects.get(id=entry_fqid)
-#     except Entry.DoesNotExist:
-#         pass
-    
-#     # REMOTE
-#     if entry is None:
-#         try:
-#             response = requests.get(entry_fqid, headers={"Accept": "application/json"})
-#             if response.status_code != 200:
-#                 return HttpResponse("Entry not found or remote entry does not exist.", status=404)
-            
-#             try:
-#                 data = response.json()
-#             except Exception:
-#                 return HttpResponse(f"Remote did not return valid JSON: {response.text}", status=502)
-#             content_type = data.get("contentType", "")
-#             content = data.get("content", "")
-#             if not content_type.startswith('image/'):
-#                 return HttpResponse("Content is not an image.", status=400)
-#             image_data = base64.b64decode(content)
-#             return HttpResponse(image_data, content_type=content_type)
-#         except Exception as e:
-#             print("Response content:", response.text)
-#             print("Content-Type:", response.headers.get("Content-Type"))
-#             return HttpResponse(f"Error fetching remote entry: {str(e)}", status=500)
-        
-#     # LOCAL
-#     if not entry.contentType.startswith('image/'):
-#         return HttpResponse("Content is not an image.", status=400)
-#     try:
-#         image_data = base64.b64decode(entry.content)
-#         return HttpResponse(image_data, content_type=entry.contentType)
-#     except Exception as e:
-#         return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
+    entry_fqid = unquote(entry_fqid) 
+    entry_serial = entry_fqid.split('/')[-1].rstrip('/')  
+    entry = Entry.objects.get(serial=entry_serial)
+
+    if not entry.contentType.startswith('image/'):
+        return HttpResponse("Content is not an image.", status=400)
+    try:
+        image_data = base64.b64decode(entry.content)
+        return HttpResponse(image_data, content_type=entry.contentType)
+    except Exception as e:
+        return HttpResponse(f"Error decoding image data: {str(e)}", status=500)
 
 @api_view(['GET'])
 def get_author_image_api(request, author_serial, entry_serial):
@@ -3150,7 +3150,7 @@ def get_author_image_api(request, author_serial, entry_serial):
     elif entry.contentType.startswith('image/jpeg'):
         mime_type = 'image/jpeg'
     else:
-        mime_type = 'application/octet-stream'  # fallback
+        mime_type = entry.contentType  # fallback
 
     # Decode the base64 image data
     try:
@@ -3577,3 +3577,195 @@ def is_local_url(current_host, url):
     print("CURRENT HOST", current_host)
     return current_host == url_host
      
+
+@api_view(['GET'])
+def get_author_entries_api(request, author_serial):
+    """
+    GET /api/authors/{AUTHOR_SERIAL}/entries/
+    
+    Get the recent entries from author AUTHOR_SERIAL (paginated)
+    
+    Authentication scenarios:
+    - Not authenticated: only public entries
+    - Authenticated locally as author: all entries
+    - Authenticated locally as follower of author: public + unlisted entries
+    - Authenticated locally as friend of author: all entries
+    - Authenticated as remote node: should not happen (entries are sent via inbox)
+    
+    Query parameters:
+    - page: page number (default: 1)
+    - size: items per page (default: 10, max: 50)
+    """
+    from django.core.paginator import Paginator
+    
+    
+    
+    # Get the author
+    try:
+        author = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 10)), 50)  # Cap at 50 items per page
+    
+    # Get base queryset (exclude deleted entries)
+    entries_queryset = Entry.objects.filter(
+        author=author,
+        is_deleted=False
+    ).order_by('-created_at')
+    
+    # Determine which entries to show based on authentication and relationship
+    if not request.user.is_authenticated:
+        # Not authenticated: only public entries
+        entries_queryset = entries_queryset.filter(visibility='PUBLIC')
+        print(f"Unauthenticated user: showing {entries_queryset.count()} public entries")
+        
+    elif hasattr(request.user, 'author'):
+        # Authenticated locally
+        current_author = request.user.author
+        
+        if current_author == author:
+            # Authenticated as the author: show all entries
+            print(f"Author viewing own entries: showing {entries_queryset.count()} entries")
+            
+        elif current_author.is_friends_with(author):
+            # Authenticated as friend: show all entries
+            print(f"Friend viewing entries: showing {entries_queryset.count()} entries")
+            
+        elif current_author.is_following(author):
+            # Authenticated as follower: show public + unlisted entries
+            entries_queryset = entries_queryset.filter(
+                visibility__in=['PUBLIC', 'UNLISTED']
+            )
+            print(f"Follower viewing entries: showing {entries_queryset.count()} public/unlisted entries")
+            
+        else:
+            # Authenticated but not related: only public entries
+            entries_queryset = entries_queryset.filter(visibility='PUBLIC')
+            print(f"Authenticated user viewing entries: showing {entries_queryset.count()} public entries")
+    else:
+        # Remote node authentication (should not happen for this endpoint)
+        return Response(
+            {"error": "Remote nodes should not access this endpoint directly"}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Paginate the results
+    paginator = Paginator(entries_queryset, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the entries
+    entries_data = []
+    for entry in page_obj:
+        serializer = EntrySerializer(entry, context={'request': request})
+        entries_data.append(serializer.data)
+    
+    # Build response
+    response_data = {
+        "type": "entries",
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "src": entries_data
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_comment_likes_api(request, author_serial, comment_id):
+    """
+    GET /api/authors/{AUTHOR_SERIAL}/comments/{COMMENT_ID}/likes/
+    
+    Get all likes for a specific comment.
+    
+    Response format:
+    {
+        "type": "likes",
+        "web": "http://nodeaaaa/authors/greg/comments/130/likes",
+        "id": "http://nodeaaaa/api/authors/greg/comments/130/likes",
+        "page_number": 1,
+        "size": 50,
+        "count": 5,
+        "src": [
+            {
+                "type": "like",
+                "author": {...},
+                "published": "2025-01-27T10:30:00+00:00",
+                "id": "...",
+                "object": "..."
+            }
+        ]
+    }
+    """
+    # Get the author
+    try:
+        author = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+        return Response({"error": "Author not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get the comment
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verify the comment belongs to the specified author
+    if comment.author != author:
+        return Response({"error": "Comment does not belong to the specified author"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Get pagination parameters
+    page_number = request.GET.get('page', 1)
+    page_size = min(int(request.GET.get('size', 50)), 50)  # Cap at 50 items per page
+    
+    # Get all likes for this comment (exclude deleted likes)
+    likes_queryset = CommentLike.objects.filter(
+        comment=comment,
+        is_deleted=False
+    ).order_by('-created_at')
+    
+    # Paginate the results
+    paginator = Paginator(likes_queryset, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        return Response({"error": "Invalid page number"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        return Response({"error": "Page not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Serialize the likes
+    likes_data = []
+    for like in page_obj:
+        serializer = CommentLikeSummarySerializer(like, context={'request': request})
+        likes_data.append(serializer.data)
+    
+
+
+    # Build response
+    host = request.build_absolute_uri('/').rstrip('/')
+    response_data = {
+        "type": "likes",
+        "web": f"{host}/entries/{comment.entry.serial}",
+        "id": f"{host}/api/authors/{author_serial}/comments/{comment_id}/likes",
+        "page_number": int(page_number),
+        "size": page_size,
+        "count": paginator.count,
+        "src": likes_data
+    }
+    
+    # Add pagination URLs if needed
+    if page_obj.has_next():
+        response_data["next_url"] = f"?page={page_obj.next_page_number()}&size={page_size}"
+    if page_obj.has_previous():
+        response_data["previous_url"] = f"?page={page_obj.previous_page_number()}&size={page_size}"
+    
+    return Response(response_data, status=status.HTTP_200_OK)
+

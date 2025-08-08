@@ -9,14 +9,23 @@ html, body, h1,h2,p{
     font-family: 'Nunito', sans-serif;
     border: 0.0625em solid #6f6c6cac;
     border-radius: 0.625em;
-    padding: 2em;
+    padding:1em;
     margin: 1.5em auto;
     background-color: #fff;
-    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.208);
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.086);
     text-decoration: none;
     justify-content: center;
     align-content: center;
-    max-width:30em;
+    width:42em;
+    max-height: 45em;
+}
+
+.post-card.shadow-sm {
+       box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.357) !important;
+}
+
+div.d-flex.align-items-center.mb-2.post-header{
+ justify-content:space-evenly;
 }
 
 .post-card:hover{
@@ -24,18 +33,25 @@ html, body, h1,h2,p{
     transition:transform 0.3s ease-in-out;
 }
 
+.post-info{
+    text-align: center;
+    justify-content: center;
+}
+
+/*entry image*/
 .entry_image{
     display:block; 
     margin: 0 auto; 
-    max-width: 90%; 
+    max-width: 95%; 
     border-radius: 0.625em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .post-header {
-    display: flex;
-    align-items: center;
-    gap: 1em;
+    align-items: left;
+    gap: 0em;
     margin-bottom: 0.5em;
+    width:100%;
 }
 .post-header img {
     width: 2.5em;
@@ -43,15 +59,54 @@ html, body, h1,h2,p{
     border-radius: 50%;
 }
 .post-title {
-    font-weight: bold;
-    font-size: 1.1em;
+  width: 100%;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  font-size: 1.2em; 
+  text-align: center;
+  font-weight: bold;
 }
-.post-content {
-    margin: 0.75em 0;
+
+
+div.post-content.markdown-content img{
     justify-content: center;
     text-align: center;
-    padding-bottom: 2em;
+    text-align: center;
+    line-height: 1.6; 
+    margin-left:auto;
+    margin-right:auto;
+    width: 100%;
 }
+
+
+div.post-content img{
+    justify-content: center;
+    text-align: center;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.container.mt-4{
+    width:100%;
+}
+
+.mt-4{
+    width: 100%;
+}
+
+div.post-content {
+    justify-content: center;
+    text-align: center;
+    margin-left:auto;
+    margin-right:auto;
+    width:100%;
+    font-size:1.2em;
+    text-overflow: ellipsis;
+    padding:0.3em;
+
+}
+
+
 .post-footer {
     display: inline-flex;
     justify-content: left;
@@ -88,4 +143,8 @@ html, body, h1,h2,p{
 a{
     text-decoration: none;
     color:black;
+}
+
+.text-muted{
+    font-style: italic;
 }

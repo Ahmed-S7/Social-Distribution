@@ -50,6 +50,7 @@ p{
     text-overflow: ellipsis;
     overflow:hidden;
     max-width: 8em;
+    max-height: 1.3em;
     text-align: center;
 }
 section .author {
@@ -113,5 +114,124 @@ button{
 
 li{
     list-style: none;
+}
+
+/* Search Bar Styles */
+.search-container {
+    max-width: 600px;
+    margin: 0 auto 2em auto;
+    padding: 0 1em;
+}
+
+.search-form {
+    width: 100%;
+}
+
+.search-input-group {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s ease;
+}
+
+.search-input-group:focus-within {
+    border-color: var(--header-color);
+    box-shadow: 0 2px 12px rgba(137, 198, 225, 0.3);
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.8em 1em;
+    border: none;
+    outline: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1em;
+    background: transparent;
+}
+
+.search-input::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.search-button {
+    padding: 0.8em 1.2em;
+    background: var(--header-color);
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: 'Nunito', sans-serif;
+    font-weight: bold;
+}
+
+.search-button:hover {
+    background: var(--primary-hover, #0077aa);
+}
+
+.search-icon {
+    font-size: 1.1em;
+}
+
+.search-results-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5em;
+    padding: 0.5em 0;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.9em;
+}
+
+.results-count {
+    color: #666;
+    font-weight: 500;
+}
+
+.clear-search {
+    color: var(--header-color);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.3em 0.8em;
+    border-radius: 0.3em;
+    transition: background-color 0.3s ease;
+}
+
+.clear-search:hover {
+    background: rgba(137, 198, 225, 0.1);
+    text-decoration: none;
+}
+
+/* Responsive design for search */
+@media (max-width: 600px) {
+    .search-container {
+        padding: 0 0.5em;
+    }
+    
+    .search-input-group {
+        flex-direction: column;
+        border-radius: 0.5em;
+    }
+    
+    .search-input {
+        width: 100%;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 0;
+    }
+    
+    .search-button {
+        width: 100%;
+        border-radius: 0;
+    }
+    
+    .search-results-info {
+        flex-direction: column;
+        gap: 0.5em;
+        text-align: center;
+    }
 }
 
