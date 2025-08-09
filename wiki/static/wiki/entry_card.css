@@ -16,6 +16,20 @@ html, body, h1,h2,p{
     text-decoration: none;
     justify-content: center;
     align-content: center;
+    width:45em;
+    max-height: fit-content;
+}
+
+.post-content.text-center img {
+    font-family: 'Nunito', sans-serif;
+    border: 0.0625em solid #6f6c6cac;
+    border-radius: 0.625em;
+    margin: 1.5em auto;
+    background-color: #fff;
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.086);
+    text-decoration: none;
+    justify-content: center;
+    align-content: center;
     width:42em;
     max-height: 45em;
 }
