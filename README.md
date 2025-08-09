@@ -19,6 +19,7 @@ See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 As part of a collaborative team, I contributed to the development of a distributed social network. My main contributions were:
 - Acting as the lead developer and group coordinator, organizing majority of group meetings
+- Coordinating with other teams during the federation process to ensure API adaptability
 - Designing and implementing the backend API endpoints using Django REST Framework
 - Designing and implementing application features and organizing the project board 
 - Integrating federated node communication for cross-server post sharing
