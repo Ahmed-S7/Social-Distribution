@@ -14,6 +14,19 @@ See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 ## Copyright
 
+
+## My Role in CMPUT404 Social Distribution Project
+
+As part of a collaborative team, I contributed to the development of a distributed social network. My main contributions were:
+- Acting as the lead developer and group coordinator, organizing majority of group meetings
+- Designing and implementing the backend API endpoints using Django REST Framework
+- Designing and implementing application features and organizing the project board 
+- Integrating federated node communication for cross-server post sharing
+- Handling authentication and user permissions
+- Writing documentation and maintaining code quality standards
+- implementing and testing application features
+
+This project was completed as part of CMPUT404 at the University of Alberta. You can find the full API documentation [here](https://github.com/uofa-cmput404/s25-project-white/wiki/API-Documentation).
 The authors claiming copyright, if they wish to be known, can list their names here...
 
 * Ahmed Shittu
