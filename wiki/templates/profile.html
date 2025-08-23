@@ -3,6 +3,14 @@
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+          "use strict";
+          const AUTHOR_ID = "{{author.id|escapejs}}";
+          const IS_AUTHENTICATED = "{{ request.user.is_authenticated|yesno:'true,false' }}";
+          const EDIT_URL = "{% url 'wiki:edit_profile' author.displayName %}";
+          const DEFAULT_IMAGE_URL = "{% static '/images/default_pfp.webp' %}"
+    </script>
+
 <style>
   .btn-header-blue { background-color: #89c6e1; color: #001a80; border: none; }
   .btn-header-blue:hover, .btn-header-blue:focus { background-color: #6bb3d6; color: #001a80; }
@@ -54,36 +62,51 @@
 <section class="author_profile_with_entries">
     <section class="author_profile_with_description">
         <section class="pic_name_followers_entries">
+          <!--Fetch author info that will be used to populate the UI-->
+   
+          <script type="module">
+          import { retrieveAuthor } from "{% static 'js/fetchAuthor.js' %}"
+          "use strict";
 
+          window.addEventListener('DOMContentLoaded', async()=>{
+            const profilePicAndName = document.querySelector("#profile_pic_and_name")
+            const fetchedAuthor = await retrieveAuthor(AUTHOR_ID);
+              //Authenticated user check successful, then make the profile picture clickable
+              if (IS_AUTHENTICATED){
+                const link = document.createElement("a");
+                  link.href = EDIT_URL;
+                  link.className = "edit_profile_button";
+
+                  //Make profile picture lead to pfp editing
+                  const profileImg = document.querySelector("#profile_image_page");
+                  profileImg.className = "profile_image_page";
+                  profileImg.src = fetchedAuthor.profileImage || DEFAULT_IMAGE_URL;
+                  profileImg.alt = "Profile Picture";
+                  link.appendChild(profileImg);
+                  profilePicAndName.appendChild(link);
+
+                //Authenticated user check fails, then make the profile picture non-clickable -->
+                } else {
+                  const profileImg = document.querySelector("#profile_image_page");
+                  profileImg.className = "profile_image_page";
+                  profileImg.src = fetchedAuthor.profileImage || DEFAULT_IMAGE_URL;
+                  profileImg.alt = "Profile Picture";
+                  profilePicAndName.appendChild(profileImg);
+                }
+                const displayName = document.createElement("h3");
+                displayName.className = "display_name";
+                displayName.textContent = fetchedAuthor.displayName;
+                profilePicAndName.appendChild(displayName);
+
+            }
+
+          )
+          </script>
                     
-                    <section class="profile_pic_and_name">
+                <section class="profile_pic_and_name" id=profile_pic_and_name >
+                    <img id ="profile_image_page" class="profile_image_page">
 
-                        <!--Authenticated user check successful, then make the profile picture clickable -->
-                        {% if request.user.is_authenticated %}
-                        
-                                <!--Make profile picture lead to pfp editing-->
-                                {% if author.profileImage %}
-                                <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
-                                </a>
-                                {% else %}
-                                <a href="{% url 'wiki:edit_profile' author.displayName %}" class="edit_profile_button">
-                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-                                </a>
-                                {% endif %}
-                                    <!--end of profile image check-->
 
-                        <!--Authenticated user check fails, then make the profile picture non-clickable -->
-                        {% else %}
-                                    
-                                {% if author.profileImage %}
-                                    <img class="profile_image_page" src="{{ author.profileImage }}" alt="Profile Picture">
-                                {% else %}
-                                    <img class="profile_image_page" src="https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png" alt="Default image">
-                                {% endif %}
-                        {% endif %}
-
-                        <h3 class="display_name">{{ author.displayName }}</h3>
                         
                 </section>
 

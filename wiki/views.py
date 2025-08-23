@@ -1985,7 +1985,7 @@ def get_local_followers(request, author_serial):
                 return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )         
                 
 @api_view(['GET'])
-def get_local_friends(request, AUTHOR_FQID):   
+def get_local_friends(request, author_FQID):   
     """
         Get a specific author's friends list  in the application
         
@@ -2029,8 +2029,8 @@ def get_local_friends(request, AUTHOR_FQID):
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
       
         try:
-            AUTHOR_FQID = urllib.parse.unquote(AUTHOR_FQID)
-            current_author = Author.objects.get(id=AUTHOR_FQID)
+            author_FQID = urllib.parse.unquote(author_FQID)
+            current_author = Author.objects.get(id=author_FQID)
         except Author.DoesNotExist:
             return Response({"Error" : f"We were unable to locate this account"}, status=status.HTTP_404_NOT_FOUND)
             
@@ -2048,7 +2048,7 @@ def get_local_friends(request, AUTHOR_FQID):
                 return Response({"Error" : f"We were unable to get the friends for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )             
 
 @api_view(['GET'])
-def get_local_followings(request, AUTHOR_FQID):   
+def get_local_followings(request, author_FQID):   
     """
         Get a specific author's friends list of followings in the application
         
@@ -2093,8 +2093,8 @@ def get_local_followings(request, AUTHOR_FQID):
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
      
         try:
-            AUTHOR_FQID = urllib.parse.unquote(AUTHOR_FQID)
-            current_author = Author.objects.get(id=AUTHOR_FQID)
+            author_FQID = urllib.parse.unquote(author_FQID)
+            current_author = Author.objects.get(id=author_FQID)
         except Author.DoesNotExist:
             return Response({"Error" : f"We were unable to locate this account"}, status=status.HTTP_404_NOT_FOUND)
             

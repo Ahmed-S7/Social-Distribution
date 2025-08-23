@@ -87,8 +87,8 @@ urlpatterns = [
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),
     path('api/authors/<str:author_serial>/followers/<path:FOREIGN_AUTHOR_FQID>/', foreign_followers_api, name='foreign_followers_api'),
     path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers'),
-    path('api/authors/<path:AUTHOR_FQID>/friends/', get_local_friends, name='get_local_friends'),
-    path('api/authors/<path:AUTHOR_FQID>/followings/', get_local_followings, name='get_local_followings'),
+    path('api/authors/<path:author_FQID>/friends/', get_local_friends, name='get_local_friends'),
+    path('api/authors/<path:author_FQID>/followings/', get_local_followings, name='get_local_followings'),
     path('api/authors/local/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
     path('api/authors/<path:author_fqid>/', get_author_fqid, name='get_author_fqid'),
    
