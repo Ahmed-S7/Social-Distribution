@@ -243,7 +243,33 @@ def get_mime(sent_content):
     decoded_content =  base64.b64decode(sent_content)  
     file_type = filetype.guess(decoded_content)
     print(f"THE NEW ENTRY'S FILETYPE IS: {file_type.mime}")                 
-    return file_type.mime        
+    return file_type.mime  
+
+def get_author_friends(author): 
+     # Friends
+    friend_pairs = AuthorFriend.objects.filter(
+        Q(friending=author) | Q(friended=author)
+    ).values_list('friending', 'friended')
+
+    friend_ids = set()
+    for friending_id, friended_id in friend_pairs:
+        if friending_id != author.id:
+            friend_ids.add(friending_id)
+        if friended_id != author.id:
+            friend_ids.add(friended_id)
+    
+    friends_list = []
+    for friend_id in friend_ids:
+        try:
+            friends_list.append(Author.objects.get(id=friend_id))
+        except Exception as e:
+            print(e)
+            pass
+    print("this author's friends: ",friends_list)
+    return friends_list
+    
+    
+          
 def author_exists(id):
     '''
     - checks for an author's existence based on their id field

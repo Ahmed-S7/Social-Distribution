@@ -25,7 +25,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  get_author_friends, decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
@@ -1348,7 +1348,7 @@ def user_inbox_api(request, author_serial):
             if not author_exists(authorFQID):
                 
                 #SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject, partial=True)
                 
                 #IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
@@ -1415,7 +1415,7 @@ def user_inbox_api(request, author_serial):
             if not author_exists(authorFQID):
                 print(f"DEBUG: Author {authorFQID} does not exist, creating new author object")
                 # SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject, partial=True)
                 print(f"DEBUG: Serialized author data: {requesting_account_serialized.data}")
                 # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
@@ -1596,7 +1596,7 @@ def user_inbox_api(request, author_serial):
             if not author_exists(authorFQID):
                 
                 # SERIALIZE AND SAVE IF THEIR DATA IS VALID
-                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject)
+                requesting_account_serialized = AuthorSerializer(data=remoteAuthorObject, partial=True)
                 
                 # IF THEIR DATA IS INVALID, INFORM THE REQUESTER
                 if not requesting_account_serialized.is_valid():
@@ -1954,14 +1954,11 @@ def get_local_followers(request, author_serial):
             - 500 Internal Server Error if there was an internal failure in retrieving the followers for the given author
     """
     if request.method =='GET':
-       
 
-        '''
-        uncheck for now
         #If the user is local, make sure they're logged in 
         if not request.user.is_authenticated:
             return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
-       ''' 
+
         try:
             current_author = Author.objects.get(serial=author_serial)  
         except Exception as e:
@@ -1975,10 +1972,9 @@ def get_local_followers(request, author_serial):
                   
         if follower_relations:
             for followers in follower_relations:
-                #print(followers.follower)
                 follower = followers.follower
                 followers_list.append(follower)
-            #print(followers_list)
+
         
         try:
             serialized_followers = AuthorSerializer( followers_list, many=True)
@@ -1988,8 +1984,133 @@ def get_local_followers(request, author_serial):
         except Exception as e:
                 return Response({"Error" : f"We were unable to get the followers for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )         
                 
-    
+@api_view(['GET'])
+def get_local_friends(request, AUTHOR_FQID):   
+    """
+        Get a specific author's friends list  in the application
+        
+        Use: "GET /api/authors/{AUTHOR_FQID}/friends/"
 
+        returns Json in the following format upon a successful request: 
+            
+                    {
+                        "type": "friends",      
+                        "friends":[
+                            {
+                                "type":"author",
+                                "id":"http://nodebbbb/api/authors/222",
+                                "host":"http://nodebbbb/api/",
+                                "displayName":"Lara Croft",
+                                "web":"http://nodebbbb/authors/222",
+                                "github": "http://github.com/laracroft",
+                                "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
+                            },
+                            {
+                                // Second friend author object
+                            },
+                            {
+                                // Third friend author object
+                            }
+                        ]
+                    } 
+                    
+        - a successful request will yield a status 200 HTTP response
+        - a failed response will yield:
+        
+            - 404 Not found for a non existing author
+            - 500 Internal Server Error if there was an internal failure in retrieving the followers for the given author
+    """
+
+     
+    if request.method =='GET':
+       
+        #If the user is local, make sure they're logged in 
+        if not request.user.is_authenticated:
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
+      
+        try:
+            AUTHOR_FQID = urllib.parse.unquote(AUTHOR_FQID)
+            current_author = Author.objects.get(id=AUTHOR_FQID)
+        except Author.DoesNotExist:
+            return Response({"Error" : f"We were unable to locate this account"}, status=status.HTTP_404_NOT_FOUND)
+            
+        #get and serialize all of the authors friends
+        #Friends
+        friends_list = get_author_friends(current_author)
+        print(current_author.following.all())
+
+        try:
+            serialized_friends = AuthorSerializer(friends_list, many=True)
+            response = serialized_friends.data
+            return Response({"type": "friends", "friends":response}, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+                return Response({"Error" : f"We were unable to get the friends for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )             
+
+@api_view(['GET'])
+def get_local_followings(request, AUTHOR_FQID):   
+    """
+        Get a specific author's friends list of followings in the application
+        
+        Use: "GET /api/authors/{AUTHOR_FQID}/followings/"
+
+        returns Json in the following format upon a successful request: 
+            
+                    {
+                        "type": "followings",      
+                        "followings":[
+                            {
+                                "type":"author",
+                                "id":"http://nodebbbb/api/authors/222",
+                                "host":"http://nodebbbb/api/",
+                                "displayName":"Lara Croft",
+                                "web":"http://nodebbbb/authors/222",
+                                "github": "http://github.com/laracroft",
+                                "profileImage": "http://nodebbbb/api/authors/222/entries/217/image"
+                            },
+                            {
+                                // Second author object that the current author follows
+                            },
+                            {
+                                // Third author object that the current author follows
+                            }
+                        ]
+                    } 
+                    
+        - a successful request will yield a status 200 HTTP response
+        - a failed response will yield:
+        
+            - 404 Not found for a non existing author
+            - 500 Internal Server Error if there was an internal failure in retrieving the followers for the given author
+    """
+
+     
+    if request.method =='GET':
+       
+     
+        #If the user is local, make sure they're logged in 
+        if not request.user.is_authenticated:
+            return Response({"error":"user requesting information is not currently logged in, you do not have access to this information"}, status=status.HTTP_401_UNAUTHORIZED )
+     
+        try:
+            AUTHOR_FQID = urllib.parse.unquote(AUTHOR_FQID)
+            current_author = Author.objects.get(id=AUTHOR_FQID)
+        except Author.DoesNotExist:
+            return Response({"Error" : f"We were unable to locate this account"}, status=status.HTTP_404_NOT_FOUND)
+            
+        #get and serialize all of the authors friends
+        #Friends
+        followings_list = current_author.following.all()
+        followings = [follow_relation.following for follow_relation in followings_list]
+        followings_count =len(followings_list)
+
+        try:
+            serialized_followings = AuthorSerializer(followings, many=True)
+            response = serialized_followings.data
+            return Response({"type": "following","followings count": followings_count, "followings":response, }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+                return Response({"Error" : f"We were unable to get the followings for this user: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR )
 
 @login_required
 @api_view(['GET'])
@@ -2053,7 +2174,6 @@ def friends_list(request, author_serial):
         if friendship.friending == author:
             friends.append(friendship.friended)
         else:
-
             friends.append(friendship.friending)
     return render(request, "relationship_list.html", {
         "title": "Friends",

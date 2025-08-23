@@ -17,6 +17,9 @@ html, body, h1,h2,p{
     justify-content: center;
     align-content: center;
     max-width:30em;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .post-card:hover{
@@ -51,6 +54,9 @@ html, body, h1,h2,p{
     justify-content: center;
     text-align: center;
     padding-bottom: 2em;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .post-footer {
     display: inline-flex;

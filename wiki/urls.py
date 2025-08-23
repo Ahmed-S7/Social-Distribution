@@ -5,7 +5,7 @@ from .views import PageViewSet, RemotePostReceiver, edit_profile, entry_detail, 
 from .views import MyLoginView, user_wiki, register,user_inbox_api,foreign_followers_api,get_local_follow_requests,add_local_follower,process_follow_request, get_authors, view_local_authors, follow_profile, check_follow_requests, get_local_followers
 from .views import edit_entry, add_comment, like_comment,view_entry_author, unfollow_profile, cancel_follow_request, delete_entry, like_entry_api, like_comment_api, get_entry_likes_api, create_entry, like_entry
 from .views import get_entry_comments_api, get_entry_comments_fqid_api, get_comment_fqid_api, author_comments_fqid, register_api, login_api, get_author_likes_api, get_single_like_api, get_entry_image_api, get_author_image_api, get_author_comments_api,user_wiki_api, get_single_comment_fqid, get_author_comment_by_serial, get_entry_likes_by_fqid, get_comment_likes_by_fqid, get_author_likes_by_fqid, get_single_like_by_fqid, get_author_entries_api, get_comment_likes_api
-from .views import friends_list, followers_list, following_list, entry_detail_fqid_api
+from .views import get_local_followings, friends_list, followers_list, following_list, entry_detail_fqid_api, get_local_friends
 from django.contrib.auth.views import LogoutView
 
 app_name ='wiki'
@@ -86,7 +86,9 @@ urlpatterns = [
     #Follow Requests/Followers API
     path('api/authors/<str:author_serial>/follow_requests/', get_local_follow_requests, name='get_follow_requests' ),
     path('api/authors/<str:author_serial>/followers/<path:FOREIGN_AUTHOR_FQID>/', foreign_followers_api, name='foreign_followers_api'),
-    path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers' ),
+    path('api/authors/<str:author_serial>/followers/', get_local_followers, name='get_local_followers'),
+    path('api/authors/<path:AUTHOR_FQID>/friends/', get_local_friends, name='get_local_friends'),
+    path('api/authors/<path:AUTHOR_FQID>/followings/', get_local_followings, name='get_local_followings'),
     path('api/authors/local/<str:author_serial>/followers/<str:new_follower_serial>', add_local_follower, name='add_local_followers' ),
     path('api/authors/<path:author_fqid>/', get_author_fqid, name='get_author_fqid'),
    

@@ -243,6 +243,8 @@ a{
 
 .post-content{
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .post-header {

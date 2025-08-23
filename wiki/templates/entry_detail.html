@@ -66,7 +66,9 @@
       </div>
     </div>
     <div class="card card-entry-detail mt-4">
-      <div class="card-body">
+      
+  </div>
+  <div class="card-body">
         <h3 class="mb-3">Comments</h3>
         <form method="post" action="{% url 'wiki:add_comment' entry.serial %}" class="mb-4">
           {% csrf_token %}
@@ -99,7 +101,6 @@
         {% endif %}
       </div>
     </div>
-  </div>
 </body>
 </html>
 
