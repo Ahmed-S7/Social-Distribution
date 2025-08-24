@@ -406,9 +406,10 @@ def get_authors(request):
     authors_data = []
     for author in page_obj:
         serializer = AuthorSerializer(author, context={'request': request})
-        authors_data.append(serializer.data)
-    
-
+        authors_data.append(serializer.data) 
+        print(author.get_friends())
+   
+   
 
     # Build response
     host = request.build_absolute_uri('/').rstrip('/')
@@ -606,8 +607,8 @@ def view_external_profile(request, author_serial):
         logged_in_author = Author.objects.filter(user=request.user).first() if logged_in else None
         #NECESSARY FIELDS FOR PROFILE DISPLAY
         is_following = logged_in_author.is_following(profile_viewing)if logged_in_author else False
-        followers = profile_viewing.followers.all()#stores all of the followers a given author has
-        following = profile_viewing.following.all()#stores all of the followers a given author has
+        followers = profile_viewing.followers.all()#stores all of the following objects with the author's followers a given author has 
+        following = profile_viewing.following.all()#stores all of the following objects where the author is following the given author 
         all_entries = profile_viewing.get_all_entries()#stores all of the user's entries
         is_currently_requesting = logged_in_author.is_already_requesting(profile_viewing)if logged_in_author else False
         is_a_friend = logged_in_author.is_friends_with(profile_viewing)if logged_in_author else False

@@ -26,9 +26,14 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model= Author
-        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web","description"]
+        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web","description","followers_count", "friends_count", "followings_count", "followers", "friends", "followings"]
+    followers_count  = serializers.SerializerMethodField()
+    friends_count = serializers.SerializerMethodField()
+    followings_count = serializers.SerializerMethodField()
+    followers =  serializers.SerializerMethodField()
+    friends = serializers.SerializerMethodField()
+    followings = serializers.SerializerMethodField()
     
-
     def validate_displayName(self, value):
         # Enforce no spaces in username
         if  " " in value:
@@ -55,6 +60,72 @@ class AuthorSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+    def get_followers_count(self, obj):
+        return len(obj.get_followers())
+    
+    def get_friends_count(self, obj):
+        return len(obj.get_friends())
+    
+    def get_followings_count(self, obj):
+        return len(obj.get_followings())
+    
+    def get_followers(self, obj):
+        followers_list = obj.get_followings()
+        followers = []
+        followers_list = obj.get_friends()
+        for follower in followers_list:
+            followers.append({"type":"author",
+                            "id":follower.id,
+                            "host":follower.host,
+                            "displayName":follower.displayName,
+                            "github":follower.github,
+                            "profileImage":follower.profileImage,
+                            "web":follower.web,
+                            "description":follower.description,
+                            "followers_count":len(follower.get_followers()),
+                            "friends_count":len(follower.get_friends()),
+                            "followings_count":len(follower.get_followings()),
+       
+            })
+        return followers
+    
+    def get_friends(self, obj):
+        friends = []
+        friends_list = obj.get_friends()
+        for friend in friends_list:
+            friends.append({"type":"author",
+                            "id":friend.id,
+                            "host":friend.host,
+                            "displayName":friend.displayName,
+                            "github":friend.github,
+                            "profileImage":friend.profileImage,
+                            "web":friend.web,
+                            "description":friend.description,
+                            "followers_count":len(friend.get_followers()),
+                            "friends_count":len(friend.get_friends()),
+                            "followings_count":len(friend.get_followings()),
+            })
+        return friends
+        
+    
+    def get_followings(self, obj):
+        followings = []
+        followings_list = obj.get_friends()
+        for following in followings_list:
+            followings.append({"type":"author",
+                            "id":following.id,
+                            "host":following.host,
+                            "displayName":following.displayName,
+                            "github":following.github,
+                            "profileImage":following.profileImage,
+                            "web":following.web,
+                            "description":following.description,
+                            "followers_count":len(following.get_followers()),
+                            "friends_count":len(following.get_friends()),
+                            "followings_count":len(following.get_followings()),
+                            
+            })
+        return followings
     
     def create(self, validated_data):
         displayName = validated_data.get("id")

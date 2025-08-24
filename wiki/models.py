@@ -110,7 +110,37 @@ class Author(BaseModel):
     class Meta:
         ordering = ['displayName']
     
+    def get_followers(self):
+        follower_relationships = AuthorFollowing.objects.filter(following=self)
+        followers = [relationship.follower for relationship in follower_relationships]
+        print("This author's followers list: ", followers)
+        return followers
+    
+    def get_followings(self):
+        follow_relationships = AuthorFollowing.objects.filter(follower=self)
+        followings = [relationship.following for relationship in follow_relationships]
+        print(f"This author's followings are: {followings}")
+        return followings
+    
+    def get_friends(self):
+        '''
+        retrieves a list of a user's friends
+        '''
+        friendships = AuthorFriend.objects.filter(
+        Q(friending=self) | Q(friended=self),
+        is_deleted=False
+        )
 
+        friends = []
+        for friendship in friendships:
+            if friendship.friending == self:
+                friends.append(friendship.friended)
+            else:
+                friends.append(friendship.friending) 
+        print("This author's friends list: ", friends)
+        return friends 
+            
+        
     def get_follow_requests_sent(self):
         '''Returns a list of all of the follow requests sent by an author'''
         return self.requesting.all()
@@ -138,13 +168,7 @@ class Author(BaseModel):
     def is_already_requesting(self, other_author):
         '''checks if an author is actively requesting a specific author'''
         return FollowRequest.objects.filter(requester=self, requested_account=other_author, state=RequestState.REQUESTING, is_deleted=False).exists()
-    
-    def get_friends(self):
-        '''
-        retrieves a list of a user's friends
-        '''
-        pass
-      
+ 
     def is_following(self, other_author):
         '''Check if an author currently follows another author'''
         if AuthorFollowing.objects.filter(follower__id=self.id, following__id=other_author.id).exists():
