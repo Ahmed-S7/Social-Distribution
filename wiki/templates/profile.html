@@ -64,7 +64,9 @@
 <section class="author_profile_with_entries">
     <section class="author_profile_with_description">
         <section class="pic_name_followers_entries">
-          <!--Fetch author info that will be used to populate the UI-->
+          <!--Fetch author info that will be used to populate the UI
+          TODO: remove follow detail lists and list of entry from author api, only keep the counts to prevent too large of api responses
+          -->
    
           <script type="module">
           import { retrieveAuthor, setupProfile, setupDescGithub} from "{% static 'js/profileSetup.js' %}"
