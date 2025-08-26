@@ -1864,8 +1864,71 @@ def add_local_follower(request, author_serial, new_follower_serial):
                             "profileImage": "/media/https%3A/cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_640.png",
                             "web": "http://127.0.0.1:8000/authors/01fcb29d-3241-43b1-a2ef-d6599b8aa951",
                             "description": ""
-                        }
-                    }
+                            "followers_count": 1,
+                            "friends_count": 1,
+                            "followings_count": 1,
+                            "friends": [
+        {
+            "type": "author",
+            "id": "http://127.0.0.1:8000/api/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+            "host": "http://127.0.0.1:8000/api/",
+            "displayName": "AnotherNewAuthor",
+            "github": "",
+            "profileImage": "",
+            "web": "http://127.0.0.1:8000/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+            "description": "",
+            "followers_count": 1,
+            "friends_count": 1,
+            "followings_count": 1,
+            "followers": [
+                {
+                    "type": "author",
+                    "id": "http://127.0.0.1:8000/api/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "host": "http://127.0.0.1:8000/api/",
+                    "displayName": "AnotherNewAuthor",
+                    "github": "",
+                    "profileImage": "",
+                    "web": "http://127.0.0.1:8000/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "description": "",
+                    "followers_count": 1,
+                    "friends_count": 1,
+                    "followings_count": 1
+                }
+            ],
+            "friends": [
+                {
+                    "type": "author",
+                    "id": "http://127.0.0.1:8000/api/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "host": "http://127.0.0.1:8000/api/",
+                    "displayName": "AnotherNewAuthor",
+                    "github": "",
+                    "profileImage": "",
+                    "web": "http://127.0.0.1:8000/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "description": "",
+                    "followers_count": 1,
+                    "friends_count": 1,
+                    "followings_count": 1
+                }
+            ],
+            "followings": [
+                {
+                    "type": "author",
+                    "id": "http://127.0.0.1:8000/api/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "host": "http://127.0.0.1:8000/api/",
+                    "displayName": "AnotherNewAuthor",
+                    "github": "",
+                    "profileImage": "",
+                    "web": "http://127.0.0.1:8000/authors/57006192-4dbb-4424-a28e-e97a11f6efd4",
+                    "description": "",
+                    "followers_count": 1,
+                    "friends_count": 1,
+                    "followings_count": 1
+                }
+            ],
+            "entries": []
+                    },
+            }
+        }
                     
                     Upon successful follows   
                 - returns 401 in the event of an unauthorized user adding a follower to a follow list
@@ -2248,8 +2311,8 @@ def profile_view(request, username):
         return HttpResponse("Author profile does not exist.")
     # entries = Entry.objects.filter(author=author).order_by('-created_at')    # displays entries from newest first
     
-    followers = author.followers.all()#stores all of the followers a given author has
-    following = author.following.all()#stores all of the followers a given author has
+    follower_relationships = author.followers.all()
+    following_relationships = author.following.all()
     friends_a = author.friend_a.all()
     friends_b = author.friend_b.all()
     total_friends = (friends_a | friends_b)
@@ -2276,13 +2339,7 @@ def profile_view(request, username):
         {
         'author': author,
         'entries': rendered_entries,
-        "followers": followers,
-        "follower_count": len(followers),
-        "following": following,
-        "following_count": len(following),
-        "entry_count": len(all_entries),
-        "friend_count":friend_count,
-        "friends":total_friends} 
+        } 
     )
 
 @login_required

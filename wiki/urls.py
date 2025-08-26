@@ -53,7 +53,7 @@ urlpatterns = [
      
     # Author Related API 
     path('api/authors/', get_authors, name='get_authors'),  
-    path('api/<path:author_fqid>/profile/', get_profile_fqid, name='profile_fqid_api'), 
+ 
     path('api/authors/<str:author_serial>/', get_or_edit_author_api, name='get_or_edit_author'),    
     path('api/authors/<str:author_serial>/liked/', get_author_likes_api, name='get_author_likes_api'),
     path('api/authors/<str:author_serial>/liked/<int:like_serial>/', get_single_like_api, name='get_single_like_api'),
@@ -66,7 +66,8 @@ urlpatterns = [
     path('api/register/', register_api, name='register_api'),
     path('api/login/', login_api, name='login_api'),
     path('api/<str:username>/profile/', get_profile_api, name='get_profile_api'),
-
+    path('api/<path:author_fqid>/profile/', get_profile_fqid, name='profile_fqid_api'), 
+    
     # Entry Related URLs
     path('authors/<uuid:author_serial>/entries/<uuid:entry_serial>/', entry_detail, name='entry_detail'),
     path('entries/<uuid:entry_serial>/like/', like_entry, name='like-entry'),
