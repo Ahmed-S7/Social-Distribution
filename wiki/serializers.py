@@ -106,8 +106,7 @@ class AuthorSerializer(serializers.ModelSerializer):
                             "followings_count":len(friend.get_followings()),
             })
         return friends
-        
-    
+ 
     def get_followings(self, obj):
         followings = []
         followings_list = obj.get_friends()
@@ -224,13 +223,7 @@ class LikeSummarySerializer(serializers.Serializer):
     def get_object(self, obj):
         print(f"DEBUG: obj.entry: {obj.entry}")
         return obj.entry.id
-        # Use the entry author's host instead of the current request's host
-        entry_author_host = obj.entry.author.host.rstrip('/')
-        
-        # Extract author UUID from the entry's author id URL
-        entry_author_id = str(obj.entry.author.id).rstrip('/').split('/')[-1]
-        entry_id = obj.entry.serial if hasattr(obj.entry, 'serial') else obj.entry.id
-        return f"{entry_author_host}/authors/{entry_author_id}/entries/{entry_id}"
+       
 
 
 class CommentLikeSummarySerializer(serializers.Serializer):
@@ -315,7 +308,10 @@ class CommentSummarySerializer(serializers.Serializer):
     
     def get_web(self, obj):
         request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
+        try:
+            host = request.build_absolute_uri("/").rstrip("/") 
+        except Exception as e:
+            host = "http://127.0.0.1:8000/api/"
 
         return f"{host}/entries/{obj.entry.serial}"
     
@@ -364,7 +360,10 @@ class EntrySerializer(serializers.ModelSerializer):
     
     def get_web(self,obj):
         request = self.context.get('request')
-        host = request.build_absolute_uri("/").rstrip("/")
+        try:
+            host = request.build_absolute_uri("/").rstrip("/") 
+        except Exception as e:
+            host = "http://127.0.0.1:8000/api/"
         return f"{host}/authors/{obj.author.serial}/entries/{obj.serial}"
     
     def get_description(self,obj):
@@ -379,7 +378,10 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        try:
+            host = request.build_absolute_uri("/").rstrip("/") 
+        except Exception as e:
+            host = "http://127.0.0.1:8000/api/"
 
         comments = obj.comments.filter(is_deleted=False).order_by('-created_at')[:5]
         total_comments = obj.comments.filter(is_deleted=False).count()
@@ -399,7 +401,10 @@ class EntrySerializer(serializers.ModelSerializer):
         author_id = obj.author.serial
         entry_id = obj.serial
         request = self.context.get("request")
-        host = request.build_absolute_uri("/").rstrip("/")
+        try:
+            host = request.build_absolute_uri("/").rstrip("/") 
+        except Exception as e:
+            host = "http://127.0.0.1:8000/api/"
 
         likes = obj.likes.filter(is_deleted=False).order_by('-id')[:50]
         total_likes = obj.likes.filter(is_deleted=False).count()

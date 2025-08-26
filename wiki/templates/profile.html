@@ -1,10 +1,12 @@
 <!DOCTYPE html>
+<html lang="en">
 {% load static %}
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script>
           "use strict";
+          const AUTHOR_HOST = "{{author.host|escapejs}}";
           const AUTHOR_ID = "{{author.id|escapejs}}";
           const IS_AUTHENTICATED = "{{ request.user.is_authenticated|yesno:'true,false' }}";
           const EDIT_URL = "{% url 'wiki:edit_profile' author.displayName %}";
@@ -65,49 +67,23 @@
           <!--Fetch author info that will be used to populate the UI-->
    
           <script type="module">
-          import { retrieveAuthor } from "{% static 'js/fetchAuthor.js' %}"
+          import { retrieveAuthor, setupPfpName, setupDescGithub} from "{% static 'js/profileSetup.js' %}"
+          import { truncateChars} from "{% static 'js/util.js' %}"
           "use strict";
 
           window.addEventListener('DOMContentLoaded', async()=>{
-            const profilePicAndName = document.querySelector("#profile_pic_and_name")
-            const fetchedAuthor = await retrieveAuthor(AUTHOR_ID);
-              //Authenticated user check successful, then make the profile picture clickable
-              if (IS_AUTHENTICATED){
-                const link = document.createElement("a");
-                  link.href = EDIT_URL;
-                  link.className = "edit_profile_button";
-
-                  //Make profile picture lead to pfp editing
-                  const profileImg = document.querySelector("#profile_image_page");
-                  profileImg.className = "profile_image_page";
-                  profileImg.src = fetchedAuthor.profileImage || DEFAULT_IMAGE_URL;
-                  profileImg.alt = "Profile Picture";
-                  link.appendChild(profileImg);
-                  profilePicAndName.appendChild(link);
-
-                //Authenticated user check fails, then make the profile picture non-clickable -->
-                } else {
-                  const profileImg = document.querySelector("#profile_image_page");
-                  profileImg.className = "profile_image_page";
-                  profileImg.src = fetchedAuthor.profileImage || DEFAULT_IMAGE_URL;
-                  profileImg.alt = "Profile Picture";
-                  profilePicAndName.appendChild(profileImg);
-                }
-                const displayName = document.createElement("h3");
-                displayName.className = "display_name";
-                displayName.textContent = fetchedAuthor.displayName;
-                profilePicAndName.appendChild(displayName);
-
+            const profilePicAndName = document.querySelector("#profile_pic_and_name");
+            const descriptionContent = document.querySelector("#description_content");
+            const fetchedAuthorProfile = await retrieveAuthor(AUTHOR_ID, AUTHOR_HOST);
+            setupPfpName(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetchedAuthorProfile,profilePicAndName);
+            setupDescGithub(fetchedAuthorProfile);
             }
 
           )
-          </script>
-                    
+          </script>      
+
                 <section class="profile_pic_and_name" id=profile_pic_and_name >
                     <img id ="profile_image_page" class="profile_image_page">
-
-
-                        
                 </section>
 
                 <!--Titles For Follow And Entry Details-->
@@ -122,7 +98,6 @@
                       <p class="follow_and_entry_title">Friends</p>
                   </section>
                 </a>    
-
 
                 <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
                   <section class="follow_and_entry_labels">
@@ -140,32 +115,22 @@
 
             </section>
 
-            <section class="description_content">
+            <section id= "description_content" class="description_content">
             
-                {% if author.description  %}
-                    <p class="description">{{ author.description|truncatechars:100 }}</p>
+              <p id="description" class="description"></p>
 
-                {% else  %}
-                    <p class='description'>No Description.</p>
-                {% endif %}
-
-                {% if author.github %}
-                <p class="github">{{ author.github|truncatechars:100}} </p>
-                {% else  %}
-                <p class="github">GitHub Profile Not Found</p>
-                {% endif %}
-
+              <p id="github" class="github"></p>
+              
             </section>
 
         </section>
-
         <section class="entry_list">
             <h3>Entries</h3>
             {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
                 <ul class="entry_list">
                     {% for entry, rendered in entries %}   
-                     <div class="post-card">
+                     <li class="entryItem"> <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
                         <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
                             <div class="post-header">
@@ -208,6 +173,7 @@
                                 </div>
                             </div>
                     {% endfor %}
+                        </li>
                 </ul>
             {% endif %}
         </section>
@@ -230,7 +196,7 @@
         {% endif %}
     </section>               
                     
-                    
+
 
 
 </body>
