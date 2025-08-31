@@ -26,14 +26,18 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     class Meta:
         model= Author
-        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web","description","followers_count", "friends_count", "followings_count", "followers", "friends", "followings"]
+        fields = ["type", "id", "host", "displayName", "github", "profileImage", "web","description","followers_count", "friends_count", "followings_count", "entries_count"]# "followers", "friends", "followings"]
     followers_count  = serializers.SerializerMethodField()
     friends_count = serializers.SerializerMethodField()
     followings_count = serializers.SerializerMethodField()
+    entries_count = serializers.SerializerMethodField()
+    '''
+    NOT PART OF API FOR NOW (working but unpaginated, can be re-integrated)
+    
     followers =  serializers.SerializerMethodField()
     friends = serializers.SerializerMethodField()
     followings = serializers.SerializerMethodField()
-    
+    '''
     def validate_displayName(self, value):
         # Enforce no spaces in username
         if  " " in value:
@@ -68,6 +72,12 @@ class AuthorSerializer(serializers.ModelSerializer):
     
     def get_followings_count(self, obj):
         return len(obj.get_followings())
+    
+    def get_entries_count(self,obj):
+        return len(obj.posts.all())
+    
+    '''
+    #POSSIBLE FIELDS FOR PROFILE API (WORKING BUT UNPAGINATED):
     
     def get_followers(self, obj):
         followers_list = obj.get_followings()
@@ -125,7 +135,7 @@ class AuthorSerializer(serializers.ModelSerializer):
                             
             })
         return followings
-    
+    '''
     def create(self, validated_data):
         displayName = validated_data.get("id")
         user = User.objects.create(username=displayName, password="uniquepass")

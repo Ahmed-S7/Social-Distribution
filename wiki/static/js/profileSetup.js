@@ -55,16 +55,12 @@ export function setupProfile(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetched
                 const followingsCount = document.querySelector("#followings_count");
                 const entryCount = document.querySelector("#entry_count");
 
-
                 friendsCount.textContent = fetchedAuthorProfile.friends_count;
                 followerCount.textContent = fetchedAuthorProfile.followers_count;
                 followingsCount.textContent = fetchedAuthorProfile.followings_count;
-                entryCount.textContent = fetchedAuthorProfile.entries.length;
-
-
-
+                entryCount.textContent = fetchedAuthorProfile.entries_count;
                 }
-export function setupDescGithub(fetchedAuthorProfile){
+function setupDescGithub(fetchedAuthorProfile){
                 //Setup the GitHuB and Description from the fetched author
                 const description = document.querySelector("#description");
                 description.textContent = truncateChars(fetchedAuthorProfile.description, 100) || "No Description";

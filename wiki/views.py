@@ -577,11 +577,7 @@ def get_profile_fqid(request, author_fqid):
     author_fqid = urllib.parse.unquote(author_fqid)
     author = get_object_or_404(Author, id=author_fqid)
     authorSerialized= AuthorSerializer(author)
-    
     data_dict = dict(authorSerialized.data)
-    entries = author.posts.all()
-    serializedEntries = [EntrySerializer(entry).data for entry in entries]  
-    data_dict["entries"] = serializedEntries
     return Response(data_dict, status=status.HTTP_200_OK)
 
 @login_required   
