@@ -69,7 +69,7 @@
           -->
    
           <script type="module">
-          import { retrieveAuthor, setupProfile} from "{% static 'js/profileSetup.js' %}"
+          import { retrieveAuthor, setupProfile, retrieveAuthorEntries, renderMarkdown} from "{% static 'js/profileSetup.js' %}"
           import { truncateChars} from "{% static 'js/util.js' %}"
           "use strict";
 
@@ -77,6 +77,15 @@
             const profilePicAndName = document.querySelector("#profile_pic_and_name");
             const descriptionContent = document.querySelector("#description_content");
             const fetchedAuthorProfile = await retrieveAuthor(AUTHOR_ID, AUTHOR_HOST);
+            const fetchedAuthorEntries = await retrieveAuthorEntries(AUTHOR_ID);
+            const renderedEntries = renderMarkdown(fetchedAuthorEntries);
+
+            for (const entry of renderedEntries){
+              console.log(`Entry Title: ${entry.entry.title}
+              \nEntry Author: ${entry.entry.author.displayName}
+              \nEntry Publish Date: ${entry.entry.published}`);
+            }
+
             setupProfile(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetchedAuthorProfile,profilePicAndName);
             }
 
@@ -129,15 +138,15 @@
             <h3>Entries</h3>
             {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                <ul class="entry_list">
+                <ul id="entry_list" class="entry_list">
                     {% for entry, rendered in entries %}   
-                     <li class="entryItem"> <div class="post-card">
+                     <li id="entryItem" class="entryItem"> <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
                         <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
-                            <div class="post-header">
+                            <div id="post-header" class="post-header">
 
                                 <div>
-                                    <div class="post-title">{{ entry.title }}</div>
+                                    <div id="post-title" class="post-title">{{ entry.title }}</div>
                                     <small>
                                         Posted by <strong>{{ entry.author.displayName }}</strong>
                                         on {{ entry.created_at|date:"M d, Y H:i" }}
@@ -146,15 +155,15 @@
                             </div>
                             
                             {% if "base64" in entry.contentType %}
-                               <div class="post-content text-center">
+                               <div id="post-content text-center" class="post-content text-center">
                                    <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
                                </div>
                             {% elif entry.contentType == "text/markdown" %}
-                               <div class="post-content markdown-content">
+                               <div id="post-content markdown-content" class="post-content markdown-content">
                                    {{ rendered|safe }}
                                </div>
                             {% else %}
-                               <div class="post-content">
+                               <div id="post-content" class="post-content">
                                    {{ entry.content }}
                                </div>
                             {% endif %}
