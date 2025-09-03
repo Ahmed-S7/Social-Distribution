@@ -29,6 +29,16 @@ function getCSRFToken() {
   return tokenInput ? tokenInput.value : '';
 }
 
+function getOriginFromUrl(url) {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.origin; // includes hostname + port
+  } catch (error) {
+    console.error("Invalid URL:", error);
+    return null;
+  }
+}
+
 export function setupAuthorEntries(entries){
   const entryList = document.querySelector("#entry_list");
     if(entries){
@@ -101,14 +111,30 @@ export function setupAuthorEntries(entries){
           footer.className = "post-footer";
 
           // --- Like Form ---
-          const form = document.createElement("form");
-          form.setAttribute("method", "post");
-          form.setAttribute("action", `/wiki/like-entry/${entry.serial}/`);
+          function getCSRFToken() {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+              const cookies = document.cookie.split(';');
+              for (let i = 0; i < cookies.length; i++) {
+                  const cookie = cookies[i].trim();
+                  if (cookie.substring(0, 10) === 'csrftoken=') {
+                      cookieValue = decodeURIComponent(cookie.substring(10));
+                      break;
+                  }
+              }
+          }
+          return cookieValue;
+        }
 
-          const csrfInput = document.createElement("input");
-          csrfInput.setAttribute("type", "hidden");
-          csrfInput.setAttribute("name", "csrfmiddlewaretoken");
-          csrfInput.setAttribute("value", getCSRFToken());
+
+          const likeForm = document.createElement("form");
+          likeForm.setAttribute("method", "post");
+          likeForm.setAttribute("action", `/entries/${entry.id.split("/").at(-1)}/like/`);
+
+          const csrfInputLike = document.createElement("input");
+          csrfInputLike.setAttribute("type", "hidden");
+          csrfInputLike.setAttribute("name", "csrfmiddlewaretoken");
+          csrfInputLike.setAttribute("value", getCSRFToken());
 
           const likedFromProfile = document.createElement("input");
           likedFromProfile.setAttribute("type", "hidden");
@@ -120,24 +146,36 @@ export function setupAuthorEntries(entries){
           likeBtn.className = "like-btn like-btn-custom border-0 bg-transparent";
           likeBtn.textContent = `❤️${entry.likes.count}`;
 
-          form.appendChild(csrfInput);
-          form.appendChild(likedFromProfile);
-          form.appendChild(likeBtn);
-          footer.appendChild(form);
+          likeForm.appendChild(csrfInputLike);
+          likeForm.appendChild(likedFromProfile);
+          likeForm.appendChild(likeBtn);
+          footer.appendChild(likeForm);
 
-          // --- Comment Button ---
-          const commentBtn = document.createElement("a");
+          //-- Comment Form --
+          const commentForm = document.createElement("form");
+          commentForm.setAttribute("method", "post");
+          commentForm.setAttribute("action", `/authors/${entry.author.id.split("/").at(-1)}/entries/${entry.id.split("/").at(-1)}/`);
+
+          const csrfInputComment = document.createElement("input");
+          csrfInputComment.setAttribute("type", "hidden");
+          csrfInputComment.setAttribute("name", "csrfmiddlewaretoken");
+          csrfInputComment.setAttribute("value", getCSRFToken());
+
+          const commentBtn = document.createElement("button");
+          commentBtn.setAttribute("type", "submit");
           commentBtn.className = "btn btn-outline-secondary btn-sm comment-btn-custom";
-          commentBtn.setAttribute("href", `authors/${entry.author.id.split("/").at(-1)}/entries/${entry.serial}/`); // Your original URL
           commentBtn.textContent = `💬 Comment (${entry.comments.count})`;
-          footer.appendChild(commentBtn);
+
+          commentForm.appendChild(csrfInputComment);
+          commentForm.appendChild(commentBtn);
+          footer.appendChild(commentForm);
 
           // --- Share Button ---
           const shareBtn = document.createElement("button");
           shareBtn.className = "btn btn-outline-success btn-sm share-link-btn";
           shareBtn.setAttribute("type", "button");
-          shareBtn.setAttribute("data-link", `${window.location.origin}/wiki/${entry.serial}/${entry.serial}/`); // Your original URL
-          shareBtn.textContent = "🔗 Share Link";
+          shareBtn.setAttribute("data-link", `/authors/${entry.author.id.split("/").at(-1)}/entries/${entry.id.split("/").at(-1)}/`); // 
+          shareBtn.textContent = `🔗 Share Link`;
           footer.appendChild(shareBtn);
 
           // CRITICAL FIX: Append footer to postCard
