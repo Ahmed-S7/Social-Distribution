@@ -1,4 +1,4 @@
-MIT License
+**MIT License**
 
 Copyright (c) 2025  S25 Project White Team
 
@@ -19,3 +19,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+**Academic Integrity Notice:**
+
+This software and its associated materials may not be submitted, in whole or in part, for academic credit or assessment as original work without proper attribution. Use of this software in a manner that violates institutional academic integrity policies — including plagiarism, unauthorized collaboration, or misrepresentation of authorship — is strictly prohibited. Users are responsible for ensuring compliance with their institution’s academic honesty guidelines.
