@@ -69,7 +69,7 @@
           -->
    
           <script type="module">
-          import { retrieveAuthor, setupProfile, retrieveAuthorEntries, renderMarkdown} from "{% static 'js/profileSetup.js' %}"
+          import { retrieveAuthor, setupProfile, retrieveAuthorEntries, renderMarkdown, setupAuthorEntries} from "{% static 'js/profileSetup.js' %}"
           import { truncateChars} from "{% static 'js/util.js' %}"
           "use strict";
 
@@ -79,15 +79,18 @@
             const fetchedAuthorProfile = await retrieveAuthor(AUTHOR_ID, AUTHOR_HOST);
             const fetchedAuthorEntries = await retrieveAuthorEntries(AUTHOR_ID);
             const renderedEntries = renderMarkdown(fetchedAuthorEntries);
-
+            const entriesForDisplay = [];
             for (const entry of renderedEntries){
               console.log(`Entry Title: ${entry.entry.title}
               \nEntry Author: ${entry.entry.author.displayName}
               \nEntry Publish Date: ${entry.entry.published}`);
+              entriesForDisplay.push(entry.entry);
             }
 
             setupProfile(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetchedAuthorProfile,profilePicAndName);
+            setupAuthorEntries(entriesForDisplay);
             }
+            
 
           )
           </script>      
@@ -136,56 +139,9 @@
         </section>
         <section class="entry_list">
             <h3>Entries</h3>
-            {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                <ul id="entry_list" class="entry_list">
-                    {% for entry, rendered in entries %}   
-                     <li id="entryItem" class="entryItem"> <div class="post-card">
-                        <!--Now clicking an entry (entry header) should lead to entry details-->
-                        <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}">
-                            <div id="post-header" class="post-header">
-
-                                <div>
-                                    <div id="post-title" class="post-title">{{ entry.title }}</div>
-                                    <small>
-                                        Posted by <strong>{{ entry.author.displayName }}</strong>
-                                        on {{ entry.created_at|date:"M d, Y H:i" }}
-                                    </small>
-                                </div>
-                            </div>
-                            
-                            {% if "base64" in entry.contentType %}
-                               <div id="post-content text-center" class="post-content text-center">
-                                   <img src="data:{{ entry.contentType }},{{ entry.content }}" alt="{{ entry.title }}" />
-                               </div>
-                            {% elif entry.contentType == "text/markdown" %}
-                               <div id="post-content markdown-content" class="post-content markdown-content">
-                                   {{ rendered|safe }}
-                               </div>
-                            {% else %}
-                               <div id="post-content" class="post-content">
-                                   {{ entry.content }}
-                               </div>
-                            {% endif %}
-
-
-                            </a>
-                                <div class="post-footer">
-                                        <form method="post" action="{% url 'wiki:like-entry' entry.serial %}">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="liked_from_profile" value="true">
-                                            <button type="submit" class="like-btn like-btn-custom border-0 bg-transparent">❤️{{ entry.likes.count}} </button>
-                                        </form>
-                                        <!--<p>{{ entry.likes.count }} likes</p>-->
-
-                                <a href="{% url 'wiki:entry_detail' author.serial entry.serial %}" class="btn btn-outline-secondary btn-sm comment-btn-custom">💬 Comment ({{ entry.comments.count }})</a>
-                                <button type="button" class="btn btn-outline-success btn-sm share-link-btn" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'wiki:entry_detail' author.serial entry.serial %}">🔗 Share Link</button>
-                                </div>
-                            </div>
-                    {% endfor %}
-                        </li>
+                <ul id="entry_list" class="entry_list"> 
                 </ul>
-            {% endif %}
         </section>
 
 
