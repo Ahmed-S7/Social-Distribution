@@ -1,6 +1,5 @@
 import { truncateChars } from './util.js';
 import { marked } from "https://unpkg.com/marked@latest/lib/marked.esm.js";
-
 export async function retrieveAuthor(AUTHOR_ID, AUTHOR_HOST){
             const url= `${AUTHOR_HOST}${AUTHOR_ID}/profile/`
             console.log( `url fetched:${url}`);
@@ -25,18 +24,6 @@ export async function retrieveAuthorEntries(AUTHOR_ID){
             return entries;
           }
 
-export function renderMarkdown(entries){
-            const entryList = entries;
-            const renderedEntries = [];
-            entryList.forEach(entry => {
-              const rendered = entry.contentType ==="text/markdown"
-              ? marked.parse(entry.content)
-              : entry.content;
-              
-            renderedEntries.push({entry, rendered});   
-          });
-          return renderedEntries;
-          }
 function getCSRFToken() {
   const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
   return tokenInput ? tokenInput.value : '';
@@ -98,8 +85,8 @@ export function setupAuthorEntries(entries){
               contentDiv.appendChild(img);
           } else if (entry.contentType === "text/markdown") {
               // Added markdown handling to match HTML
-              contentDiv.classList.add("markdown-content");
-              contentDiv.innerHTML = entry.rendered || entry.content; // Use rendered if available
+             const renderedMarkdown = marked.parse(entry.content);
+             contentDiv.innerHTML = renderedMarkdown;
           } else {
               const p = document.createElement("p");
               p.textContent = entry.content;

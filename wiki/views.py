@@ -2333,8 +2333,9 @@ def profile_view(request, username):
     return render(
         request, 'profile.html', 
         {
-        'author': author,
-        'entries': rendered_entries,
+        'authorID': author.id,
+        'authorHost':author.host,
+        'authorDisplayName':author.displayName,
         } 
     )
 

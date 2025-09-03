@@ -630,12 +630,13 @@ def node_valid(username, password):
     return False #access denied
 
 def decoded_auth_token(auth_header):
+    '''returns a decoded auth taken received from an HTTP response header'''
     if isinstance(auth_header, str):
         print("AUTH ENCODED IN UTF-8")
         print("AUTH ENCODED AS BYTES, DECODED TO STRING")
         auth_header_split = auth_header.split(" ")# -> ["Basic", "{auth encoded in bytes}"]
         auth = auth_header_split[1]# -> [takes the last part of ^^ (auth encoded in bytes) and stores it as the auth token] -> {auth_encoded}
-        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into uft-8 ( a readable string)
+        decoded_auth = base64.b64decode(auth.encode('UTF-8'))# -> decodes string auth, encodes it into utf-8 ( a readable string)
         decoded_username, decoded_pass = decoded_auth.decode().split(":", 1)# -> username, password
     else:
         return False
