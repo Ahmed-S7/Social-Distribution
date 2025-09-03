@@ -40,8 +40,8 @@ Note: One contributor has withdrawn from the course and has been removed as a co
 
 This project was completed as part of CMPUT404 at the University of Alberta. You can find the full API documentation below.
 
-#DOCUMENTATION: 
-NOTE, as of now endpoints are setup for future pagination compatibility, but currently display a list of limited size per requests
+# DOCUMENTATION: 
+
 ## Authentication API
 ### `POST /api/login/`
 
