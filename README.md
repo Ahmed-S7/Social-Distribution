@@ -1,12 +1,10 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/BGMWEn7l)
-CMPUT404-project-socialdistribution
-===================================
 
-CMPUT404-project-socialdistribution
 
-See [the web page](https://uofa-cmput404.github.io/general/project.html) for a description of the project.
+# CMPUT404-project-socialdistribution
 
-Make a distributed social network!
+### This application was created as a course project, it is no longer accessible as it was deployed to Heroku for course purposes and has since been undeployed, but [here is a fun promotional video that demonstrates the main features of the application](https://www.youtube.com/watch?v=aaOTHRIbRf8).
+
+### See [the web page](https://uofa-cmput404.github.io/general/project.html) for a description of the project.
 
 ## License
 
