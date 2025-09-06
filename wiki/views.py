@@ -861,10 +861,6 @@ def unfollow_profile(request, author_serial, following_id):
     return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))          
 
 
-@login_required    
-def view_following(request):
-    pass
-
 def view_entry_author(request, entry_serial):
     '''Redirects users to view the page of an author whose entry they are looking at'''
     entry = get_object_or_404(Entry, serial=entry_serial)

@@ -7,6 +7,8 @@
      <script id="constants">
           const AUTHOR_ID = '{{ authorID }}'; 
           const AUTHOR_HOST = '{{ authorHost }}';
+          const AUTHOR_DISPLAYNAME = "{{ authorDisplayName }}";
+          console.log(`DISPLAYNAME: ${AUTHOR_DISPLAYNAME}`);
           const IS_AUTHENTICATED = "{{ request.user.is_authenticated|yesno:'true,false' }}";
           const DEFAULT_IMAGE_URL = "{% static '/images/default_pfp.webp' %}";
     </script>
@@ -49,7 +51,7 @@
 <body>
   <div class="default_buttons d-flex justify-content-between align-items-center px-4">
     <a href="{% url 'wiki:user-wiki' request.user.username %}" class="btn btn-primary">Back to Stream</a>
-    {% if request.user.is_authenticated and request.user.username == "{{ authorDisplayName }}" %}
+    {% if request.user.is_authenticated and request.user.username == authorDisplayName %}
       <form action="{% url 'wiki:logout' %}" method="POST" class="d-inline m-0 align-self-center">
         {% csrf_token %}
         <button class="btn btn-logout-outline ms-2">Logout</button>
@@ -132,7 +134,7 @@
             <section id= "description_content" class="description_content">
             
               <p id="description" class="description"></p>
-
+              <img id="gitLogo" src = "{% static '/images/gitLogo.png' %}" alt="GitLogo">
               <p id="github" class="github"></p>
               
             </section>

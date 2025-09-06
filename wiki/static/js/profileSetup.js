@@ -247,9 +247,17 @@ export function setupProfile(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetched
                 }
 function setupDescGithub(fetchedAuthorProfile){
                 //Setup the GitHuB and Description from the fetched author
+                const descriptionAndGitHub = document.querySelector('#description_content');
                 const description = document.querySelector("#description");
                 description.textContent = truncateChars(fetchedAuthorProfile.description, 100) || "No Description";
-                const github = document.querySelector("#github");
-                github.textContent = truncateChars(fetchedAuthorProfile.github, 100) || "GitHUb Profile Not Found";
+                const githubLogo = document.querySelector("#gitLogo");
+                const gitHubUserName = document.querySelector("#github");
+                const link = document.createElement("a");
+                  link.href = fetchedAuthorProfile.github;
+                  link.className = "githubLink";
+                link.appendChild(githubLogo);
+                descriptionAndGitHub.appendChild(link);
+                github.textContent = "GitHub Profile URL" || "GitHub Profile Not Found";
+                
                 }
      

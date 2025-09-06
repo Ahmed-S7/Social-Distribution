@@ -18,5 +18,5 @@ export function renderMarkdown(entries){
     
     
 export function buildEditProfileUrl(username){
-    return `${username}/profile/edit/`;
+    return `/${username}/profile/edit/`;
 }
