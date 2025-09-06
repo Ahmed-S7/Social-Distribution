@@ -23,4 +23,4 @@ Ahmed Shittu
 
 Note: One contributor has been removed as a contributor with their written consent. Their code remains cited where used.
 
-This project was completed as part of CMPUT404 at the University of Alberta. You can find the full API documentation in the project Wiki.
+This project was completed as part of CMPUT404 at the University of Alberta. You can find the full API documentation in the [project Wiki](https://github.com/Ahmed-S7/Social-Distribution/wiki)
