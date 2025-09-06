@@ -12,15 +12,18 @@ See the [LICENSE](LICENSE.md) file for license rights and limitations (MIT).
 
 ## Copyright
 
-The authors claiming copyright, if they wish to be known, can list their names here...
+#### Active Contributors:
+Ahmed Shittu
 
-* Ahmed Shittu
+#### Authors
+
+* Ahmed Shittu 
 * Nina Han
 * Luis Martinez
 * Abdullah Faisal
 * Maro Erivona
 
-Note: One contributor has withdrawn from the course and has been removed as a contributor with their written consent. Their code remains cited where used.
+Note: One contributor has been removed as a contributor with their written consent. Their code remains cited where used.
 
 This project was completed as part of CMPUT404 at the University of Alberta. You can find the full API documentation below.
 
