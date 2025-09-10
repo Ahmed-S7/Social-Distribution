@@ -251,13 +251,18 @@ function setupDescGithub(fetchedAuthorProfile){
                 const description = document.querySelector("#description");
                 description.textContent = truncateChars(fetchedAuthorProfile.description, 100) || "No Description";
                 const githubLogo = document.querySelector("#gitLogo");
-                const gitHubUserName = document.querySelector("#github");
+                
                 const link = document.createElement("a");
-                  link.href = fetchedAuthorProfile.github;
-                  link.className = "githubLink";
+                link.href = fetchedAuthorProfile.github;
+                link.className = "githubLink";
                 link.appendChild(githubLogo);
+
+                const gitHubUserName = document.createElement("p");
+                gitHubUserName.textContent = "GitHub Profile" || "GitHub Profile Not Found";
+                gitHubUserName.className="github";
+
+                link.appendChild(gitHubUserName);
                 descriptionAndGitHub.appendChild(link);
-                github.textContent = "GitHub Profile URL" || "GitHub Profile Not Found";
                 
                 }
      
