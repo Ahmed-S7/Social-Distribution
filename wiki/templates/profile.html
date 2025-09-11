@@ -104,27 +104,27 @@
 
                 <!--Titles For Follow And Entry Details-->
                 <section class="follow_and_entry_labels">
-                    <p id="entry_count" class="folow_and_entry_count"> </p>
+                    <p id="entry_count" class="follow_and_entry_count"> </p>
                     <p class="follow_and_entry_title"> Entries</p>
                 </section>    
 
                 <a href="{% url 'wiki:friends_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
                   <section class="follow_and_entry_labels">
-                      <p id="friends_count" class="folow_and_entry_count"></p>
+                      <p id="friends_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Friends</p>
                   </section>
                 </a>    
 
                 <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
                   <section class="follow_and_entry_labels">
-                      <p id="follower_count" class="folow_and_entry_count"></p>
+                      <p id="follower_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Followers</p>
                   </section>
                 </a>    
                     
                 <a href="{% url 'wiki:following_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
                   <section class="follow_and_entry_labels">
-                      <p id="followings_count" class="folow_and_entry_count"></p>
+                      <p id="followings_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Following</p>
                   </section>
                 </a>
