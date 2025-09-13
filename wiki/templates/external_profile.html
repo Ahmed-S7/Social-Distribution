@@ -78,24 +78,24 @@
                             <!--Only see the entry count if the users are friends-->
                             {% if is_a_friend or request.user.username == author.displayName %}
                             <section class="follow_and_entry_labels">
-                                <p class="folow_and_entry_count"> {{entry_count}} </p>
+                                <p class="follow_and_entry_count"> {{entry_count}} </p>
                                 <p class="follow_and_entry_title"> Entries</p>
                             </section>  
                             {% endif %}
                            
                              <section class="follow_and_entry_labels">
-                                <p class="folow_and_entry_count"> {{friend_count}} </p>
+                                <p class="follow_and_entry_count"> {{friend_count}} </p>
                                 <p class="follow_and_entry_title"> Friends</p>
                             </section>    
                           
 
                             <section class="follow_and_entry_labels">
-                                <p class="folow_and_entry_count"> {{follower_count}} </p>
+                                <p class="follow_and_entry_count"> {{follower_count}} </p>
                                 <p class="follow_and_entry_title"> Followers</p>
                             </section>     
                             
                             <section class="follow_and_entry_labels">
-                                <p class="folow_and_entry_count"> {{following_count}} </p>
+                                <p class="follow_and_entry_count"> {{following_count}} </p>
                                 <p class="follow_and_entry_title"> Following</p>
                             </section> 
 
