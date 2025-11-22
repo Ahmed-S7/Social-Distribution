@@ -4,8 +4,18 @@ from django.core.paginator import Paginator
 from requests.auth import HTTPBasicAuth
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import viewsets, permissions, status
-from .models import NodeConnectionCredentials, Page,InboxObjectType,Like,RemoteNode, RemotePost, Author, AuthorFriend, InboxObjectType,RequestState, FollowRequest, AuthorFollowing, Entry, InboxItem, InboxItem, Comment, CommentLike
-from .serializers import FollowRequestReadingSerializer,PageSerializer, LikeSerializer, LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, RemotePostSerializer,InboxItemSerializer,AuthorSerializer, FollowRequestSerializer, FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer
+from .models import (
+    NodeConnectionCredentials, Page, InboxObjectType, Like, RemoteNode, 
+    RemotePost, Author, AuthorFriend, RequestState, FollowRequest, 
+    AuthorFollowing, Entry, InboxItem, Comment, CommentLike
+)
+from .serializers import (
+    FollowRequestReadingSerializer, PageSerializer, LikeSerializer, 
+    LikeSummarySerializer, AuthorFriendSerializer, AuthorFollowingSerializer, 
+    RemotePostSerializer, InboxItemSerializer, AuthorSerializer, 
+    FollowRequestSerializer, EntrySerializer, CommentSummarySerializer, 
+    CommentLikeSummarySerializer
+)
 import urllib.parse
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from django.views.decorators.http import require_http_methods
@@ -25,7 +35,12 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from .util import  get_author_friends, decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, send_entry_like_to_entry_author
+from .util import  (get_author_friends, decoded_auth_token, validated_auth, node_valid, add_or_update_fetched_authors, get_remote_authors_list, 
+                    get_mime, process_new_remote_author, create_automatic_following, author_exists, AUTHTOKEN, 
+                    encoded_fqid, get_serial, get_host_and_scheme, validUserName, saveNewAuthor, remote_followers_fetched, 
+                    remote_author_fetched, decoded_fqid, send_comment_to_entry_author, send_comment_like_to_comment_author, 
+                    send_entry_like_to_entry_author)
+
 from urllib.parse import urlparse, unquote
 import requests
 import uuid
