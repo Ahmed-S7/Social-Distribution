@@ -38,7 +38,7 @@ SocialDistribution is a distributed social networking platform that implements a
 - **GitHub Integration**: Automatic post creation from GitHub public events
 - **Privacy Controls**: Fine-grained visibility settings for posts (Public, Friends, Unlisted)
 
-## ✨ Features
+## ✨ Key Features
 
 ### Core Social Features
 
