@@ -22,13 +22,14 @@ Watch the full demonstration of the application's features:
 - [Technologies](#technologies)
 - [Getting Started](#getting-started)
 - [API Documentation](#api-documentation)
-- [Project Information](#project-information)
 - [Contributors](#contributors)
 - [License](#license)
 
 ## 🔍 Overview
 
-SocialDistribution is a distributed social networking platform that implements an ActivityPub-like protocol, allowing users from different servers (nodes) to connect and interact with each other. The application provides a comprehensive social media experience with profiles, posts, comments, likes, and follow relationships, all while supporting cross-node federation.
+**SocialDistribution** is a modern, federated social networking platform built with **Django** and **Python**, featuring a responsive frontend powered by **HTML5**, **CSS3**, and **JavaScript**. The application implements an ActivityPub-like protocol, enabling seamless cross-node communication and interaction between users across distributed servers. 
+
+Built with a RESTful architecture and a comprehensive API (60+ endpoints), SocialDistribution delivers a full-featured social media experience—including user profiles, content sharing, social connections, real-time notifications, and GitHub integration—while maintaining the decentralization principles of federated networks.
 
 ### Key Highlights
 
