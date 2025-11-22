@@ -16,7 +16,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User 
 from django.shortcuts import get_object_or_404, redirect
-from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseServerError
+from django.http import HttpResponse, Http404, HttpResponseRedirect, HttpResponseServerError, JsonResponse
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
@@ -111,7 +111,7 @@ def user_wiki_api(request, username):
 def user_wiki(request, username):
     '''Process all of the logic pertaining to a given user's wiki page'''
     print(f"CURRENT USER IN REQUEST: {request.user.username}")
-    if request.user.username != username or request.user.is_superuser:
+    if request.user.username != username:
         raise PermissionDenied("You are not allowed to view this page.")
     current_author = get_object_or_404(Author, user=request.user)
 
@@ -135,7 +135,7 @@ def user_wiki(request, username):
         if friended_id != current_author.id:
             friend_ids.add(friended_id)
 
-    entries = Entry.objects.filter(
+    entries_queryset = Entry.objects.filter(
         ~Q(visibility='DELETED') & (
             Q(visibility='PUBLIC') |
             Q(author=current_author) |
@@ -143,9 +143,22 @@ def user_wiki(request, username):
             Q(visibility='UNLISTED', author__id__in=followed_ids)
         )
     ).order_by('-created_at')
-    #return render(request, 'wiki.html', {'entries': entries})
+    
+    # Paginate entries
+    page_number = request.GET.get('page', 1)
+    page_size = 10  # Show 10 entries per page
+    paginator = Paginator(entries_queryset, page_size)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except (ValueError, TypeError):
+        page_obj = paginator.page(1)
+    except:
+        page_obj = paginator.page(paginator.num_pages) if paginator.num_pages > 0 else paginator.page(1)
+    
+    # Render markdown for entries on current page
     rendered_entries = []
-    for entry in entries:
+    for entry in page_obj:
         rendered = (
             mark_safe(markdown.markdown(entry.content))
             if entry.contentType == "text/markdown"
@@ -153,7 +166,13 @@ def user_wiki(request, username):
         )
         rendered_entries.append((entry, rendered))
 
-    return render(request, 'wiki.html', {'entries': rendered_entries})
+    return render(request, 'wiki.html', {
+        'entries': rendered_entries,
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'current_author': current_author,
+        'current_author_serial': str(current_author.serial)
+    })
 
 
 @require_POST
@@ -207,10 +226,18 @@ def register(request):
         github = request.POST.get('github') or ""
         profileImage = request.POST.get('profileImage') or ""
 
+        # Hardcoded check: prevent registration with username "admin" (case-insensitive)
+        if username and username.lower() == "admin":
+            return render(request, 'register.html', {'error': 'This username is invalid and cannot be used.'})
+
         userIsValid = validUserName(username)
         
+        # Validate GitHub URL if provided
+        from .util import validate_github_url
+        github_valid, github_error = validate_github_url(github)
+        
         #TODO: add password validation for pass length when connecting with other groups, leave as is for now
-        if userIsValid and password == confirm_password: 
+        if userIsValid and password == confirm_password and github_valid: 
             
             if User.objects.filter(username__iexact=username).exists():
                 return render(request, 'register.html', {'error': 'Username already taken.'})
@@ -236,6 +263,9 @@ def register(request):
             if  not userIsValid and " " in username:
                errorList.append("Username cannot contain spaces")
             
+            if not github_valid:
+                errorList.append(github_error if github_error else "Invalid GitHub URL")
+            
             errors = " ".join(errorList)
             return render(request, 'register.html', {'error': errors})
             
@@ -253,11 +283,21 @@ def register_api(request):
     if not username or not password or not confirm_password:
         return Response({"detail": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Hardcoded check: prevent registration with username "admin" (case-insensitive)
+    if username and username.lower() == "admin":
+        return Response({"detail": "This username is invalid and cannot be used."}, status=status.HTTP_400_BAD_REQUEST)
+
     if password != confirm_password:
         return Response({"detail": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
 
     if not validUserName(username):
         return Response({"detail": "Invalid username"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate GitHub URL
+    from .util import validate_github_url
+    github_valid, github_error = validate_github_url(github)
+    if not github_valid:
+        return Response({"detail": github_error if github_error else "Invalid GitHub URL"}, status=status.HTTP_400_BAD_REQUEST)
 
     if User.objects.filter(username__iexact=username).exists():
         return Response({"detail": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
@@ -271,12 +311,123 @@ def register_api(request):
     return Response({"detail": "Registration successful, pending admin approval"}, status=status.HTTP_201_CREATED)
 
 class MyLoginView(LoginView):
+    def get_success_url(self):
+        """Override to always redirect to user wiki, never to admin"""
+        user = self.request.user
+        if user.is_authenticated:
+            # Hardcoded check: if username is "admin", redirect to homepage
+            if user.username.lower() == "admin":
+                author = Author.objects.filter(user=user).first()
+                if author:
+                    return reverse('wiki:user-wiki', args=[author.displayName])
+                # If no author, redirect to login (will be handled in form_valid)
+                return reverse('wiki:login')
+            author = Author.objects.filter(user=user).first()
+            if author:
+                return reverse('wiki:user-wiki', args=[author.displayName])
+        # If no author exists, will be handled in form_valid
+        return reverse('wiki:login')
+    
     def form_valid(self, form):
         login(self.request, form.get_user())
         user = form.get_user()
+        
+        # Hardcoded check: if username is "admin", ensure redirect to homepage, never admin panel
+        if user.username.lower() == "admin":
+            author = Author.objects.filter(user=user).first()
+            if not author:
+                # Create author for admin if it doesn't exist
+                if user.is_superuser:
+                    from .util import saveNewAuthor
+                    try:
+                        author = saveNewAuthor(
+                            self.request,
+                            user,
+                            user.username,
+                            "",
+                            None,
+                            is_local=True
+                        )
+                        if not author:
+                            from .models import create_author_for_superuser
+                            author = create_author_for_superuser(user)
+                    except Exception as e:
+                        print(f"Error creating author for admin user: {e}")
+                        try:
+                            from .models import create_author_for_superuser
+                            author = create_author_for_superuser(user)
+                        except Exception as e2:
+                            print(f"Error with fallback author creation: {e2}")
+                            return redirect("wiki:login")
+                else:
+                    return redirect("wiki:login")
+            
+            # Redirect admin to homepage (their wiki page)
+            username = author.displayName
+            #Populate the db with users from other valid (active) nodes
+            active_nodes = RemoteNode.objects.filter(is_active=True)
+            print("ACTIVE REMOTE NODES:", active_nodes,'\n')
+            remote_authors_lists = [] 
+            for node in active_nodes:            
+                normalized_url = node.url.rstrip("/")
+                try: 
+                    authors_endpoint = normalized_url+"/api/authors/"
+                    node_authors_pull_attempt = requests.get(authors_endpoint, auth=AUTHTOKEN)
+                    
+                    print(f"ATTEMPTED TO PULL AUTHORS USING THE FOLLOWING ENDPOINT: {authors_endpoint}, status code: {node_authors_pull_attempt.status_code}\n")
+                    if not node_authors_pull_attempt.status_code == 200:
+                        print(f"FAILED TO PULL AUTHORS FROM {authors_endpoint}\n")
+                    else:
+                        print(f"successful pull of authors from {node}, status: {node_authors_pull_attempt.status_code}\n")
+                        try:
+                            node_authors = node_authors_pull_attempt.json()
+                        except Exception as e:
+                            raise e
+                        remote_authors_lists.append(node_authors['authors'])
+                        print("\n")
+                except Exception as e:
+                    raise e
+            
+            all_remote_authors = get_remote_authors_list(remote_authors_lists)    
+            add_or_update_fetched_authors(all_remote_authors)
+            # Explicitly redirect admin to their wiki page (homepage), never to admin panel
+            return redirect(reverse('wiki:user-wiki', args=[username]))
+        
         author = Author.objects.filter(user=user).first()
+        
+        # If user doesn't have an author, check if they're a superuser
         if not author:
-            return redirect("wiki:register")
+            if user.is_superuser:
+                # Create author for superuser automatically during login
+                # Use request context to get proper host
+                from .util import saveNewAuthor
+                try:
+                    author = saveNewAuthor(
+                        self.request,
+                        user,
+                        user.username,
+                        "",
+                        None,
+                        is_local=True
+                    )
+                    if not author:
+                        # Fallback to model helper if saveNewAuthor fails
+                        from .models import create_author_for_superuser
+                        author = create_author_for_superuser(user)
+                    username = author.displayName
+                except Exception as e:
+                    print(f"Error creating author for superuser during login: {e}")
+                    # Fallback: try model helper function
+                    try:
+                        from .models import create_author_for_superuser
+                        author = create_author_for_superuser(user)
+                        username = author.displayName
+                    except Exception as e2:
+                        print(f"Error with fallback author creation: {e2}")
+                        return redirect("wiki:register")
+            else:
+                # Regular users without author should register
+                return redirect("wiki:register")
         else:
             username = author.displayName
         #Populate the db with users from other valid (active) nodes
@@ -313,11 +464,10 @@ class MyLoginView(LoginView):
         #process existing and new authors with logs 
         add_or_update_fetched_authors(all_remote_authors)
  
-        # redirects to the login if the redirection to the wiki page fails
-        try:
-            return redirect('wiki:user-wiki', username=username)
-        except Exception as e:
-            return redirect("wiki:login")
+        # Always redirect to user wiki page, never to admin
+        # This ensures admin users go to their wiki page, not Django admin
+        # Use get_success_url() to ensure consistent redirect behavior
+        return redirect(reverse('wiki:user-wiki', args=[username]))
         
     def form_invalid(self, form):
         username = self.request.POST.get('username')
@@ -756,18 +906,19 @@ def cancel_follow_request(request, author_serial, request_id):
             - request: the request details
             
         RETURNS:
-            - a redirection to the requested author's page
+            - JSON response for AJAX requests
+            - a redirection to the requested author's page for regular requests
     
     '''
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
     
     requested_author_serial = author_serial
-    #print(request_id)
     try:
         #retrieve the current follow request
         active_request = FollowRequest.objects.get(id=request_id)
-        #print("The request being changed is:", active_request)
     except FollowRequest.DoesNotExist:
-        #print(f"{request_id} is not a valid existing follow request id")
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Follow request not found"}, status=404)
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_author_serial})) 
 
     
@@ -776,8 +927,16 @@ def cancel_follow_request(request, author_serial, request_id):
         active_request.delete()
     except Exception as e:
         print(e)
+        if is_ajax:
+            return JsonResponse({"success": False, "message": f"Failed to cancel follow request: {str(e)}"}, status=500)
         return HttpResponseServerError(f"Could Not Cancel Your Follow Request, Please Try Again.")
-    
+
+    if is_ajax:
+        return JsonResponse({
+            "success": True,
+            "message": "Follow request cancelled successfully",
+            "status": "none"
+        }, status=200)
 
     #redirect to the requested user's page 
     return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_author_serial}))      
@@ -789,13 +948,15 @@ def unfollow_profile(request, author_serial, following_id):
     
         ARGS:
             - author_serial: the requested author's serial 
-            - request_id: the id of the sent follow request
-            - request: the hhtp request details
+            - following_id: the id of the following relationship
+            - request: the http request details
             
         RETURNS:
-            - a redirection to the requested author's page
+            - JSON response for AJAX requests
+            - a redirection to the requested author's page for regular requests
     
     '''
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
     
     followed_author_serial = author_serial
     
@@ -803,59 +964,75 @@ def unfollow_profile(request, author_serial, following_id):
         #retrieve the current follow request
         followed_author = Author.objects.get(serial=followed_author_serial)
         current_author = Author.objects.get(user=request.user)
-        #print("The request being changed is:", active_request)
     except Author.DoesNotExist:
-        #print(f"{following_id} is not a valid existing following id")
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Author not found"}, status=404)
         return redirect(reverse("wiki:view_local_authors"))
         
     
     try:
         #retrieve the current follow request
         active_following = AuthorFollowing.objects.get(id=following_id)
+        
+        # Verify that this following relationship belongs to the current author
+        if active_following.follower != current_author:
+            if is_ajax:
+                return JsonResponse({"success": False, "message": "You don't have permission to unfollow this relationship"}, status=403)
+            return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))
     
-        #retrieve the accepted follow request
-        active_request=FollowRequest.objects.get(requester = current_author.id, requested_account=followed_author.id)
+        #retrieve the accepted follow request (if it exists)
+        # Note: The follow request might not exist if it was already deleted/processed
+        try:
+            active_request = FollowRequest.objects.get(requester=current_author, requested_account=followed_author, is_deleted=False)
+        except FollowRequest.DoesNotExist:
+            # If no active request exists, that's okay - we can still unfollow
+            active_request = None
     
-    except AuthorFollowing.DoesNotExist or FollowRequest.DoesNotExist:
+    except AuthorFollowing.DoesNotExist:
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Following relationship not found"}, status=404)
         return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))     
      
     # ID of friendship object or None
     active_friendship_id = current_author.get_friendship_id_with(followed_author)
     
-    
-    '''#VISUAL REPRESENTATION TEST
-    print("Current Author is:",current_author,followed_author)
-    print("Followed Author is:", followed_author)
-    print("The Following being deleted is:", active_following)   
-    print("The active request being deleted is:", active_request)   
-    '''
-    
     #set the follow request as deleted
+    active_friendship = None
     try:
-        active_request.delete()
+        # Delete follow request if it exists
+        if active_request:
+            active_request.delete()
+        
+        # Delete the following relationship
         active_following.delete()
+        
         #IMPORTANT: DO NOT CHANGE AS THIS CHECK IS HERE IN CASE A USER IS FOLLOWING A USER AND IS FRIENDS WITH THEM
         # -alternatively, if the user is only following them, nothing happens to any friendship objects because the users are not friends
         if active_friendship_id:
-            active_friendship = AuthorFriend.objects.get(id=active_friendship_id)
-            active_friendship.delete()
+            try:
+                # Use all_objects to get the friendship even if it's soft-deleted
+                active_friendship = AuthorFriend.all_objects.get(id=active_friendship_id)
+                active_friendship.delete()
+            except AuthorFriend.DoesNotExist:
+                # Friendship already deleted, that's fine
+                pass
     except Exception as e:
-        #Roll back any changes upon any failures
-        active_request.is_deleted=False
-        active_following.is_deleted=False
-        if active_friendship:
-            active_friendship.is_deleted=False
-        
-        print(e)
+        # Log the error but don't rollback - let the soft deletion stand
+        print(f"Error during unfollow deletion: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't rollback - the objects may have been partially deleted
+        # Return error but don't undo the deletions
+        if is_ajax:
+            return JsonResponse({"success": False, "message": f"Failed to unfollow user: {str(e)}"}, status=500)
         return HttpResponseServerError(f"Failed to Unfollow This User.")
-    
-    #CHECK FOR SUCCESSFUL DELETIONS
-    '''
-    print("Follow Request Deleted:",active_request.is_deleted)
-    print("Active Following Deleted:",active_following.is_deleted)
-    if active_friendship_id:
-        print("Active Friendship Deleted:", active_request.is_deleted)
-    '''
+
+    if is_ajax:
+        return JsonResponse({
+            "success": True,
+            "message": "Successfully unfollowed user",
+            "status": "none"
+        }, status=200)
 
     #redirect to the requested user's page 
     return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": followed_author_serial}))          
@@ -874,31 +1051,43 @@ def view_entry_author(request, entry_serial):
 @login_required  
 @require_http_methods(["GET", "POST"]) 
 def follow_profile(request, author_serial):
+    """Follow a profile. Supports both HTML redirects and JSON API responses."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
     
-    if request.user.is_staff or request.user.is_superuser:
-        return redirect('wiki:login')
-
     current_user = request.user
     try:
         requesting_account = Author.objects.get(user=current_user)
         requested_account = Author.objects.get(serial=author_serial)
-    except requested_account.DoesNotExist:
-         print(e)
+    except Author.DoesNotExist:
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Author not found"}, status=404)
+        return redirect(reverse("wiki:view_local_authors"))
 
-    follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
-    follow_request.summary = str(follow_request)
-    
-    ##CHECK REQUESTING AND REQUESTED ACCOUNT#
-    #print(requesting_account)
-    #print(requested_account)
-    ##########################################
-    
+    # Check if already friends or following
     if requesting_account.is_friends_with(requested_account):
+        if is_ajax:
+            follow_id = requesting_account.get_following_id_with(requested_account)
+            friendship_id = requesting_account.get_friendship_id_with(requested_account)
+            return JsonResponse({
+                "success": False,
+                "message": "Already friends with this user",
+                "status": "friends",
+                "follow_id": follow_id,
+                "friendship_id": friendship_id
+            }, status=400)
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_friend_status= f"{base_URL}?status=friends&user={requested_account}"
         return redirect(query_with_friend_status)
         
     if requesting_account.is_following(requested_account):
+        if is_ajax:
+            follow_id = requesting_account.get_following_id_with(requested_account)
+            return JsonResponse({
+                "success": False,
+                "message": "Already following this user",
+                "status": "following",
+                "follow_id": follow_id
+            }, status=400)
         base_URL = reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial})
         query_with_follow_status= f"{base_URL}?status=following&user={requested_account}"
         return redirect(query_with_follow_status)
@@ -908,20 +1097,29 @@ def follow_profile(request, author_serial):
         #local user = regular flow of a local follow request
         if requested_account.is_local:
             try:
+                follow_request = FollowRequest(requester=requesting_account, requested_account=requested_account)
+                follow_request.summary = str(follow_request)
                 follow_request.save()
+                request_id = follow_request.id
             except Exception as e:
                 print(e)
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": f"Failed to create follow request: {str(e)}"}, status=500)
+                raise e
         
         #remote profiles will automatically send a following
         else:
-            
             try:
                 follow_request_remote = FollowRequest(requester=requesting_account, requested_account=requested_account,  state=RequestState.REQUESTING)
+                follow_request_remote.summary = str(follow_request_remote)
                 requesting = follow_request_remote.requester
                 requested = follow_request_remote.requested_account
-                remote_serialized_request = FollowRequestSerializer(follow_request)
+                remote_serialized_request = FollowRequestSerializer(follow_request_remote)
             except Exception as e:
                 print(e)
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": f"Failed to create remote follow request: {str(e)}"}, status=500)
+                raise e
             
             # attempt to save the follow request, and an associated following (by default)
             try:
@@ -933,6 +1131,7 @@ def follow_profile(request, author_serial):
         
                     
                 # try to push the follow request to the remote inbox to send them a follow request, then automatically follow them if succeeds
+                follow_request_response = None
                 try:
                     follow_request_response = requests.post(
                     inbox_url,
@@ -942,20 +1141,43 @@ def follow_profile(request, author_serial):
                     )
                 except Exception as e:
                     print(f"WE WERE UNABLE TO POST YOUR FOLLOW REQUEST TO {inbox_url} REMOTELY, dev notes:{e}\n")
+                    if is_ajax:
+                        return JsonResponse({"success": False, "message": f"Failed to send remote follow request: {str(e)}"}, status=500)
                     
                 # at this point, you've pushed the follow request SUCCESSFULLY to their node and they need to deal with the inbox item to generate a follow request 
                 # in the node sending the follow request, a following relationship can now be assumed, so you immediately follow the remote author 
-                if follow_request_response.status_code in [200, 201]:        
+                if follow_request_response and follow_request_response.status_code in [200, 201]:        
                     if len(follow_request_response.content) < 300:
                         print(f"RESPONSE FROM ({inbox_url}): {follow_request_response.content}")
                     else:
                         print(f"SUCCESSFULLY SENT REMOTE FOLLOW REQUEST (STATUS CODE: {follow_request_response.status_code}), RESPONSE WAS GREATER THAN 300 CHARACTERS.")
-                else:
+                elif follow_request_response:
                     print(f"WE WERE UNABLE TO SEND A FOLLOW REQUEST TO URL: {inbox_url} REMOTELY, STATUS CODE: {follow_request_response.status_code}.")
+                    if is_ajax:
+                        return JsonResponse({"success": False, "message": f"Remote node rejected follow request (status {follow_request_response.status_code})"}, status=502)
+                
+                request_id = follow_request_remote.id
             except Exception as e:
-                print(e)     
+                print(e)
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": f"Failed to process remote follow request: {str(e)}"}, status=500)
+                raise e
+                
+        if is_ajax:
+            # Get updated relationship status
+            follow_id = requesting_account.get_following_id_with(requested_account)
+            return JsonResponse({
+                "success": True,
+                "message": "Follow request sent successfully",
+                "status": "requesting",
+                "request_id": request_id,
+                "follow_id": follow_id
+            }, status=200)
+                
     except Exception as e:
-        print(e)    
+        print(e)
+        if is_ajax:
+            return JsonResponse({"success": False, "message": f"An error occurred: {str(e)}"}, status=500)
         
     return redirect(reverse("wiki:view_external_profile", kwargs={"author_serial": requested_account.serial}))                
     
@@ -985,9 +1207,6 @@ def get_profile_api(request, username):
 def check_follow_requests(request, username):
     '''Check for all of the follow  requests of a specific author'''
     
-    if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
-
     requestedAuthor = Author.objects.get(user=request.user)
         
         
@@ -1010,19 +1229,31 @@ def process_follow_request(request, author_serial, request_id):
             serial: the author's serial id, 
             request_id: the follow request's IDS
             
-        Returns: HTTPResponseError for any issues, a redirection otherwise
+        Returns: JSON response for AJAX requests, HTTPResponseError or redirection otherwise
         
     '''
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
    
-    if request.user.is_staff or request.user.is_superuser:
-        return HttpResponseServerError("Admins cannot perform author actions. Please user a regular account associated with an Author.")
-    requestedAuthor = Author.objects.get(serial=author_serial)
+    try:
+        requestedAuthor = Author.objects.get(serial=author_serial)
+    except Author.DoesNotExist:
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Author not found"}, status=404)
+        return redirect(reverse("wiki:view_local_authors"))
     
     choice = request.POST.get("action")
+    if not choice:
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "No action specified"}, status=400)
+        return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
+        
     if choice.lower() == "accept":
-    
         #if follow request gets accepted, 
         follow_request = FollowRequest.objects.filter(id=request_id).first()
+        if not follow_request:
+            if is_ajax:
+                return JsonResponse({"success": False, "message": "Follow request not found"}, status=404)
+            return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
         print(f"THE STATE OF THE SELECTED FOLLOW REQUEST IS: {follow_request.state}")
     
         try:
@@ -1032,7 +1263,10 @@ def process_follow_request(request, author_serial, request_id):
             print(f"this account is remote: {followed_account_remote}")
             print("succeeded in setting follower and followed account")
             print(f"{follower} (local author: {follower.is_local}) is trying to follow {follow_request.requested_account}")
-        except follower.DoesNotExist:
+        except Exception as e:
+            print(e)
+            if is_ajax:
+                return Response({"success": False, "message": "Follow request was not found between you and this author"}, status=status.HTTP_404_NOT_FOUND)
             return Http404("Follow request was not found between you and this author")
         
         # create a following after accepted request
@@ -1056,14 +1290,19 @@ def process_follow_request(request, author_serial, request_id):
                             
                 except Exception as e:
                         print(e)
+                        if is_ajax:
+                            return JsonResponse({"success": False, "message": f"Failed to create following: {str(e)}"}, status=500)
                         return check_follow_requests(request, request.user.username)
 
             else:
-                    
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": f"Unable to follow Author {new_following.following.displayName}"}, status=500)
                 return HttpResponseServerError(f"Unable to follow Author {new_following.following.displayName}.")  
         
         except Exception as e:
-            print(e) 
+            print(e)
+            if is_ajax:
+                return JsonResponse({"success": False, "message": f"Failed to accept follow request: {str(e)}"}, status=500) 
             
              
         # check if there is now a mutual following
@@ -1088,22 +1327,56 @@ def process_follow_request(request, author_serial, request_id):
                 
                 #print the exception
                 print(e)
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": f"Failed to create friendship: {str(e)}"}, status=500)
             
                 return HttpResponseServerError(f"Unable to friend Author {new_following.following.displayName}")      
+        
+        # Success - return response
+        follow_id = follower.get_following_id_with(requestedAuthor)
+        friendship_id = follower.get_friendship_id_with(requestedAuthor)
+        status_value = "friends" if friendship_id else "following"
+        
+        if is_ajax:
+            return JsonResponse({
+                "success": True,
+                "message": "Follow request accepted successfully",
+                "status": status_value,
+                "follow_id": follow_id,
+                "friendship_id": friendship_id
+            }, status=200)
                       
     else:
         #if follow request is denied,
-         follow_request = FollowRequest.objects.filter(id=request_id).first()
+        follow_request = FollowRequest.objects.filter(id=request_id).first()
+        if not follow_request:
+            if is_ajax:
+                return JsonResponse({"success": False, "message": "Follow request not found"}, status=404)
+            return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
     
-         try:
+        try:
             follower = follow_request.requester
-                
-         except follower.DoesNotExist:
+        except Exception as e:
+            print(e)
+            if is_ajax:
+                return JsonResponse({"success": False, "message": "Follow request was not found between you and this author"}, status=404)
             return Http404("Follow request was not found between you and this author")
         
-         #Reject the follow request and delete it 
-         follow_request.set_request_state(RequestState.REJECTED)
-         follow_request.delete()
+        #Reject the follow request and delete it 
+        try:
+            follow_request.set_request_state(RequestState.REJECTED)
+            follow_request.delete()
+            
+            if is_ajax:
+                return JsonResponse({
+                    "success": True,
+                    "message": "Follow request rejected successfully",
+                    "status": "none"
+                }, status=200)
+        except Exception as e:
+            print(e)
+            if is_ajax:
+                return JsonResponse({"success": False, "message": f"Failed to reject follow request: {str(e)}"}, status=500)
 
     return redirect(reverse("wiki:check_follow_requests", kwargs={"username": request.user.username}))
 
@@ -2326,11 +2599,23 @@ def profile_view(request, username):
         rendered_entries.append((entry, rendered)) 
     
     
+    # Get current logged-in user's author for notifications
+    current_user_author = None
+    current_user_serial = None
+    if request.user.is_authenticated:
+        try:
+            current_user_author = Author.objects.get(user=request.user)
+            current_user_serial = str(current_user_author.serial)
+        except Author.DoesNotExist:
+            pass
+    
     return render(
         request, 'profile.html', 
         {
+        'author': author,
         'authorID': author.id,
         'authorHost':author.host,
+        'current_author_serial': current_user_serial,
         'authorDisplayName':author.displayName,
         } 
     )
@@ -2345,12 +2630,19 @@ def edit_profile(request, username):
 
     if request.method == 'POST':
         new_username = request.POST.get('displayName')
-        github = request.POST.get('github')
+        github = request.POST.get('github') or ''
         description = request.POST.get('description')
         profile_image_url = request.POST.get('profileImage')
 
         # Check if the new username is already taken by someone else
         if new_username and new_username != request.user.username:
+            # Hardcoded check: prevent changing username to "admin" (case-insensitive)
+            if new_username.lower() == "admin":
+                return render(request, 'edit_profile.html', {
+                    'author': author,
+                    'error': 'This username is invalid and cannot be used.'
+                })
+            
             if User.objects.filter(username=new_username).exclude(id=request.user.id).exists():
                 return render(request, 'edit_profile.html', {
                     'author': author,
@@ -2368,6 +2660,16 @@ def edit_profile(request, username):
             request.user.save()
             author.displayName = new_username
             author.save()
+        
+        # Validate GitHub URL
+        from .util import validate_github_url
+        is_valid, error_message = validate_github_url(github)
+        if not is_valid:
+            return render(request, 'edit_profile.html', {
+                'author': author,
+                'error': error_message
+            })
+        
         author.github = github
         author.description = description
 
@@ -2479,6 +2781,15 @@ def entry_detail(request, author_serial, entry_serial):
     else:
         rendered_content = entry.content
 
+    # Get current logged-in user's author serial for notifications
+    current_user_author_serial = None
+    if request.user.is_authenticated:
+        try:
+            current_user_author = Author.objects.get(user=request.user)
+            current_user_author_serial = str(current_user_author.serial)
+        except Author.DoesNotExist:
+            pass
+
     return render(
         request,
         'entry_detail.html',
@@ -2486,7 +2797,8 @@ def entry_detail(request, author_serial, entry_serial):
             'entry': entry,
             'rendered_content': rendered_content,
             'is_owner': is_owner,
-            'comments': comments
+            'comments': comments,
+            'current_author_serial': current_user_author_serial,
         }, status=status.HTTP_200_OK
     )
 

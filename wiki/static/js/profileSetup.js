@@ -10,18 +10,30 @@ export async function retrieveAuthor(AUTHOR_ID, AUTHOR_HOST){
             console.log(`RESPONSE STATUS CODE: ${response.status}`);
             return author;
           }  
-export async function retrieveAuthorEntries(AUTHOR_ID){
-            const url = `${AUTHOR_ID}/entries`;
+export async function retrieveAuthorEntries(AUTHOR_ID, page = 1, pageSize = 10){
+            const url = `${AUTHOR_ID}/entries?page=${page}&size=${pageSize}`;
             console.log(`fetched URL: ${url}`);
             const response = await fetch(url);
             if (!response.ok){
               throw new Error(`Could Not fetch this author's entries`);
             }
             const entriesJson = await response.json();
-            const entries = entriesJson['src'];
             console.log(`RESPONSE STATUS CODE FOR ENTRIES RETRIEVAL: ${response.status}`);
-            console.log(entries);
-            return entries;
+            console.log(entriesJson);
+            const pageNumber = parseInt(entriesJson['page_number']) || page;
+            const size = parseInt(entriesJson['size']) || pageSize;
+            const count = parseInt(entriesJson['count']) || 0;
+            const totalPages = Math.ceil(count / size);
+            return {
+              entries: entriesJson['src'] || [],
+              pagination: {
+                page_number: pageNumber,
+                size: size,
+                count: count,
+                has_previous: pageNumber > 1,
+                has_next: pageNumber < totalPages && count > 0
+              }
+            };
           }
 
 function getCSRFToken() {
@@ -39,14 +51,21 @@ function getOriginFromUrl(url) {
   }
 }
 
-export function setupAuthorEntries(entries){
+export function setupAuthorEntries(entries, clearExisting = false, animate = true){
   const entryList = document.querySelector("#entry_list");
-    if(entries){
-      console.log(`entries found`);
-      for (const entry of entries){
+    if(clearExisting && entryList){
+      entryList.innerHTML = '';
+    }
+    if(entries && entries.length > 0){
+      console.log(`entries found: ${entries.length}`);
+      entries.forEach((entry, index) => {
           const entryLi = document.createElement("li");
-          entryLi.className = "entryItem";
+          entryLi.className = "entryItem profile-entry-item";
           entryLi.id = "entryItem";
+          if(animate){
+            entryLi.style.opacity = "0";
+            entryLi.style.transform = "translateY(20px)";
+          }
 
           // Post card container
           const postCard = document.createElement("div");
@@ -184,10 +203,175 @@ export function setupAuthorEntries(entries){
           // Append postCard to entryLi, then add entryLi to entryList
           entryLi.appendChild(postCard);
           entryList.appendChild(entryLi);
+          
+          // Animate entry in with delay
+          if(animate){
+            setTimeout(() => {
+              entryLi.style.transition = "opacity 0.5s ease-in, transform 0.5s ease-in";
+              entryLi.style.opacity = "1";
+              entryLi.style.transform = "translateY(0)";
+            }, index * 100);
+          }
           console.log(`Entry HTML: ${entryLi}`);
+      });
+    } else {
+      if(entryList && !clearExisting){
+        const noEntries = document.createElement("li");
+        noEntries.className = "entryItem";
+        noEntries.textContent = "No entries yet.";
+        entryList.appendChild(noEntries);
       }
+    }
 }
-} 
+
+export function setupPaginationControls(pagination, authorId, onPageChange){
+  // Remove existing pagination if any
+  const existingPagination = document.querySelector("#entries-pagination");
+  if(existingPagination){
+    existingPagination.remove();
+  }
+  
+  if(!pagination || pagination.count <= pagination.size){
+    return; // No pagination needed
+  }
+  
+  const entryListSection = document.querySelector(".entry_list");
+  if(!entryListSection){
+    return;
+  }
+  
+  const paginationContainer = document.createElement("div");
+  paginationContainer.id = "entries-pagination";
+  paginationContainer.className = "entries-pagination mt-4";
+  
+  const paginationNav = document.createElement("nav");
+  paginationNav.setAttribute("aria-label", "Entries pagination");
+  
+  const paginationUl = document.createElement("ul");
+  paginationUl.className = "pagination justify-content-center";
+  
+  // Previous button
+  const prevLi = document.createElement("li");
+  prevLi.className = pagination.has_previous ? "page-item" : "page-item disabled";
+  const prevLink = document.createElement(pagination.has_previous ? "a" : "span");
+  prevLink.className = "page-link";
+  prevLink.setAttribute("aria-label", "Previous");
+  prevLink.innerHTML = '<span aria-hidden="true">&laquo; Previous</span>';
+  if(pagination.has_previous && onPageChange){
+    prevLink.href = "#";
+    prevLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      onPageChange(pagination.page_number - 1);
+    });
+  }
+  prevLi.appendChild(prevLink);
+  paginationUl.appendChild(prevLi);
+  
+  // Page numbers (show current page and 2 pages on each side)
+  const totalPages = Math.ceil(pagination.count / pagination.size);
+  const startPage = Math.max(1, pagination.page_number - 2);
+  const endPage = Math.min(totalPages, pagination.page_number + 2);
+  
+  if(startPage > 1){
+    const firstLi = document.createElement("li");
+    firstLi.className = "page-item";
+    const firstLink = document.createElement("a");
+    firstLink.className = "page-link";
+    firstLink.textContent = "1";
+    firstLink.href = "#";
+    firstLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      onPageChange(1);
+    });
+    firstLi.appendChild(firstLink);
+    paginationUl.appendChild(firstLi);
+    
+    if(startPage > 2){
+      const ellipsisLi = document.createElement("li");
+      ellipsisLi.className = "page-item disabled";
+      const ellipsisSpan = document.createElement("span");
+      ellipsisSpan.className = "page-link";
+      ellipsisSpan.textContent = "...";
+      ellipsisLi.appendChild(ellipsisSpan);
+      paginationUl.appendChild(ellipsisLi);
+    }
+  }
+  
+  for(let i = startPage; i <= endPage; i++){
+    const pageLi = document.createElement("li");
+    pageLi.className = i === pagination.page_number ? "page-item active" : "page-item";
+    const pageLink = i === pagination.page_number ? document.createElement("span") : document.createElement("a");
+    pageLink.className = "page-link";
+    pageLink.textContent = i;
+    if(i !== pagination.page_number && onPageChange){
+      pageLink.href = "#";
+      pageLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        onPageChange(i);
+      });
+    }
+    pageLi.appendChild(pageLink);
+    paginationUl.appendChild(pageLi);
+  }
+  
+  if(endPage < totalPages){
+    if(endPage < totalPages - 1){
+      const ellipsisLi = document.createElement("li");
+      ellipsisLi.className = "page-item disabled";
+      const ellipsisSpan = document.createElement("span");
+      ellipsisSpan.className = "page-link";
+      ellipsisSpan.textContent = "...";
+      ellipsisLi.appendChild(ellipsisSpan);
+      paginationUl.appendChild(ellipsisLi);
+    }
+    
+    const lastLi = document.createElement("li");
+    lastLi.className = "page-item";
+    const lastLink = document.createElement("a");
+    lastLink.className = "page-link";
+    lastLink.textContent = totalPages;
+    lastLink.href = "#";
+    lastLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      onPageChange(totalPages);
+    });
+    lastLi.appendChild(lastLink);
+    paginationUl.appendChild(lastLi);
+  }
+  
+  // Next button
+  const nextLi = document.createElement("li");
+  nextLi.className = pagination.has_next ? "page-item" : "page-item disabled";
+  const nextLink = document.createElement(pagination.has_next ? "a" : "span");
+  nextLink.className = "page-link";
+  nextLink.setAttribute("aria-label", "Next");
+  nextLink.innerHTML = '<span aria-hidden="true">Next &raquo;</span>';
+  if(pagination.has_next && onPageChange){
+    nextLink.href = "#";
+    nextLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      onPageChange(pagination.page_number + 1);
+    });
+  }
+  nextLi.appendChild(nextLink);
+  paginationUl.appendChild(nextLi);
+  
+  paginationNav.appendChild(paginationUl);
+  paginationContainer.appendChild(paginationNav);
+  
+  // Add page info
+  const pageInfo = document.createElement("div");
+  pageInfo.className = "text-center mt-2";
+  const infoText = document.createElement("small");
+  infoText.className = "text-muted";
+  infoText.textContent = `Showing page ${pagination.page_number} of ${totalPages} (${pagination.count} entries total)`;
+  pageInfo.appendChild(infoText);
+  paginationContainer.appendChild(pageInfo);
+  
+  // Insert after entry list
+  entryListSection.parentNode.insertBefore(paginationContainer, entryListSection.nextSibling);
+}
+
 function setupPfpAndName(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetchedAuthorProfile, profilePicAndName){
               //Profile Picture and Name Display
               //////////////////////////////////////////////////////////////////////////////////
@@ -249,20 +433,55 @@ function setupDescGithub(fetchedAuthorProfile){
                 //Setup the GitHuB and Description from the fetched author
                 const descriptionAndGitHub = document.querySelector('#description_content');
                 const description = document.querySelector("#description");
-                description.textContent = truncateChars(fetchedAuthorProfile.description, 100) || "No Description";
-                const githubLogo = document.querySelector("#gitLogo");
                 
-                const link = document.createElement("a");
-                link.href = fetchedAuthorProfile.github;
-                link.className = "githubLink";
-                link.appendChild(githubLogo);
+                // Set description with proper class
+                if (fetchedAuthorProfile.description && fetchedAuthorProfile.description.trim() !== '') {
+                    description.textContent = truncateChars(fetchedAuthorProfile.description, 100);
+                    description.className = "description";
+                } else {
+                    description.textContent = "No Description";
+                    description.className = "description no-description";
+                }
+                
+                // Only show GitHub logo if GitHub URL exists
+                if (fetchedAuthorProfile.github && fetchedAuthorProfile.github.trim() !== '') {
+                    // Try to get the static path from the script tag with constants
+                    let gitLogoPath = '/static/images/gitLogo.png'; // default fallback
+                    const constantsScript = document.querySelector('script[id="constants"]');
+                    if (constantsScript) {
+                        const scriptContent = constantsScript.textContent;
+                        // Extract static path pattern and construct GitHub logo path
+                        const defaultImageMatch = scriptContent.match(/DEFAULT_IMAGE_URL = "([^"]+)"/);
+                        if (defaultImageMatch) {
+                            gitLogoPath = defaultImageMatch[1].replace('/images/default_pfp.webp', '/images/gitLogo.png');
+                        }
+                    }
+                    
+                    const githubLogo = document.createElement("img");
+                    githubLogo.id = "gitLogo";
+                    githubLogo.src = gitLogoPath;
+                    githubLogo.alt = "GitHub Logo";
+                    
+                    const link = document.createElement("a");
+                    link.href = fetchedAuthorProfile.github;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    link.className = "githubLink";
+                    
+                    link.appendChild(githubLogo);
 
-                const gitHubUserName = document.createElement("p");
-                gitHubUserName.textContent = "GitHub Profile" || "GitHub Profile Not Found";
-                gitHubUserName.className="github";
+                    const gitHubUserName = document.createElement("p");
+                    gitHubUserName.textContent = "GitHub Profile";
+                    gitHubUserName.className = "github";
 
-                link.appendChild(gitHubUserName);
-                descriptionAndGitHub.appendChild(link);
+                    link.appendChild(gitHubUserName);
+                    descriptionAndGitHub.appendChild(link);
+                } else {
+                    const noGitHub = document.createElement("p");
+                    noGitHub.textContent = "GitHub Profile Not Found";
+                    noGitHub.className = "no-github";
+                    descriptionAndGitHub.appendChild(noGitHub);
+                }
                 
                 }
      

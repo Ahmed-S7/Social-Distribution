@@ -39,6 +39,9 @@ class AuthorSerializer(serializers.ModelSerializer):
     followings = serializers.SerializerMethodField()
     '''
     def validate_displayName(self, value):
+        # Hardcoded check: prevent username "admin" (case-insensitive)
+        if value and value.lower() == "admin":
+            raise serializers.ValidationError("This username is invalid and cannot be used.")
         # Enforce no spaces in username
         if  " " in value:
             raise serializers.ValidationError("Display name cannot contain any spaces.")
@@ -46,23 +49,50 @@ class AuthorSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Display name cannot be longer than 150 characters")
         return value
     
+    def validate_github(self, value):
+        """Validate GitHub URL format and account existence"""
+        from .util import validate_github_url
+        
+        is_valid, error_message = validate_github_url(value)
+        if not is_valid:
+            raise serializers.ValidationError(error_message)
+        return value
+    
     def update(self, instance, validated_data):
         """
         Update and return an existing `Author` instance, given the validated data
         """
-  
-        if 'displayName' in validated_data:
-            instance.displayName = validated_data['displayName']
-            instance.user.username = instance.displayName  
+        # Temporarily disable the post_save signal to avoid conflicts
+        from django.db.models.signals import post_save
+        from wiki.models import update_user_username
+        
+        # Disconnect the signal temporarily
+        post_save.disconnect(update_user_username, sender=instance.__class__)
+        
+        try:
+            # Update displayName if provided
+            if 'displayName' in validated_data:
+                instance.displayName = validated_data['displayName']
+                # Update user.username to match
+                instance.user.username = validated_data['displayName']
+                # Save user first
+                instance.user.save(update_fields=['username'])
 
-        if 'github' in validated_data:
-            instance.github = validated_data['github']
+            if 'github' in validated_data:
+                instance.github = validated_data['github']
+            
+            if 'description' in validated_data:
+                instance.description = validated_data['description']
         
-    
-        if 'profileImage' in validated_data:
-            instance.profileImage = validated_data['profileImage']
+            if 'profileImage' in validated_data:
+                instance.profileImage = validated_data['profileImage']
+            
+            # Save the instance after all updates
+            instance.save()
+        finally:
+            # Reconnect the signal
+            post_save.connect(update_user_username, sender=instance.__class__)
         
-        instance.save()
         return instance
     def get_followers_count(self, obj):
         return len(obj.get_followers())

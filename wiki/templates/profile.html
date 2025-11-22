@@ -1,9 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 {% load static %}
+    <script>
+      // Prevent white flash - apply dark mode IMMEDIATELY before anything renders
+      try {
+        const theme = localStorage.getItem('theme') || 'light';
+        const html = document.documentElement;
+        html.setAttribute('data-theme', theme);
+        // Apply background color immediately to prevent white flash
+        html.style.backgroundColor = theme === 'dark' ? '#252525' : '#f9f9f9';
+      } catch(e) {}
+    </script>
+    <style>
+      /* Prevent white flash - apply background color immediately */
+      html { 
+        background-color: #f9f9f9; /* Default light mode */
+        min-height: 100%;
+      }
+      html[data-theme="dark"] {
+        background-color: #252525 !important;
+      }
+      body {
+        background-color: #f9f9f9; /* Default light mode */
+        margin: 0;
+        padding: 0;
+      }
+      html[data-theme="dark"] body {
+        background-color: #252525 !important;
+      }
+    </style>
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+     <link rel="stylesheet" href="{% static 'wiki/follow_notification.css' %}">
+     <link rel="stylesheet" href="{% static 'wiki/dark_mode.css' %}">
      <script id="constants">
           const AUTHOR_ID = '{{ authorID }}'; 
           const AUTHOR_HOST = '{{ authorHost }}';
@@ -11,6 +41,7 @@
           console.log(`DISPLAYNAME: ${AUTHOR_DISPLAYNAME}`);
           const IS_AUTHENTICATED = "{{ request.user.is_authenticated|yesno:'true,false' }}";
           const DEFAULT_IMAGE_URL = "{% static '/images/default_pfp.webp' %}";
+          const CURRENT_AUTHOR_SERIAL = '{{ current_author_serial|default:"" }}';
     </script>
 
 <style>
@@ -61,7 +92,14 @@
   <div style="height:5.5em"></div>
   <div class="container mt-4">
 
-<section class="author_profile_with_entries">
+        <!-- Loading Spinner -->
+        <div id="loading_container" class="loading-container">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Loading profile...</div>
+        </div>
+
+        <!-- Profile Content Container -->
+        <section class="author_profile_with_entries profile-content-container" id="profile_content_container">
     <section class="author_profile_with_description">
         <section class="pic_name_followers_entries">
           <!--Fetch author info that will be used to populate the UI
@@ -69,86 +107,252 @@
           -->
    
           <script type="module">
-          import { retrieveAuthor, setupProfile, retrieveAuthorEntries, setupAuthorEntries} from "{% static 'js/profileSetup.js' %}"
+          import { retrieveAuthor, setupProfile, retrieveAuthorEntries, setupAuthorEntries, setupPaginationControls} from "{% static 'js/profileSetup.js' %}"
           import { truncateChars, renderMarkdown, buildEditProfileUrl} from "{% static 'js/util.js' %}"
           "use strict";
 
-          window.addEventListener('DOMContentLoaded', async()=>{
-            const profilePicAndName = document.querySelector("#profile_pic_and_name");
-            const descriptionContent = document.querySelector("#description_content");
-            const fetchedAuthorEntries = await retrieveAuthorEntries(AUTHOR_ID);
-            console.log(fetchedAuthorEntries);
-            const fetchedAuthorProfile = await retrieveAuthor(AUTHOR_ID , AUTHOR_HOST);
-            console.log(fetchedAuthorProfile);
-            const renderedEntries = renderMarkdown(fetchedAuthorEntries);
-            const entriesForDisplay = [];
-            for (const entry of renderedEntries){
-              console.log(`Entry Title: ${entry.entry.title}
-              \nEntry Author: ${entry.entry.author.displayName}
-              \nEntry Publish Date: ${entry.entry.published}`);
-              entriesForDisplay.push(entry.entry);
-            }
+          let currentPage = 1;
+          const PAGE_SIZE = 10;
 
-            const EDIT_URL = buildEditProfileUrl(fetchedAuthorProfile.displayName);
-            setupProfile(IS_AUTHENTICATED,EDIT_URL,DEFAULT_IMAGE_URL,fetchedAuthorProfile,profilePicAndName);
-            setupAuthorEntries(entriesForDisplay);
+          async function loadEntries(page = 1) {
+            const entryList = document.querySelector("#entry_list");
+            const loadingIndicator = document.querySelector("#entries-loading");
+            
+            // Show loading indicator
+            if(loadingIndicator) {
+              loadingIndicator.style.display = "block";
+              entryList.style.opacity = "0.5";
+            }
+            
+            try {
+              const entriesResponse = await retrieveAuthorEntries(AUTHOR_ID, page, PAGE_SIZE);
+              console.log("Entries response:", entriesResponse);
+              
+              const renderedEntries = renderMarkdown(entriesResponse.entries || []);
+              const entriesForDisplay = [];
+              for (const entry of renderedEntries){
+                console.log(`Entry Title: ${entry.entry.title}
+                \nEntry Author: ${entry.entry.author.displayName}
+                \nEntry Publish Date: ${entry.entry.published}`);
+                entriesForDisplay.push(entry.entry);
+              }
+
+              // Clear existing entries and add new ones
+              setupAuthorEntries(entriesForDisplay, true, true);
+              
+              // Setup pagination controls
+              if(entriesResponse.pagination && entriesResponse.pagination.count > entriesResponse.pagination.size){
+                setupPaginationControls(entriesResponse.pagination, AUTHOR_ID, (newPage) => {
+                  currentPage = newPage;
+                  loadEntries(newPage);
+                });
+              }
+              
+              // Hide loading indicator
+              if(loadingIndicator) {
+                loadingIndicator.style.display = "none";
+                entryList.style.opacity = "1";
+              }
+              
+            } catch(error) {
+              console.error("Error loading entries:", error);
+              if(loadingIndicator) {
+                loadingIndicator.style.display = "none";
+              }
+              if(entryList) {
+                entryList.style.opacity = "1";
+              }
+            }
+          }
+
+          window.addEventListener('DOMContentLoaded', async()=>{
+            // Get loading container and profile content container
+            const loadingContainer = document.querySelector("#loading_container");
+            const profileContentContainer = document.querySelector("#profile_content_container");
+            
+            // Hide profile content container initially
+            if (profileContentContainer) {
+              profileContentContainer.style.opacity = "0";
+            }
+            
+            // Hide all profile-loading elements initially
+            const loadingElements = document.querySelectorAll(".profile-loading");
+            loadingElements.forEach(el => {
+              el.style.opacity = "0";
+              el.style.visibility = "hidden";
+            });
+            
+            try {
+              // Fetch profile data and first page of entries in parallel
+              const [entriesResponse, fetchedAuthorProfile] = await Promise.all([
+                retrieveAuthorEntries(AUTHOR_ID, 1, PAGE_SIZE),
+                retrieveAuthor(AUTHOR_ID, AUTHOR_HOST)
+              ]);
+              
+              console.log(entriesResponse);
+              console.log(fetchedAuthorProfile);
+              
+              const renderedEntries = renderMarkdown(entriesResponse.entries || []);
+              const entriesForDisplay = [];
+              for (const entry of renderedEntries){
+                console.log(`Entry Title: ${entry.entry.title}
+                \nEntry Author: ${entry.entry.author.displayName}
+                \nEntry Publish Date: ${entry.entry.published}`);
+                entriesForDisplay.push(entry.entry);
+              }
+
+              // Setup profile content while spinner is still showing
+              const profilePicAndName = document.querySelector("#profile_pic_and_name");
+              const EDIT_URL = buildEditProfileUrl(fetchedAuthorProfile.displayName);
+              setupProfile(IS_AUTHENTICATED, EDIT_URL, DEFAULT_IMAGE_URL, fetchedAuthorProfile, profilePicAndName);
+              setupAuthorEntries(entriesForDisplay, false, true);
+              
+              // Setup pagination controls
+              if(entriesResponse.pagination && entriesResponse.pagination.count > entriesResponse.pagination.size){
+                setupPaginationControls(entriesResponse.pagination, AUTHOR_ID, (newPage) => {
+                  currentPage = newPage;
+                  loadEntries(newPage);
+                });
+              }
+
+              // Hide loading spinner with fade out
+              if (loadingContainer) {
+                loadingContainer.style.transition = "opacity 0.4s ease-out";
+                loadingContainer.style.opacity = "0";
+                
+                setTimeout(() => {
+                  if (loadingContainer) loadingContainer.style.display = "none";
+                  
+                  // Show profile content container and fade in
+                  if (profileContentContainer) {
+                    profileContentContainer.style.opacity = "1";
+                    profileContentContainer.classList.add("loaded");
+                    
+                    // Fade in all profile elements with stagger effect
+                    setTimeout(() => {
+                      loadingElements.forEach((el, index) => {
+                        el.style.visibility = "visible";
+                        el.style.transition = `opacity 0.5s ease-in ${index * 0.1}s, transform 0.5s ease-in ${index * 0.1}s`;
+                        el.style.opacity = "1";
+                        el.style.transform = "translateY(0)";
+                      });
+                      
+                      // Show entries heading with delay
+                      const entriesHeading = document.querySelector("#entries_heading");
+                      if (entriesHeading) {
+                        entriesHeading.style.visibility = "visible";
+                        entriesHeading.style.transition = `opacity 0.5s ease-in ${loadingElements.length * 0.1}s, transform 0.5s ease-in ${loadingElements.length * 0.1}s`;
+                        entriesHeading.style.opacity = "1";
+                        entriesHeading.style.transform = "translateY(0)";
+                      }
+                    }, 200);
+                  }
+                }, 400);
+              }
+              
+            } catch (error) {
+              console.error("Error loading profile:", error);
+              
+              // Hide loading spinner on error
+              if (loadingContainer) {
+                loadingContainer.style.transition = "opacity 0.4s ease-out";
+                loadingContainer.style.opacity = "0";
+                setTimeout(() => {
+                  if (loadingContainer) loadingContainer.style.display = "none";
+                  
+                  // Show content even on error
+                  if (profileContentContainer) {
+                    profileContentContainer.style.opacity = "1";
+                    profileContentContainer.classList.add("loaded");
+                  }
+                  
+                  loadingElements.forEach(el => {
+                    el.style.visibility = "visible";
+                    el.style.opacity = "1";
+                    el.style.transform = "translateY(0)";
+                  });
+                  
+                  const entriesHeading = document.querySelector("#entries_heading");
+                  if (entriesHeading) {
+                    entriesHeading.style.visibility = "visible";
+                    entriesHeading.style.opacity = "1";
+                    entriesHeading.style.transform = "translateY(0)";
+                  }
+                }, 400);
+              }
+            }
             }
             
 
           )
           </script>      
 
-                <section class="profile_pic_and_name" id=profile_pic_and_name >
+                <!-- Actual Content (hidden initially) -->
+                <section class="profile_pic_and_name profile-loading" id=profile_pic_and_name>
                     <img id ="profile_image_page" class="profile_image_page">
                 </section>
 
                 <!--Titles For Follow And Entry Details-->
-                <section class="follow_and_entry_labels">
-                    <p id="entry_count" class="folow_and_entry_count"> </p>
+                <section class="follow_and_entry_labels profile-loading">
+                    <p id="entry_count" class="follow_and_entry_count"> </p>
                     <p class="follow_and_entry_title"> Entries</p>
                 </section>    
 
-                <a href="{% url 'wiki:friends_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                <a href="{% url 'wiki:friends_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;" class="profile-loading">
                   <section class="follow_and_entry_labels">
-                      <p id="friends_count" class="folow_and_entry_count"></p>
+                      <p id="friends_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Friends</p>
                   </section>
                 </a>    
 
-                <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                <a href="{% url 'wiki:followers_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;" class="profile-loading">
                   <section class="follow_and_entry_labels">
-                      <p id="follower_count" class="folow_and_entry_count"></p>
+                      <p id="follower_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Followers</p>
                   </section>
                 </a>    
                     
-                <a href="{% url 'wiki:following_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;">
+                <a href="{% url 'wiki:following_list' request.user.author.serial %}" style="text-decoration: none; color: inherit;" class="profile-loading">
                   <section class="follow_and_entry_labels">
-                      <p id="followings_count" class="folow_and_entry_count"></p>
+                      <p id="followings_count" class="follow_and_entry_count"></p>
                       <p class="follow_and_entry_title">Following</p>
                   </section>
                 </a>
 
             </section>
 
-            <section id= "description_content" class="description_content">
+            <section id= "description_content" class="description_content profile-loading">
             
               <p id="description" class="description"></p>
-              <img id="gitLogo" src = "{% static '/images/gitLogo.png' %}" alt="GitLogo">
+              <!-- GitHub logo will be added dynamically by JavaScript in profileSetup.js -->
               
             </section>
 
         </section>
         <section class="entry_list">
-            <h3>Entries</h3>
+            <!-- Actual Entries Heading (hidden initially) -->
+            <h3 class="profile-loading" id="entries_heading">Entries</h3>
+            
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                <ul id="entry_list" class="entry_list"> 
-                </ul>
+            
+            <!-- Loading indicator for pagination -->
+            <div id="entries-loading" class="text-center py-3" style="display: none;">
+              <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading entries...</span>
+              </div>
+            </div>
+            
+            <!-- Actual Entries (hidden initially) -->
+            <ul id="entry_list" class="entry_list profile-loading"> 
+            </ul>
         </section>
 
 
 
     </section>
+    
+    <!-- Add padding at bottom so content isn't hidden behind bottom bar -->
+    <div style="height: 5em; clear: both;"></div>
         
 
      <section class = "nav_buttons">
@@ -181,4 +385,12 @@
     });
   });
 </script>
+
+<!-- Follow Request Notification System -->
+{% if request.user.is_authenticated %}
+<script src="{% static 'js/follow_notification.js' %}"></script>
+{% endif %}
+
+<!-- Dark Mode Toggle -->
+<script src="{% static 'js/dark_mode.js' %}"></script>
 

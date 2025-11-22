@@ -140,6 +140,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/'   # redirect user to login page if not authenticated
+LOGIN_REDIRECT_URL = '/'  # This will be overridden by MyLoginView, but prevents default admin redirect
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 #image for post stuff

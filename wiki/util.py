@@ -17,6 +17,7 @@ import requests, base64, filetype
 from requests.auth import HTTPBasicAuth
 from .serializers import AuthorSerializer, EntrySerializer, CommentSummarySerializer, CommentLikeSummarySerializer, LikeSummarySerializer
 from .gethub import create_entries
+import re
 #AUTH TOKEN TO BE USED WITH REQUESTS
 #YOU NEED TO HAVE A USER WITH THIS GIVEN AUTH ON THE NODE YOU ARE CONNECTING TO IN ORDER TO BE VALIDATED
 #YOU ALSO NEED A NODE CREDENTIALS OBJECT WITH THIS USERNAME AND PASSWORD, THIS IS HOW VALIDATION WILL BE DONE
@@ -41,6 +42,65 @@ def validUserName(username):
         return True
     
     return False
+
+def validate_github_url(github_url):
+    """
+    Validates a GitHub URL to ensure it's properly formatted and the account exists.
+    
+    Args:
+        github_url (str): The GitHub URL to validate. Can be empty string or None.
+    
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    # Allow empty GitHub URL (optional field)
+    if not github_url or github_url.strip() == '':
+        return True, None
+    
+    github_url = github_url.strip()
+    
+    # Check URL format - should be github.com or www.github.com
+    github_pattern = r'^https?://(www\.)?github\.com/[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-)){0,38}(?<![.-])/?$'
+    
+    if not re.match(github_pattern, github_url):
+        return False, "Invalid GitHub URL format. Please use format: https://github.com/username"
+    
+    # Extract username from URL
+    if github_url[-1] == '/':
+        github_url = github_url[:-1]
+    username = github_url[github_url.rfind('/')+1:]
+    
+    # Validate username format (GitHub usernames have specific rules)
+    if not username or len(username) > 39:
+        return False, "Invalid GitHub username format"
+    
+    # Check if account exists via GitHub API
+    try:
+        api_url = f"https://api.github.com/users/{username}"
+        response = requests.get(api_url, timeout=5)
+        
+        if response.status_code == 200:
+            # Account exists
+            return True, None
+        elif response.status_code == 404:
+            return False, f"GitHub account '{username}' does not exist. Please check the username."
+        else:
+            # API error (rate limit, etc.) - be lenient and accept the URL if format is correct
+            # Log the issue but don't block the user
+            print(f"GitHub API returned status {response.status_code} for user {username}")
+            return True, None
+    except requests.exceptions.Timeout:
+        # Timeout - be lenient, accept URL if format is correct
+        print(f"GitHub API timeout when validating {username}")
+        return True, None
+    except requests.exceptions.RequestException as e:
+        # Network error - be lenient, accept URL if format is correct
+        print(f"GitHub API error when validating {username}: {str(e)}")
+        return True, None
+    except Exception as e:
+        # Other errors - be lenient
+        print(f"Error validating GitHub URL {github_url}: {str(e)}")
+        return True, None
 
 def saveNewAuthor(request, user, username, github, profileImage, is_local):
     '''Saves a new author instance from the signup'''

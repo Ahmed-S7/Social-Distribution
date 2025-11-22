@@ -1,6 +1,21 @@
 {%load static%}
 <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/follow_notification.css' %}">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'wiki/dark_mode.css' %}">
+<script>
+  // Prevent white flash - apply dark mode immediately before page renders
+  (function() {
+    const theme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+{% if request.user.is_authenticated %}
+<script>
+  // Get current user's author serial for notifications
+  const CURRENT_AUTHOR_SERIAL = '{{ author.serial }}';
+</script>
+{% endif %}
 <style>
   .default_buttons { background: #89c6e1; width: 100%; position: fixed; top: 0; left: 0; z-index: 100; padding: 0.5em 0; }
   .heading {
@@ -17,24 +32,28 @@
   <div class="container mt-4">
     <h1 class='heading'>Incoming Follow Requests For {{author.displayName}}:</h1> 
 
-    <section class="follow_requests">
+    <!-- CSRF Token for JavaScript -->
+    {% csrf_token %}
+
+    <section class="follow_requests" id="follow_requests_container">
     <link rel="stylesheet" href="{% static 'wiki/follow_requests.css' %}">
     {% if follow_requests %}
       {% for follow_request in follow_requests %}
 
-
-  <section class="request_info">
+      <section class="request_info" id="request_{{ follow_request.id }}">
         <section class='follow_request_text'>
             <h4>{{ follow_request.requester }} has requested to follow you!</h4>
         </section>
-        <form action="{% url 'wiki:process_follow_request' author.serial follow_request.id %}" method="POST">
-            {% csrf_token %} 
-            <section class='confirmation_buttons'>
-                <button type="submit" class="accept" name="action" value="accept">Accept</button> 
-                <button type="submit" class="reject" name="action" value="reject" >Reject</button> 
-            </form>
-
-      </section>
+        <section class='confirmation_buttons'>
+            <button type="button" class="accept" 
+                    data-author-serial="{{ author.serial }}"
+                    data-request-id="{{ follow_request.id }}"
+                    data-action="accept">Accept</button> 
+            <button type="button" class="reject" 
+                    data-author-serial="{{ author.serial }}"
+                    data-request-id="{{ follow_request.id }}"
+                    data-action="reject">Reject</button> 
+        </section>
       </section>
       
       {% endfor %}
@@ -44,4 +63,194 @@
 
     </section>
   </div>
+
+  <!-- Message Popup Modal - Placed at body level for proper overlay -->
+  <div id="message_modal" class="message-modal" style="display: none;">
+    <div class="message-modal-content">
+      <span class="message-modal-close">&times;</span>
+      <div id="message_modal_text"></div>
+    </div>
+  </div>
+
+  <script>
+    // Get CSRF token from cookies
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Get CSRF token from cookie or hidden input
+    let csrftoken = getCookie('csrftoken');
+    if (!csrftoken) {
+      // Fallback: try to get from a hidden input if available
+      const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+      if (csrfInput) {
+        csrftoken = csrfInput.value;
+      }
+    }
+    
+    if (!csrftoken) {
+      console.error('CSRF token not found!');
+    }
+
+    // Display message function as popup
+    function showMessage(message, isError = false) {
+      const modal = document.getElementById('message_modal');
+      const modalText = document.getElementById('message_modal_text');
+      const closeBtn = modal?.querySelector('.message-modal-close');
+      
+      if (!modal || !modalText) {
+        alert(message); // Fallback to alert if modal doesn't exist
+        return;
+      }
+      
+      modalText.textContent = message;
+      modal.className = 'message-modal ' + (isError ? 'error' : 'success');
+      modal.style.cssText = 'display: block !important; position: fixed !important; z-index: 99999 !important; left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; background-color: rgba(0, 0, 0, 0.5) !important; margin: 0 !important; padding: 0 !important;';
+      
+      // Close button functionality
+      if (closeBtn) {
+        closeBtn.onclick = function(e) {
+          e.stopPropagation();
+          modal.style.display = 'none';
+        };
+      }
+      
+      // Close when clicking outside modal
+      const closeModalOnOutsideClick = function(event) {
+        if (event.target === modal) {
+          modal.style.display = 'none';
+          modal.removeEventListener('click', closeModalOnOutsideClick);
+        }
+      };
+      modal.addEventListener('click', closeModalOnOutsideClick);
+      
+      // Prevent modal content clicks from closing
+      const modalContent = modal.querySelector('.message-modal-content');
+      if (modalContent) {
+        modalContent.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+      }
+      
+      // Auto-hide after 2.5 seconds
+      setTimeout(() => {
+        if (modal.style.display === 'block') {
+          modal.style.display = 'none';
+          modal.removeEventListener('click', closeModalOnOutsideClick);
+        }
+      }, 2500);
+    }
+
+    // Remove request from page
+    function removeRequest(requestId) {
+      const requestElement = document.getElementById(`request_${requestId}`);
+      if (requestElement) {
+        requestElement.style.transition = 'opacity 0.3s ease-out';
+        requestElement.style.opacity = '0';
+        setTimeout(() => {
+          requestElement.remove();
+          
+          // Check if there are any more requests
+          const container = document.getElementById('follow_requests_container');
+          const remainingRequests = container.querySelectorAll('.request_info');
+          if (remainingRequests.length === 0) {
+            container.innerHTML = '<h5 class="heading">Its a little bit lonely in here...</h5>';
+          }
+        }, 300);
+      }
+    }
+
+    // Handle follow request action (accept/reject)
+    async function handleFollowRequestAction(authorSerial, requestId, action) {
+      try {
+        // Create form data
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('csrfmiddlewaretoken', csrftoken);
+
+        const response = await fetch(`/authors/${authorSerial}/${requestId}/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrftoken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: formData,
+          credentials: 'same-origin'
+        });
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('Failed to parse JSON response:', jsonError);
+          showMessage('Server returned an invalid response. Please try again.', true);
+          return;
+        }
+        
+        if (response.ok && data.success) {
+          showMessage(data.message || `Follow request ${action}ed successfully`, false);
+          removeRequest(requestId);
+        } else {
+          showMessage(data.message || `Failed to ${action} follow request`, true);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('An error occurred. Please try again.', true);
+      }
+    }
+
+    // Attach event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      const acceptButtons = document.querySelectorAll('.accept');
+      const rejectButtons = document.querySelectorAll('.reject');
+
+      acceptButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          const authorSerial = this.getAttribute('data-author-serial');
+          const requestId = this.getAttribute('data-request-id');
+          
+          // Disable button to prevent multiple clicks
+          this.disabled = true;
+          this.textContent = 'Processing...';
+          
+          handleFollowRequestAction(authorSerial, requestId, 'accept');
+        });
+      });
+
+      rejectButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          const authorSerial = this.getAttribute('data-author-serial');
+          const requestId = this.getAttribute('data-request-id');
+          
+          // Disable button to prevent multiple clicks
+          this.disabled = true;
+          this.textContent = 'Processing...';
+          
+          handleFollowRequestAction(authorSerial, requestId, 'reject');
+      });
+    });
+  });
+</script>
+
+<!-- Follow Request Notification System -->
+{% if request.user.is_authenticated %}
+<script src="{% static 'js/follow_notification.js' %}"></script>
+{% endif %}
+
+<!-- Dark Mode Toggle -->
+<script src="{% static 'js/dark_mode.js' %}"></script>
 </body>

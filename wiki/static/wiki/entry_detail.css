@@ -21,7 +21,13 @@ body {
 .entry_author{
     color:gray;
     padding-top:0.5em;
+    list-style: none !important;
+    list-style-type: none !important;
+}
 
+.entry_author::before,
+.entry_author::after {
+    content: none !important;
 }
 .mt-4{
     font-family: 'Nunito', sans-serif;
@@ -65,6 +71,67 @@ h2, h3, .entry_details{
     justify-content: center;
     display: inline-block;
 }
+
+/* Remove dots/bullets but preserve all other styling */
+.entry_content li,
+.entry_content ul,
+.entry_content ol {
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
+/* Remove only pseudo-elements that create dots, preserve everything else */
+.entry_content li::before,
+.entry_content li::after {
+    content: none !important;
+}
+
+/* Preserve entry content styling */
+.entry_content {
+    text-align: center;
+}
+
+.entry_content.text-center {
+    text-align: center !important;
+    display: block !important;
+    margin: 0 auto !important;
+    max-width: 95% !important;
+}
+
+/* Preserve entry author styling and centering */
+.entry_author {
+    text-align: center !important;
+    color: gray;
+    padding-top: 0.5em;
+}
+
+.entry_author::before,
+.entry_author::after {
+    content: none !important;
+}
+
+/* Preserve card styling with border radius and centering */
+.card-entry-detail {
+    border-radius: 0.625em !important;
+    max-width: 36em !important;
+    margin: 2em auto !important;
+    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.12) !important;
+}
+
+.card-entry-detail .card-body {
+    text-align: center !important;
+    padding: 1.5rem !important;
+}
+
+/* Ensure content is centered properly */
+.entry_content.text-center {
+    display: block !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+    max-width: 95% !important;
+}
+
+/* Duplicate rules removed - already handled above */
 
 .card-entry-detail .card-body .entry_content .entry_image{
     max-width: 100%;

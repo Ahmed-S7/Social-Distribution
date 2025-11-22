@@ -1,5 +1,13 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'wiki/style.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/dark_mode.css' %}">
+<script>
+  // Prevent white flash - apply dark mode immediately before page renders
+  (function() {
+    const theme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,5 +33,8 @@
         </form>
     </div> 
     <h2 id='loadingtext' hidden>Loading...</h2>
+
+<!-- Dark Mode Toggle -->
+<script src="{% static 'js/dark_mode.js' %}"></script>
 </body>
 </html>
