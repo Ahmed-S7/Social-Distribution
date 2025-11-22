@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Page, Like, RemotePost,InboxItem,AuthorFriend, Author, FollowRequest, AuthorFollowing, Entry, AuthorFriend, Comment, CommentLike, RemoteNode, NodeConnectionCredentials
+from .models import (
+    Page, Like, RemotePost, InboxItem, AuthorFriend, Author, 
+    FollowRequest, AuthorFollowing, Entry, Comment, CommentLike, 
+    RemoteNode, NodeConnectionCredentials
+)
 
 # Register your models here.
 
