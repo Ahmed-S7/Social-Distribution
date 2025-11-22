@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 {%load static%}
 <link rel="stylesheet" href="{% static 'wiki/style.css' %}">
+<link rel="stylesheet" href="{% static 'wiki/dark_mode.css' %}">
+<script>
+  // Prevent white flash - apply dark mode immediately before page renders
+  (function() {
+    const theme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
 <div class="container">
     <h2>Create Account</h2>
 
@@ -21,7 +29,9 @@
         <input type="password" name="confirm_password" required><br><br>
 
         <label for="github">GitHub URL:</label><br>
-        <input type="url" name="github"><br><br>
+        <input type="url" name="github" id="github" placeholder="https://github.com/username"><br>
+        <small id="github_error" style="display: none; color: red;"></small>
+        <small id="github_valid" style="display: none; color: green;">✓ Valid GitHub URL</small><br><br>
 
         <label for="profileImage">Profile Image URL:</label><br>
         <input type="url" name="profileImage" placeholder="https://example.com/your-image.jpg"><br><br>
@@ -29,3 +39,108 @@
         <button type="submit" class="login_button">Register</button>
     </form>
 </div>
+
+<script>
+    // GitHub URL validation
+    const githubInput = document.getElementById('github');
+    const githubError = document.getElementById('github_error');
+    const githubValid = document.getElementById('github_valid');
+    let validationTimeout;
+
+    function validateGitHubURL(url) {
+      // Allow empty URL (optional field)
+      if (!url || url.trim() === '') {
+        githubError.style.display = 'none';
+        githubValid.style.display = 'none';
+        return true;
+      }
+
+      // Check URL format
+      const githubPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-)){0,38}(?<![.-])\/?$/;
+      
+      if (!githubPattern.test(url)) {
+        githubError.textContent = 'Invalid GitHub URL format. Use: https://github.com/username';
+        githubError.style.display = 'block';
+        githubValid.style.display = 'none';
+        return false;
+      }
+
+      // Extract username
+      let cleanUrl = url.trim();
+      if (cleanUrl[cleanUrl.length - 1] === '/') {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
+      const username = cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
+
+      // Check if username is valid length
+      if (!username || username.length > 39) {
+        githubError.textContent = 'Invalid GitHub username format';
+        githubError.style.display = 'block';
+        githubValid.style.display = 'none';
+        return false;
+      }
+
+      // Validate account exists via GitHub API
+      githubError.style.display = 'none';
+      githubValid.style.display = 'none';
+      
+      fetch(`https://api.github.com/users/${username}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => {
+        if (response.status === 200) {
+          githubValid.style.display = 'block';
+          githubError.style.display = 'none';
+          return true;
+        } else if (response.status === 404) {
+          githubError.textContent = `GitHub account '${username}' does not exist. Please check the username.`;
+          githubError.style.display = 'block';
+          githubValid.style.display = 'none';
+          return false;
+        } else {
+          // API error (rate limit, etc.) - format is correct, so allow it
+          githubValid.style.display = 'block';
+          githubError.style.display = 'none';
+          return true;
+        }
+      })
+      .catch(error => {
+        // Network error - format is correct, so allow it
+        githubValid.style.display = 'block';
+        githubError.style.display = 'none';
+        return true;
+      });
+
+      return true;
+    }
+
+    // Debounced validation
+    githubInput.addEventListener('input', function() {
+      clearTimeout(validationTimeout);
+      validationTimeout = setTimeout(() => {
+        validateGitHubURL(this.value);
+      }, 500); // Wait 500ms after user stops typing
+    });
+
+    // Validate on form submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const url = githubInput.value;
+      if (url && url.trim() !== '') {
+        // Basic format check before submit
+        const githubPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9]([a-zA-Z0-9]|-(?!-)){0,38}(?<![.-])\/?$/;
+        if (!githubPattern.test(url)) {
+          e.preventDefault();
+          githubError.textContent = 'Invalid GitHub URL format. Please fix before submitting.';
+          githubError.style.display = 'block';
+          githubValid.style.display = 'none';
+          githubInput.focus();
+        }
+      }
+    });
+</script>
+
+<!-- Dark Mode Toggle -->
+<script src="{% static 'js/dark_mode.js' %}"></script>

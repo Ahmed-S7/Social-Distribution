@@ -1,7 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
 body {
     font-family: 'Nunito', sans-serif;
-    background-color: #f9f9f9;
+    background-color: var(--bg-secondary, #f9f9f9) !important;
+    color: var(--text-primary, #000000) !important;
     margin: 0;
     padding: 0;
     height: 43.75em;
@@ -9,23 +10,25 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container {
-    background-color: #fff;
+    background-color: var(--card-bg, #fff) !important;
     padding: 2rem;
-    border: 0.0625em solid #ccc;
+    border: 0.0625em solid var(--border-color, #ccc) !important;
     border-radius: 0.5em;
-    box-shadow: 0 0.125em 0.5em rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0.125em 0.5em var(--shadow, rgba(0, 0, 0, 0.1)) !important;
     max-width: 25em;
     width: 90%;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .login_button {
     font-family: 'Nunito', sans-serif;
     font-size: 1.2em;
     font-weight: bold;
-    color: #ffffff;
-    background-color: rgb(137, 198, 225);
+    color: var(--header-text, #ffffff) !important;
+    background-color: var(--button-primary, rgb(137, 198, 225)) !important;
     border: none;
     border-radius: 0.6em;
     padding: 0.5em 1.5em;
@@ -33,9 +36,18 @@ body {
     transition: background-color 0.3s ease;
 }
 .login_button:hover {
-    background-color: #0077aa; 
+    background-color: var(--button-primary-hover, #0077aa) !important; 
 }
 .container h1 {
     text-align: center;
-    color: rgb(0, 26, 128);
+    color: var(--header-text, rgb(0, 26, 128)) !important;
+}
+.container h2 {
+    color: var(--text-primary, #000000) !important;
+}
+.container p {
+    color: var(--text-primary, #000000) !important;
+}
+.container label {
+    color: var(--text-primary, #000000) !important;
 }

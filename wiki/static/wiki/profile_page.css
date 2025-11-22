@@ -8,6 +8,140 @@
   --header-color:rgb(137, 198, 225);
   --base-text-color:color:rgb(0, 26, 128);
 }
+
+/* Loading Animation Styles */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5em;
+  opacity: 1;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.profile-loading {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out, visibility 0s linear 0.5s;
+}
+
+.profile-loaded {
+  opacity: 1;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton placeholders */
+.skeleton-profile-image {
+  width: 9em;
+  height: 9em;
+  border-radius: 4.5em;
+}
+
+.skeleton-text {
+  height: 1.5em;
+  width: 60%;
+  margin: 0.5em auto;
+}
+
+.skeleton-count {
+  height: 2em;
+  width: 3em;
+  margin: 0 auto;
+}
+
+.skeleton-description {
+  height: 4em;
+  width: 80%;
+  margin: 1em auto;
+  border-radius: 0.5em;
+}
+
+.skeleton-entry {
+  width: 100%;
+  height: 200px;
+  margin: 1em 0;
+  border-radius: 0.75em;
+}
+
+.hidden-loading {
+  display: none;
+}
+
+/* Loading Spinner/Wheel */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(3px);
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #0090ce;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1em;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #0090ce;
+  font-size: 1.1em;
+  font-weight: normal;
+  margin-top: 0.5em;
+}
+
+.profile-content-container {
+  opacity: 0;
+  transition: opacity 0.6s ease-in;
+}
+
+.profile-content-container.loaded {
+  opacity: 1;
+}
+
+/* Smooth fade-in for all profile elements when loaded */
+.profile-content-container.loaded .profile-loading {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  transition: opacity 0.5s ease-in, transform 0.5s ease-in, visibility 0s linear 0s !important;
+}
 html, body{
     font-family: 'Nunito', sans-serif;
     padding:0;
@@ -66,6 +200,23 @@ h3{
     justify-content: space-evenly;
     padding: 0;
     align-items: center;
+    position: relative;
+    min-height: 120px;
+    background-color: var(--bg-secondary, #f9f9f9); /* Match page background exactly */
+}
+
+/* Loading skeleton container - positioned to match actual content */
+#profile_skeleton {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 100%;
+    padding: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 /*Profile picture with name*/
@@ -79,14 +230,28 @@ h3{
     top:0;
     left:0;  
     gap: 1.5em;
+    position: relative;
+    z-index: 2;
+    background-color: var(--bg-secondary, #f9f9f9); /* Match page background exactly */
 }
 
 /*labels for the follower and entry counts*/
 .follow_and_entry_labels{
     text-align: center;
+    background-color: var(--bg-secondary, #f9f9f9) !important; /* Match page background exactly */
 }
 
+/* Make sure links wrapping follower counts match background */
+a .follow_and_entry_labels,
+a.follow_and_entry_labels {
+    background-color: var(--bg-secondary, #f9f9f9) !important;
+}
 
+/* Ensure nested elements have transparent backgrounds */
+.follow_and_entry_labels *,
+.follow_and_entry_labels p {
+    background-color: transparent !important;
+}
 
 /*follow and entry counts*/
 .follow_and_entry_labels .follow_and_entry_count{
@@ -105,19 +270,80 @@ h3{
     line-height: 3;
 }
 
+/* Make sure links wrapping follower counts match background */
+a .follow_and_entry_labels,
+a.follow_and_entry_labels {
+    background-color: var(--bg-secondary, #f9f9f9) !important;
+}
+
+/* Ensure nested elements have transparent backgrounds */
+.follow_and_entry_labels *,
+.follow_and_entry_labels p {
+    background-color: transparent !important;
+}
+
 
 /*User Description and Github*/
 .description_content{
-    border-color:rgba(221, 221, 221, 0.433);
-  
+    border: 2px solid rgba(221, 221, 221, 0.6);
+    border-radius: 0.75em;
     text-align: center;
     max-width: 100%;
-    border-style:double;
-    text-overflow:ellipsis;
-    overflow:hidden;
-    color:rgb(81, 80, 80);
+    padding: 1.5em 1em;
+    margin: 1em 0;
+    background-color: #f8f9fa;
+    color: rgb(81, 80, 80);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
 
+/* Description text styling */
+.description_content p.description,
+.description_content > p {
+    font-size: 1em;
+    line-height: 1.6;
+    margin: 0.75em 0;
+    color: rgb(51, 51, 51);
+    word-wrap: break-word;
+    padding: 0 0.5em;
+}
 
+/* "No Description" placeholder styling */
+.description_content p.no-description,
+.description_content p.description.no-description {
+    color: rgb(136, 136, 136);
+    font-style: italic;
+    margin: 0.75em 0;
+}
+
+/* GitHub section styling */
+.description_content .githubLink {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: 1em auto 0 auto;
+    padding-top: 1em;
+    border-top: 1px solid rgba(221, 221, 221, 0.5);
+    gap: 0.5em;
+    text-align: center;
+    width: 100%;
+}
+
+.description_content p.github {
+    margin: 0;
+    font-size: 0.95em;
+    color: rgb(51, 51, 51);
+    font-weight: 500;
+    text-align: center;
+}
+
+/* "GitHub Profile Not Found" styling */
+.description_content p.no-github {
+    color: rgb(136, 136, 136);
+    font-style: italic;
+    margin-top: 1em;
+    padding-top: 1em;
+    border-top: 1px solid rgba(221, 221, 221, 0.5);
 }
 /*entries*/
 .entry_list{
@@ -126,6 +352,75 @@ h3{
     align-items: center;   
     text-align: center; 
     z-index: 25;
+    transition: opacity 0.3s ease-in-out;
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Profile entry item animations */
+.profile-entry-item {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease-in, transform 0.5s ease-in;
+    list-style-type: none;
+}
+
+.entryItem {
+    list-style-type: none;
+}
+
+.profile-entry-item.loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Pagination styles */
+.entries-pagination {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.entries-pagination .pagination {
+    margin-bottom: 0.5rem;
+}
+
+.entries-pagination .page-link {
+    transition: all 0.3s ease;
+    border-radius: 0.375rem;
+    margin: 0 0.125rem;
+}
+
+.entries-pagination .page-link:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.entries-pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+.entries-pagination .page-item.disabled .page-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Loading spinner for entries */
+#entries-loading {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#entries-loading .spinner-border-sm {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 0.2em;
     padding-bottom:2em;
     list-style-type: none;
 }
@@ -216,6 +511,7 @@ a{
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: nowrap;
     font-family: 'Nunito', sans-serif;
     font-weight: bold;
     background: linear-gradient(90deg, #b3d8f3 0%, #89c6e1 100%);
@@ -224,13 +520,90 @@ a{
     left:0;
     z-index:100;
     height: 3.5em;
-    padding: 0.5em 2em;
+    padding: 0.5em 1em;
     color: #14213d;
     border: none;
     font-size: 1.2em;
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(20,33,61,0.07);
     border-bottom: 2px solid #b3b3b3;
+    gap: 0.5em;
+}
+
+.default_buttons .bar-title {
+    margin: 0;
+    font-size: 1.2em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.default_buttons .nav_bottons_top,
+.default_buttons .nav_buttons_top {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5em;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.default_buttons .nav_bottons_top .btn,
+.default_buttons .nav_buttons_top .btn {
+    white-space: nowrap;
+    flex: 0 0 auto;
+    font-size: 0.9em;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Responsive adjustments - keep inline but adjust sizes */
+@media (max-width: 992px) {
+    .default_buttons .bar-title {
+        font-size: 1em;
+    }
+    
+    .default_buttons .nav_bottons_top .btn,
+    .default_buttons .nav_buttons_top .btn {
+        font-size: 0.85em;
+        padding: 0.3rem 0.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .default_buttons {
+        padding: 0.5em 0.75em;
+    }
+    
+    .default_buttons .bar-title {
+        font-size: 0.9em;
+    }
+    
+    .default_buttons .nav_bottons_top .btn,
+    .default_buttons .nav_buttons_top .btn {
+        font-size: 0.8em;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .default_buttons {
+        padding: 0.5em;
+        gap: 0.25em;
+    }
+    
+    .default_buttons .bar-title {
+        font-size: 0.8em;
+    }
+    
+    .default_buttons .nav_bottons_top .btn,
+    .default_buttons .nav_buttons_top .btn {
+        font-size: 0.75em;
+        padding: 0.2rem 0.4rem;
+    }
 }
 
 .default_buttons p{
@@ -349,13 +722,144 @@ a{
     border:none;
 } 
 
+/* GitHub Logo Styling */
 img#gitLogo{
-  height:3em;
-  width: 3em;
+  height: 2.5em;
+  width: 2.5em;
+  max-width: 2.5em;
+  max-height: 2.5em;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 0.5em;
+  padding: 0;
+  border: none;
+  border-radius: 0.25em;
 }
 
+/* GitHub link container */
+.githubLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: inherit;
+  gap: 0.5em;
+  padding: 0.5em;
+  border-radius: 0.5em;
+  transition: background-color 0.2s;
+}
 
+.githubLink:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
 
+.githubLink:hover img#gitLogo {
+  transform: scale(1.1);
+  transition: transform 0.2s;
+}
+
+/* GitHub logo in description content - override for consistent styling */
+.description_content img#gitLogo {
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Message Popup Modal - Base Styles (applies to all screen sizes) */
+.message-modal {
+  display: none !important;
+  position: fixed !important;
+  z-index: 99999 !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  animation: fadeInModal 0.3s ease-out;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.message-modal-content {
+  background-color: #fefefe !important;
+  margin: 15% auto !important;
+  padding: 2em !important;
+  border-radius: 0.5em;
+  width: 90% !important;
+  max-width: 500px !important;
+  position: relative !important;
+  animation: slideDownModal 0.3s ease-out;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  display: block !important;
+}
+
+.message-modal.success .message-modal-content {
+  border-top: 4px solid #28a745;
+}
+
+.message-modal.error .message-modal-content {
+  border-top: 4px solid #dc3545;
+}
+
+.message-modal-close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  line-height: 1;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+.message-modal-close:hover,
+.message-modal-close:focus {
+  color: #000;
+  text-decoration: none;
+}
+
+#message_modal_text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.1em;
+  text-align: center;
+  padding: 1em 0;
+  word-wrap: break-word;
+}
+
+.message-modal.success #message_modal_text {
+  color: #155724;
+}
+
+.message-modal.error #message_modal_text {
+  color: #721c24;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideDownModal {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /*Generated by copilot: "[create media compatibility for the following CSS]": https://www.bing.com/search?pglt=427&q=cocpilot&cvid=43e38a2640d640a6900c0d7a4b592962&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOTIGCAEQABhAMgYIAhAAGEAyBggDEAAYQNIBBzk4N2owajGoAgiwAgE&FORM=ANNTA1&PC=EDGEDB, June, 2025 
 /* For small screens (phones) */
@@ -392,6 +896,19 @@ img#gitLogo{
     padding: 0.5em;
     word-wrap: break-word;
   }
+
+  /* GitHub logo responsive sizing for mobile */
+  img#gitLogo {
+    height: 2em;
+    width: 2em;
+    max-width: 2em;
+    max-height: 2em;
+  }
+
+  .githubLink {
+    padding: 0.3em;
+    gap: 0.3em;
+  }
 }
 
 /* For tablets and mid-range */
@@ -424,5 +941,105 @@ img#gitLogo{
     font-size: 1.3em;
     padding: 0.5em;
     text-align: center;
+  }
+
+  /* GitHub logo responsive sizing for tablets */
+  img#gitLogo {
+    height: 2.25em;
+    width: 2.25em;
+    max-width: 2.25em;
+    max-height: 2.25em;
+  }
+
+  .githubLink {
+    padding: 0.4em;
+    gap: 0.4em;
+  }
+
+  /* Message Popup Modal - moved here for all screen sizes */
+  .message-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .message-modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 2em;
+    border-radius: 0.5em;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    animation: slideDown 0.3s ease-out;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .message-modal.success .message-modal-content {
+    border-top: 4px solid #28a745;
+  }
+
+  .message-modal.error .message-modal-content {
+    border-top: 4px solid #dc3545;
+  }
+
+  .message-modal-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .message-modal-close:hover,
+  .message-modal-close:focus {
+    color: #000;
+  }
+
+  #message_modal_text {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.1em;
+    text-align: center;
+    padding: 1em 0;
+    word-wrap: break-word;
+  }
+
+  .message-modal.success #message_modal_text {
+    color: #155724;
+  }
+
+  .message-modal.error #message_modal_text {
+    color: #721c24;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-50px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

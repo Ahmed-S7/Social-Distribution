@@ -1,0 +1,134 @@
+/* Follow Request Notification Styles */
+.follow-notification-container {
+  position: fixed;
+  top: 80px; /* Below header */
+  right: 20px;
+  z-index: 99998;
+  max-width: 400px;
+  width: auto;
+  pointer-events: none; /* Allow clicks through container */
+}
+
+.follow-notification {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-bottom: 12px;
+  padding: 16px;
+  transform: translateX(400px);
+  opacity: 0;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  pointer-events: auto;
+  border-left: 4px solid #0090ce;
+  max-width: 400px;
+}
+
+.follow-notification.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.follow-notification.hide {
+  transform: translateX(400px);
+  opacity: 0;
+}
+
+.follow-notification-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.follow-notification-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.follow-notification-text {
+  flex: 1;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.follow-notification-text strong {
+  color: #001a80;
+  font-weight: 600;
+}
+
+.follow-notification-link {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s;
+  font-family: 'Nunito', sans-serif;
+  background-color: #0090ce;
+  color: white;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.follow-notification-link:hover {
+  background-color: #007bb5;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 144, 206, 0.3);
+}
+
+.follow-notification-content {
+  cursor: pointer;
+}
+
+.follow-notification-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.follow-notification-close:hover {
+  color: #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .follow-notification-container {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    width: auto;
+  }
+  
+  .follow-notification {
+    max-width: 100%;
+  }
+  
+  .follow-notification-actions {
+    flex-direction: row;
+  }
+  
+  .follow-notification-btn {
+    flex: 1;
+  }
+}
+

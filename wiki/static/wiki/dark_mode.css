@@ -1,0 +1,1013 @@
+/* Dark Mode CSS Variables */
+:root {
+  /* Light Mode (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9f9f9;
+  --bg-tertiary: #e4e9e9;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-muted: #6c757d;
+  --border-color: #ccc;
+  --border-light: rgba(221, 221, 221, 0.5);
+  --shadow: rgba(0, 0, 0, 0.1);
+  --shadow-hover: rgba(0, 0, 0, 0.15);
+  --header-bg: linear-gradient(90deg, #b3d8f3 0%, #89c6e1 100%);
+  --header-text: rgb(0, 26, 128);
+  --card-bg: #f9f9f9; /* Match background exactly - same as --bg-secondary */
+  --card-border: #6f6c6cac;
+  --input-bg: #ffffff;
+  --input-border: #ccc;
+  --button-primary: rgb(137, 198, 225);
+  --button-primary-hover: #0077aa;
+  --button-secondary: #6c757d;
+  --button-secondary-hover: #5a6268;
+  --link-color: #000000;
+  --link-hover: rgba(0, 14, 84, 0.771);
+  --loading-skeleton: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  --description-bg: transparent;
+  --modal-bg: #ffffff;
+  --modal-border: #ddd;
+  --pagination-bg: #0d6efd;
+  --pagination-hover: #e9ecef;
+  --spinner-color: #0d6efd;
+}
+
+[data-theme="dark"] {
+  /* Dark Mode - Improved contrast for accessibility */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525; /* Slightly lighter for better contrast */
+  --bg-tertiary: #3a3a3a; /* Increased brightness */
+  --text-primary: #f5f5f5; /* Brighter for better readability */
+  --text-secondary: #d0d0d0; /* Increased contrast */
+  --text-muted: #a0a0a0; /* More visible muted text */
+  --border-color: #505050; /* More visible borders */
+  --border-light: rgba(255, 255, 255, 0.15); /* More visible light borders */
+  --shadow: rgba(0, 0, 0, 0.6);
+  --shadow-hover: rgba(0, 0, 0, 0.8);
+  --header-bg: linear-gradient(90deg, #1e3a52 0%, #2d5270 100%);
+  --header-text: #f0f0f0; /* Brighter header text */
+  --card-bg: #252525; /* Match background exactly - same as --bg-secondary */
+  --card-border: #6a6a6a; /* Bright, visible border */
+  --input-bg: #2d2d2d;
+  --input-border: #5a5a5a; /* More visible input borders */
+  --button-primary: #4a8fc0; /* Brighter button */
+  --button-primary-hover: #5ba0d0; /* Lighter hover */
+  --button-secondary: #6c757d;
+  --button-secondary-hover: #7d868e;
+  --link-color: #6eb5e8; /* Brighter link color for better visibility */
+  --link-hover: #8fc5ea; /* Even brighter on hover */
+  --loading-skeleton: linear-gradient(90deg, #3d3d3d 25%, #4d4d4d 50%, #3d3d3d 75%);
+  --description-bg: rgba(255, 255, 255, 0.08); /* More visible description background */
+  --modal-bg: #2d2d2d;
+  --modal-border: #5a5a5a; /* More visible modal borders */
+  --pagination-bg: #4a8fc0; /* Brighter pagination */
+  --pagination-hover: #3a3a3a; /* More visible hover */
+  --spinner-color: #4a8fc0; /* Brighter spinner */
+}
+
+/* Base styles that apply to all elements */
+body {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html, body {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Header/Navigation */
+.default_buttons {
+  background: var(--header-bg) !important;
+  color: var(--header-text) !important;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.default_buttons .bar-title {
+  color: var(--header-text) !important;
+}
+
+.default_buttons .btn {
+  background-color: var(--button-primary) !important;
+  border-color: var(--button-primary) !important;
+  color: var(--header-text) !important;
+  transition: all 0.3s ease;
+}
+
+.default_buttons .btn:hover {
+  background-color: var(--button-primary-hover) !important;
+  border-color: var(--button-primary-hover) !important;
+  opacity: 0.9;
+}
+
+/* Cards and Containers - Match background in both modes */
+.card, .post-card {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  border: 1px solid var(--card-border) !important;
+  border-width: 1.5px !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 0.125em 0.375em var(--shadow) !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-body {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode: Make cards blend with background */
+/* Individual entry cards - visible with distinct background and borders */
+[data-theme="dark"] .card,
+[data-theme="dark"] .post-card {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  border: 2px solid var(--card-border) !important; /* Visible border - brighter */
+  border-width: 2px !important;
+  border-color: var(--card-border) !important; /* Use brighter card-border */
+  box-shadow: 0 0.125em 0.375em var(--shadow) !important; /* Subtle shadow */
+}
+
+[data-theme="dark"] .card-body,
+[data-theme="dark"] .post-card .card-body {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  color: #ffffff !important; /* White text */
+}
+
+/* Force ALL nested elements to have the SAME background as page, NO WHITE */
+[data-theme="dark"] .post-card *,
+[data-theme="dark"] .post-card .card-body *,
+[data-theme="dark"] .card-body *,
+[data-theme="dark"] .post-card > *,
+[data-theme="dark"] .card-body > * {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  background: var(--bg-secondary) !important; /* Override shorthand */
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .post-content,
+[data-theme="dark"] div.post-content,
+[data-theme="dark"] .post-card .post-content,
+[data-theme="dark"] .card-body .post-content,
+[data-theme="dark"] .post-card .card-body .post-content {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  background: var(--bg-secondary) !important; /* Override shorthand */
+  color: #ffffff !important; /* White text */
+  border-radius: 0.5em !important; /* Curve the edges of text background */
+}
+
+[data-theme="dark"] .post-content p,
+[data-theme="dark"] .post-content div,
+[data-theme="dark"] .post-content span,
+[data-theme="dark"] div.post-content p,
+[data-theme="dark"] div.post-content div,
+[data-theme="dark"] div.post-content span {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  background: var(--bg-secondary) !important;
+  color: #ffffff !important; /* White text */
+}
+
+/* Override ANY white backgrounds - most specific rules */
+[data-theme="dark"] .post-card[style*="background"],
+[data-theme="dark"] .card-body[style*="background"],
+[data-theme="dark"] .post-content[style*="background"],
+[data-theme="dark"] div.post-content[style*="background"] {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  background: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .card:hover,
+[data-theme="dark"] .post-card:hover,
+[data-theme="dark"] .entry-item:hover,
+[data-theme="dark"] .entry-item .post-card:hover,
+[data-theme="dark"] .card.post-card:hover {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  border-color: var(--button-primary) !important;
+  border-width: 2px !important;
+  box-shadow: 0 0.25em 0.5em var(--shadow-hover) !important;
+  transform: scale(1.02) !important; /* Slightly less scale for smoother feel */
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s ease, box-shadow 0.5s ease !important;
+  cursor: pointer !important;
+}
+
+/* Light mode hover - also add scale effect */
+.post-card:hover,
+.card.post-card:hover,
+.entry-item:hover,
+.entry-item .post-card:hover {
+  transform: scale(1.02) !important; /* Slightly less scale for smoother feel */
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer;
+}
+
+/* Entry text - make visible white */
+[data-theme="dark"] .post-title {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .post-content {
+  background-color: transparent !important; /* No white background */
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .post-content p,
+[data-theme="dark"] .post-content div,
+[data-theme="dark"] .post-content span,
+[data-theme="dark"] div.post-content {
+  background-color: transparent !important; /* No white background */
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .post-info {
+  color: #d0d0d0 !important;
+}
+
+[data-theme="dark"] .post-info small {
+  color: #d0d0d0 !important; /* Light gray for metadata */
+}
+
+[data-theme="dark"] .post-header {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .card-body {
+  color: #ffffff !important;
+}
+
+/* Make sure all text inside post cards is visible */
+[data-theme="dark"] .post-card {
+  color: #ffffff !important;
+}
+
+/* Remove white text selection highlight */
+[data-theme="dark"] ::selection {
+  background-color: rgba(77, 122, 168, 0.3) !important; /* Subtle blue instead of white */
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] ::-moz-selection {
+  background-color: rgba(77, 122, 168, 0.3) !important;
+  color: #ffffff !important;
+}
+
+/* Container wrapping all entries - transparent/matches background IN DARK MODE ONLY */
+[data-theme="dark"] .container.mt-4,
+[data-theme="dark"] #entries-container,
+[data-theme="dark"] #entries-list {
+  background-color: transparent !important; /* No background - blends with page */
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Dark mode only - make page containers transparent, but keep form containers visible */
+[data-theme="dark"] .container:not(.author_profile):not(.post-card):not(.card-entry-detail):not([class*="form"]):not([class*="card"]) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* DO NOT override light mode containers - let base CSS files handle them */
+
+[data-theme="dark"] .entries-container {
+  background-color: transparent !important;
+}
+
+/* Override entry_card.css styles for dark mode */
+[data-theme="dark"] .post-card {
+  background-color: var(--card-bg) !important; /* Dark background */
+  border: 2px solid var(--card-border) !important; /* Visible border */
+  border-width: 2px !important;
+  color: #ffffff !important; /* White text */
+}
+
+/* Override white background from entry_card.css */
+[data-theme="dark"] .post-card[style*="background-color"] {
+  background-color: var(--card-bg) !important;
+}
+
+/* Ensure no white background in post-content images container */
+[data-theme="dark"] .post-content.text-center img {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] div.post-content.text-center img {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] div.post-content.markdown-content {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .post-card.shadow-sm {
+  box-shadow: 0 0.125em 0.375em var(--shadow) !important;
+}
+
+/* Override hardcoded white background from entry_card.css */
+[data-theme="dark"] .post-card[style*="background-color"] {
+  background-color: var(--card-bg) !important;
+}
+
+/* Images in entries */
+[data-theme="dark"] .post-content.text-center img {
+  background-color: var(--card-bg) !important;
+  box-shadow: 0 2px 8px var(--shadow) !important;
+  border-color: var(--border-color) !important;
+  border-width: 1px !important;
+}
+
+/* Entry list items - transparent containers */
+[data-theme="dark"] .entryItem,
+[data-theme="dark"] .entry_list li,
+[data-theme="dark"] #entry_list li {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .entryItem .post-card {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+  border: 2px solid var(--card-border) !important; /* Visible border */
+  box-shadow: 0 0.125em 0.375em var(--shadow) !important;
+}
+
+/* Text Elements */
+h1, h2, h3, h4, h5, h6, p, span, div, a {
+  color: var(--text-primary) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+small {
+  color: var(--text-secondary) !important;
+}
+
+/* Links */
+a {
+  color: var(--link-color) !important;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--link-hover) !important;
+}
+
+/* Forms and Inputs - Enhanced visibility */
+input, textarea, select {
+  background-color: var(--input-bg) !important;
+  border: 2px solid var(--input-border) !important;
+  color: var(--text-primary) !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.8;
+}
+
+input:focus, textarea:focus, select:focus {
+  background-color: var(--input-bg) !important;
+  border-color: var(--button-primary) !important;
+  border-width: 2px !important;
+  color: var(--text-primary) !important;
+  outline: 2px solid var(--button-primary);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  border-color: var(--input-border) !important;
+  background-color: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.9;
+}
+
+/* DO NOT set default container styles here - let base CSS files handle light mode */
+/* Only override containers for dark mode below */
+
+[data-theme="dark"] #entries-container,
+[data-theme="dark"] #entries-list {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--button-primary) !important;
+  border-color: var(--button-primary) !important;
+  color: var(--header-text) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--button-primary-hover) !important;
+  border-color: var(--button-primary-hover) !important;
+}
+
+.btn-outline-secondary {
+  border-color: var(--button-secondary) !important;
+  color: var(--button-secondary) !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--button-secondary) !important;
+  border-color: var(--button-secondary) !important;
+  color: var(--bg-primary) !important;
+}
+
+.btn-outline-success {
+  border-color: #28a745 !important;
+  color: #28a745 !important;
+}
+
+.btn-outline-success:hover {
+  background-color: #28a745 !important;
+  color: var(--bg-primary) !important;
+}
+
+/* Profile Page Specific */
+.profile_buttons {
+  background: var(--header-bg) !important;
+  border-top: 2px solid var(--border-color);
+}
+
+.btn-bottom-primary {
+  background-color: var(--button-primary) !important;
+  border-color: var(--button-primary) !important;
+  color: var(--header-text) !important;
+}
+
+.btn-bottom-primary:hover {
+  background-color: var(--button-primary-hover) !important;
+  border-color: var(--button-primary-hover) !important;
+}
+
+.description_content {
+  background-color: var(--description-bg) !important;
+  border-top: 1px solid var(--border-light) !important;
+}
+
+/* Description content - dark background and white text */
+[data-theme="dark"] .description_content {
+  background-color: transparent !important; /* No white background */
+  border-color: var(--border-color) !important;
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .description_content p.description,
+[data-theme="dark"] .description_content > p {
+  color: #ffffff !important; /* White text */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .description_content p.no-description,
+[data-theme="dark"] .description_content p.description.no-description {
+  color: #ffffff !important; /* White text for "No Description" */
+  background-color: transparent !important; /* No white background */
+  opacity: 0.8; /* Slightly transparent for placeholder feel */
+}
+
+[data-theme="dark"] .description_content p.github {
+  color: #ffffff !important; /* White text for GitHub text */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .description_content p.no-github {
+  color: #ffffff !important; /* White text for "GitHub Profile Not Found" */
+  background-color: transparent !important; /* No white background */
+  opacity: 0.8; /* Slightly transparent for placeholder feel */
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .description_content .githubLink {
+  border-color: var(--border-color) !important;
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .description_content .githubLink * {
+  background-color: transparent !important; /* No white background */
+}
+
+/* Loading Skeletons */
+.loading-skeleton {
+  background: var(--loading-skeleton) !important;
+}
+
+/* Pagination */
+.pagination .page-link {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.pagination .page-link:hover {
+  background-color: var(--pagination-hover) !important;
+  border-color: var(--border-color) !important;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--pagination-bg) !important;
+  border-color: var(--pagination-bg) !important;
+  color: var(--bg-primary) !important;
+}
+
+.pagination .page-item.disabled .page-link {
+  opacity: 0.5;
+  background-color: var(--card-bg) !important;
+  color: var(--text-muted) !important;
+}
+
+/* Spinner */
+.spinner-border, .spinner-border-sm {
+  border-color: var(--spinner-color) !important;
+  border-right-color: transparent !important;
+}
+
+/* Modal/Popup */
+.message-modal-content {
+  background-color: var(--modal-bg) !important;
+  border-color: var(--modal-border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark Mode Toggle Button */
+.dark-mode-toggle {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 9999; /* Below fixed headers but above other content */
+  background-color: var(--button-primary);
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px var(--shadow);
+  transition: all 0.3s ease;
+  color: var(--header-text);
+}
+
+.dark-mode-toggle:hover {
+  background-color: var(--button-primary-hover);
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px var(--shadow-hover);
+}
+
+/* Adjust for pages with bottom navigation bars */
+body:has(.profile_buttons) .dark-mode-toggle,
+body:has(.nav_buttons) .dark-mode-toggle {
+  bottom: 6rem !important; /* Move up if there's a bottom bar */
+}
+
+/* Fallback for browsers without :has() support */
+.profile_buttons ~ .dark-mode-toggle,
+.nav_buttons ~ .dark-mode-toggle {
+  bottom: 6rem !important;
+}
+
+/* On mobile, ensure it doesn't block touch targets */
+@media (max-width: 768px) {
+  .dark-mode-toggle {
+    width: 45px;
+    height: 45px;
+    font-size: 1.25rem;
+    bottom: 5.5rem; /* Higher on mobile to avoid bottom bars */
+  }
+  
+  body:has(.profile_buttons) .dark-mode-toggle,
+  body:has(.nav_buttons) .dark-mode-toggle,
+  .profile_buttons ~ .dark-mode-toggle,
+  .nav_buttons ~ .dark-mode-toggle {
+    bottom: 7rem !important;
+  }
+}
+
+/* Ensure toggle button is accessible and visible */
+.dark-mode-toggle:focus {
+  outline: 3px solid var(--button-primary);
+  outline-offset: 2px;
+}
+
+.dark-mode-toggle:focus-visible {
+  outline: 3px solid var(--button-primary);
+  outline-offset: 2px;
+}
+
+/* Bootstrap Overrides for Dark Mode */
+[data-theme="dark"] .navbar-light {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+[data-theme="dark"] .dropdown-menu {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .dropdown-item {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Markdown Content */
+.markdown-content {
+  color: var(--text-primary) !important;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: var(--text-primary) !important;
+}
+
+.markdown-content code {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+.markdown-content pre {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Follow Notification */
+.follow-notification {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 4px 12px var(--shadow) !important;
+  color: var(--text-primary) !important;
+}
+
+.follow-notification p,
+.follow-notification h3,
+.follow-notification h4 {
+  color: var(--text-primary) !important;
+}
+
+/* Entry Lists */
+.entry_list {
+  background-color: transparent !important;
+}
+
+/* Author list cards - keep names black in dark mode */
+[data-theme="dark"] section.author {
+  background-color: rgb(254, 254, 254) !important; /* Keep white background */
+}
+
+[data-theme="dark"] .list_display_name {
+  color: #000000 !important; /* Keep names black */
+}
+
+.entryItem {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Additional Accessibility Improvements */
+[data-theme="dark"] .post-header,
+[data-theme="dark"] .post-title,
+[data-theme="dark"] .post-info {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .post-info small {
+  color: var(--text-secondary) !important;
+  opacity: 1;
+}
+
+[data-theme="dark"] .post-content {
+  color: var(--text-primary) !important;
+}
+
+/* Profile Statistics - Force visibility in dark mode */
+[data-theme="dark"] .follow_and_entry_count,
+[data-theme="dark"] .follow_and_entry_labels .follow_and_entry_count,
+[data-theme="dark"] p.follow_and_entry_count,
+[data-theme="dark"] #entry_count,
+[data-theme="dark"] #friends_count,
+[data-theme="dark"] #follower_count,
+[data-theme="dark"] #followings_count {
+  color: #ffffff !important; /* White text */
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  background-color: transparent !important; /* No white background */
+  /* Override hardcoded rgb(62, 62, 62) color */
+}
+
+[data-theme="dark"] .follow_and_entry_title,
+[data-theme="dark"] .follow_and_entry_labels .follow_and_entry_title,
+[data-theme="dark"] p.follow_and_entry_title {
+  color: #ffffff !important; /* White text */
+  font-weight: 500 !important;
+  opacity: 1 !important;
+  background-color: transparent !important; /* No white background */
+  /* Ensure title text is visible */
+}
+
+[data-theme="dark"] .follow_and_entry_labels {
+  color: #ffffff !important; /* White text */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .follow_and_entry_labels p {
+  color: #ffffff !important; /* White text */
+  opacity: 1 !important;
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .follow_and_entry_labels a {
+  color: #ffffff !important; /* White text */
+  text-decoration: none;
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .follow_and_entry_labels a:hover {
+  color: var(--link-hover) !important;
+  text-decoration: underline;
+  opacity: 1 !important;
+}
+
+/* Ensure all profile statistics are visible - NO WHITE BACKGROUND - match page exactly */
+[data-theme="dark"] .pic_name_followers_entries {
+  color: #ffffff !important; /* White text */
+  background-color: var(--bg-secondary) !important; /* Match page background exactly (#252525) */
+}
+
+/* Ensure card backgrounds match page background */
+[data-theme="dark"] .card,
+[data-theme="dark"] .post-card {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+}
+
+[data-theme="dark"] .pic_name_followers_entries * {
+  background-color: transparent !important; /* Transparent nested elements */
+}
+
+[data-theme="dark"] .follow_and_entry_labels,
+[data-theme="dark"] a .follow_and_entry_labels,
+[data-theme="dark"] a.follow_and_entry_labels {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+}
+
+/* Ensure all nested elements have transparent backgrounds */
+[data-theme="dark"] .follow_and_entry_labels *,
+[data-theme="dark"] a .follow_and_entry_labels * {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .profile_pic_and_name {
+  background-color: var(--bg-secondary) !important; /* Match page background exactly */
+}
+
+[data-theme="dark"] .profile_pic_and_name * {
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .pic_name_followers_entries .follow_and_entry_count {
+  color: #ffffff !important; /* White text */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .pic_name_followers_entries .follow_and_entry_title {
+  color: #ffffff !important; /* White text */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .display_name {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .description {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .github {
+  color: var(--link-color) !important;
+}
+
+[data-theme="dark"] .profile_image_page {
+  border: 2px solid var(--border-color) !important;
+}
+
+/* Entry card specific - ensure all text is visible with NO WHITE BACKGROUND */
+[data-theme="dark"] .post-card .card-body {
+  background-color: var(--card-bg) !important; /* Dark card background */
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .post-card .card-body * {
+  background-color: transparent !important; /* No white backgrounds inside */
+}
+
+[data-theme="dark"] .post-card .post-title {
+  color: #ffffff !important; /* White text */
+  font-weight: 600;
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .post-card .post-info,
+[data-theme="dark"] .post-card .post-info small {
+  color: #d0d0d0 !important; /* Light gray for metadata */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .post-card .post-info strong {
+  color: #ffffff !important; /* White for author names */
+  background-color: transparent !important; /* No white background */
+}
+
+[data-theme="dark"] .post-card .post-content {
+  background-color: transparent !important; /* No white background */
+  color: #ffffff !important; /* White text for content */
+}
+
+[data-theme="dark"] .post-card .post-content p,
+[data-theme="dark"] .post-card .post-content div,
+[data-theme="dark"] .post-card .post-content span,
+[data-theme="dark"] div.post-content {
+  background-color: transparent !important; /* No white background */
+  color: #ffffff !important; /* White text */
+}
+
+/* Fix markdown content in entries */
+[data-theme="dark"] .post-card .markdown-content,
+[data-theme="dark"] .post-card .markdown-content p,
+[data-theme="dark"] .post-card .markdown-content li,
+[data-theme="dark"] div.post-content.markdown-content {
+  background-color: transparent !important; /* No white background */
+  color: #ffffff !important; /* White text */
+}
+
+/* Improve button text visibility */
+[data-theme="dark"] .btn {
+  color: var(--header-text) !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+  color: #ffffff !important; /* White text for better visibility */
+  border-color: var(--button-secondary) !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+  background-color: var(--button-secondary) !important;
+  color: #ffffff !important; /* White text on hover */
+}
+
+[data-theme="dark"] .btn-outline-success {
+  color: #ffffff !important; /* White text for share button */
+}
+
+[data-theme="dark"] .btn-outline-success:hover {
+  color: #ffffff !important; /* White text on hover */
+}
+
+/* Post footer - Like and Comment buttons and counts */
+[data-theme="dark"] .post-footer {
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .post-footer * {
+  color: #ffffff !important; /* White text for all footer elements */
+}
+
+[data-theme="dark"] .like-btn,
+[data-theme="dark"] .like-btn-custom,
+[data-theme="dark"] .comment-btn,
+[data-theme="dark"] .comment-btn-custom {
+  color: #ffffff !important; /* White text for buttons */
+  background-color: transparent !important;
+}
+
+/* Like count text - make white */
+[data-theme="dark"] .post-footer span,
+[data-theme="dark"] .post-footer .ms-1,
+[data-theme="dark"] form + span,
+[data-theme="dark"] .like-btn + span,
+[data-theme="dark"] .post-footer form span {
+  color: #ffffff !important; /* White like count */
+}
+
+/* Comment button text and count - make white */
+[data-theme="dark"] .comment-btn-custom,
+[data-theme="dark"] .btn.comment-btn-custom {
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .comment-btn-custom:hover {
+  color: #ffffff !important; /* White text on hover */
+  background-color: var(--button-secondary) !important;
+}
+
+/* Error messages visibility */
+[data-theme="dark"] .text-danger,
+[data-theme="dark"] p[style*="color: red"],
+[data-theme="dark"] .error {
+  color: #ff6b6b !important; /* Bright red for visibility */
+}
+
+/* Success messages */
+[data-theme="dark"] .text-success {
+  color: #51cf66 !important; /* Bright green for visibility */
+}
+
+/* Labels and form elements */
+[data-theme="dark"] label {
+  color: #ffffff !important; /* White text for labels */
+  font-weight: 500;
+}
+
+[data-theme="dark"] .form-label {
+  color: #ffffff !important; /* White text for form labels */
+}
+
+/* Edit Profile Page - Dark background and white text */
+[data-theme="dark"] .author_profile_card {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .author_profile {
+  background-color: var(--card-bg) !important; /* Dark card background */
+  border-color: var(--card-border) !important;
+  color: #ffffff !important; /* White text */
+}
+
+[data-theme="dark"] .author_profile * {
+  color: #ffffff !important; /* White text for all content */
+}
+
+[data-theme="dark"] .author_profile label {
+  color: #ffffff !important; /* White labels */
+  font-weight: bold;
+}
+
+[data-theme="dark"] .author_profile .editable_input,
+[data-theme="dark"] .author_profile textarea,
+[data-theme="dark"] .author_profile input[type="url"],
+[data-theme="dark"] .author_profile input[type="text"] {
+  background-color: var(--input-bg) !important; /* Dark input background */
+  border-color: var(--input-border) !important;
+  color: #ffffff !important; /* White text in inputs */
+}
+
+[data-theme="dark"] .author_profile .editable_input::placeholder,
+[data-theme="dark"] .author_profile textarea::placeholder,
+[data-theme="dark"] .author_profile input::placeholder {
+  color: var(--text-muted) !important; /* Muted color for placeholders */
+}
+
+[data-theme="dark"] .author_profile .error-message {
+  color: #ff6b6b !important; /* Bright red for errors - visible on dark */
+}
+
+[data-theme="dark"] .author_profile small {
+  color: var(--text-secondary) !important; /* Visible helper text */
+}
+
+[data-theme="dark"] .author_profile #github_valid {
+  color: #51cf66 !important; /* Bright green for valid - visible on dark */
+}
+
+/* Improve readability of markdown content */
+[data-theme="dark"] .markdown-content p,
+[data-theme="dark"] .markdown-content li {
+  color: var(--text-primary) !important;
+  line-height: 1.6;
+}
+
+[data-theme="dark"] .markdown-content code {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+}
+
+/* Heading visibility */
+[data-theme="dark"] h3.title {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+[data-theme="dark"] #entries_heading {
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+

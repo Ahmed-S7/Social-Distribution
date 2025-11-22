@@ -1,12 +1,48 @@
 <!DOCTYPE html>
 {% load static %}
-  <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
+    <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <head>
     <link rel="stylesheet" href="{% static 'wiki/profile_page.css' %}">
     <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
+    <link rel="stylesheet" href="{% static 'wiki/follow_notification.css' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'wiki/dark_mode.css' %}">
+    <script>
+      // Prevent white flash - apply dark mode IMMEDIATELY before anything renders
+      try {
+        const theme = localStorage.getItem('theme') || 'light';
+        const html = document.documentElement;
+        html.setAttribute('data-theme', theme);
+        // Apply background color immediately to prevent white flash
+        html.style.backgroundColor = theme === 'dark' ? '#252525' : '#f9f9f9';
+      } catch(e) {}
+    </script>
+    <style>
+      /* Prevent white flash - apply background color immediately */
+      html { 
+        background-color: #f9f9f9; /* Default light mode */
+        min-height: 100%;
+      }
+      html[data-theme="dark"] {
+        background-color: #252525 !important;
+      }
+      body {
+        background-color: #f9f9f9; /* Default light mode */
+        margin: 0;
+        padding: 0;
+      }
+      html[data-theme="dark"] body {
+        background-color: #252525 !important;
+      }
+    </style>
+    {% if request.user.is_authenticated %}
+    <script>
+      // Get current user's author serial for notifications
+      const CURRENT_AUTHOR_SERIAL = '{{ current_author_serial|default:"" }}';
+    </script>
+    {% endif %}
     <style>
       .comment-btn-custom {
         color: #6c757d !important;
@@ -36,7 +72,14 @@
   <div style="height:5.5em"></div>
   <div class="container mt-4">
 
-  <section class="author_profile_with_entries">
+  <!-- Loading Spinner -->
+  <div id="loading_container" class="loading-container">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading profile...</div>
+  </div>
+
+  <!-- Profile Content Container -->
+  <section class="author_profile_with_entries profile-content-container" id="profile_content_container">
 
     <section class="author_profile_description_follow_button">
 
@@ -44,7 +87,7 @@
 
         <section class="pic_name_followers_entries">
 
-            <section class="profile_pic_and_name">
+            <section class="profile_pic_and_name profile-loading">
 
                                     <!--Authenticated user check successful, then make the profile picture clickable -->
                                     {% if request.user.is_authenticated and is_local %}
@@ -77,24 +120,24 @@
                              
                             <!--Only see the entry count if the users are friends-->
                             {% if is_a_friend or request.user.username == author.displayName %}
-                            <section class="follow_and_entry_labels">
+                            <section class="follow_and_entry_labels profile-loading">
                                 <p class="follow_and_entry_count"> {{entry_count}} </p>
                                 <p class="follow_and_entry_title"> Entries</p>
                             </section>  
                             {% endif %}
                            
-                             <section class="follow_and_entry_labels">
+                             <section class="follow_and_entry_labels profile-loading">
                                 <p class="follow_and_entry_count"> {{friend_count}} </p>
                                 <p class="follow_and_entry_title"> Friends</p>
                             </section>    
                           
 
-                            <section class="follow_and_entry_labels">
+                            <section class="follow_and_entry_labels profile-loading">
                                 <p class="follow_and_entry_count"> {{follower_count}} </p>
                                 <p class="follow_and_entry_title"> Followers</p>
                             </section>     
                             
-                            <section class="follow_and_entry_labels">
+                            <section class="follow_and_entry_labels profile-loading">
                                 <p class="follow_and_entry_count"> {{following_count}} </p>
                                 <p class="follow_and_entry_title"> Following</p>
                             </section> 
@@ -102,70 +145,72 @@
                         </section> 
 
 
-                            <section class="follow_info_button">    
-
+                            <section class="follow_info_button profile-loading">    
+                            
+                            <!-- CSRF Token for JavaScript -->
+                            {% csrf_token %}
+                            
+                            <!-- Follow action button container -->
+                            <div id="follow_button_container">
                             {% if is_a_friend %}
-                            <form action="{% url 'wiki:unfollow_profile' author.serial follow_id %}" method="POST">
-                   
-                                {% csrf_token %}
-                                <button class="unfriend_button" name='action' value='unfriend' type="submit" >Unfriend User </button> 
-
-                            </form>
+                                <button class="unfriend_button" 
+                                        data-author-serial="{{ author.serial }}" 
+                                        data-follow-id="{{ follow_id }}"
+                                        data-action="unfollow"
+                                        data-current-status="friends">Unfriend User</button>
                             {% elif is_following %}
-
-                            <form action="{% url 'wiki:unfollow_profile' author.serial follow_id %}" method="POST">
-                                {% csrf_token %}
-                            <button class="unfollow_button" name='action' value='unfollow' type="submit" >UnFollow Profile</button>
-                    
-                            </form>
-
+                                <button class="unfollow_button" 
+                                        data-author-serial="{{ author.serial }}" 
+                                        data-follow-id="{{ follow_id }}"
+                                        data-action="unfollow"
+                                        data-current-status="following">UnFollow Profile</button>
                             {% elif is_currently_requesting %}
-
-                            <form action="{% url 'wiki:cancel_follow_request' author.serial request_id %}" method="POST">
-                                {% csrf_token %}
-                            <button class="unrequest_button" type="submit" >Cancel Request</button>
-                    
-                            </form>
-
+                                <button class="unrequest_button" 
+                                        data-author-serial="{{ author.serial }}" 
+                                        data-request-id="{{ request_id }}"
+                                        data-action="cancel"
+                                        data-current-status="requesting">Cancel Request</button>
                             {% else %}
-                            {% if not  request.user.username == author.displayName %}
-                                <form action="{% url 'wiki:follow_profile' author.serial %}" method="POST">
-                                    {% csrf_token %}
-                                    <button class="follow_button" type="submit">Follow Profile</button> 
-                                </form>
-                            {% endif%}      
+                                {% if not request.user.username == author.displayName %}
+                                    <button class="follow_button" 
+                                            data-author-serial="{{ author.serial }}"
+                                            data-action="follow"
+                                            data-current-status="none">Follow Profile</button>
+                                {% endif%}      
                             {% endif%}
+                            </div>
                         </section>
 
 
                     </section>
                     
 
-                        <section class="description_content">
-                    
-                        {% if author.description  %}
-                            <p>{{ author.description }} </p>
-                        {% else  %}
-                            <p>No Description</p>
-                        {% endif %}
+                        <section class="description_content profile-loading">
+                            {% if author.description %}
+                                <p class="description">{{ author.description }}</p>
+                            {% else %}
+                                <p class="description no-description">No Description</p>
+                            {% endif %}
 
-                        {% if author.github %}
-                        <p>{{ author.github}} </p>
-                        {% else  %}
-                        <p>GitHub Profile Not Found</p>
-                        {% endif %}
-
-                    </section> 
+                            {% if author.github %}
+                                <a href="{{ author.github }}" target="_blank" rel="noopener noreferrer" class="githubLink">
+                                    <img id="gitLogo" src="{% static '/images/gitLogo.png' %}" alt="GitHub Logo">
+                                    <p class="github">GitHub Profile</p>
+                                </a>
+                            {% else %}
+                                <p class="no-github">GitHub Profile Not Found</p>
+                            {% endif %}
+                        </section> 
 
 
 
  
 
     <section class="entry_list">
-      <h3 class="title">Entries</h3>
+      <h3 class="title profile-loading" id="entries_heading">Entries</h3>
       {% if entries %}
             <link rel="stylesheet" href="{% static 'wiki/entry_card.css' %}">
-                <ul class="entry_list">
+                <ul class="entry_list profile-loading">
                     {% for entry, rendered in entries %}   
                      <div class="post-card">
                         <!--Now clicking an entry (entry header) should lead to entry details-->
@@ -217,9 +262,435 @@
   </section>
 
   </div>
+
+  <!-- Message Popup Modal - Placed at body level for proper overlay -->
+  <div id="message_modal" class="message-modal" style="display: none;">
+    <div class="message-modal-content">
+      <span class="message-modal-close">&times;</span>
+      <div id="message_modal_text"></div>
+    </div>
+  </div>
+
 </body>
 <script>
+  // Get CSRF token from cookies
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Get CSRF token from cookie or hidden input
+  let csrftoken = getCookie('csrftoken');
+  if (!csrftoken) {
+    // Fallback: try to get from a hidden input if available
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+      csrftoken = csrfInput.value;
+    }
+  }
+  
+  if (!csrftoken) {
+    console.error('CSRF token not found!');
+  }
+
+  // Display message function as popup
+  function showMessage(message, isError = false) {
+    const modal = document.getElementById('message_modal');
+    const modalText = document.getElementById('message_modal_text');
+    const closeBtn = modal?.querySelector('.message-modal-close');
+    
+    if (!modal || !modalText) {
+      alert(message); // Fallback to alert if modal doesn't exist
+      return;
+    }
+    
+    modalText.textContent = message;
+    modal.className = 'message-modal ' + (isError ? 'error' : 'success');
+    modal.style.cssText = 'display: block !important; position: fixed !important; z-index: 99999 !important; left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; background-color: rgba(0, 0, 0, 0.5) !important; margin: 0 !important; padding: 0 !important;';
+    
+    // Close button functionality
+    if (closeBtn) {
+      closeBtn.onclick = function(e) {
+        e.stopPropagation();
+        modal.style.display = 'none';
+      };
+    }
+    
+    // Close when clicking outside modal
+    const closeModalOnOutsideClick = function(event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+        modal.removeEventListener('click', closeModalOnOutsideClick);
+      }
+    };
+    modal.addEventListener('click', closeModalOnOutsideClick);
+    
+    // Prevent modal content clicks from closing
+    const modalContent = modal.querySelector('.message-modal-content');
+    if (modalContent) {
+      modalContent.addEventListener('click', function(e) {
+        e.stopPropagation();
+      });
+    }
+    
+    // Auto-hide after 2.5 seconds
+    setTimeout(() => {
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+        modal.removeEventListener('click', closeModalOnOutsideClick);
+      }
+    }, 2500);
+  }
+
+  // Update button state
+  function updateButtonState(status, data = {}) {
+    const container = document.getElementById('follow_button_container');
+    if (!container) return;
+
+    let buttonHTML = '';
+    
+    if (status === 'friends') {
+      buttonHTML = `<button class="unfriend_button" 
+                             data-author-serial="${data.authorSerial}" 
+                             data-follow-id="${data.followId || ''}"
+                             data-action="unfollow"
+                             data-current-status="friends">Unfriend User</button>`;
+    } else if (status === 'following') {
+      buttonHTML = `<button class="unfollow_button" 
+                             data-author-serial="${data.authorSerial}" 
+                             data-follow-id="${data.followId || ''}"
+                             data-action="unfollow"
+                             data-current-status="following">UnFollow Profile</button>`;
+    } else if (status === 'requesting') {
+      buttonHTML = `<button class="unrequest_button" 
+                             data-author-serial="${data.authorSerial}" 
+                             data-request-id="${data.requestId || ''}"
+                             data-action="cancel"
+                             data-current-status="requesting">Cancel Request</button>`;
+    } else {
+      buttonHTML = `<button class="follow_button" 
+                             data-author-serial="${data.authorSerial}"
+                             data-action="follow"
+                             data-current-status="none">Follow Profile</button>`;
+    }
+    
+    container.innerHTML = buttonHTML;
+    
+    // Re-attach event listeners
+    attachFollowButtonListeners();
+  }
+
+  // Refresh profile counts from API
+  async function refreshProfileCounts(authorSerial) {
+    try {
+      const response = await fetch(`/api/authors/${authorSerial}/`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+      });
+
+      if (!response.ok) {
+        console.error('Failed to refresh counts:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Find the correct count elements based on their title text
+      // The order in the template is: Entry count (if visible), Friends, Followers, Following
+      const allCountSections = document.querySelectorAll('.follow_and_entry_labels');
+      
+      allCountSections.forEach((section) => {
+        const countEl = section.querySelector('.follow_and_entry_count');
+        const titleEl = section.querySelector('.follow_and_entry_title');
+        
+        if (countEl && titleEl) {
+          const title = titleEl.textContent.trim().toLowerCase();
+          if (title === 'followers') {
+            countEl.textContent = data.followers_count || '0';
+          } else if (title === 'following') {
+            countEl.textContent = data.followings_count || '0';
+          } else if (title === 'friends') {
+            countEl.textContent = data.friends_count || '0';
+          } else if (title === 'entries') {
+            countEl.textContent = data.entries_count || '0';
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error refreshing counts:', error);
+    }
+  }
+
+  // Handle follow action
+  async function handleFollow(authorSerial) {
+    try {
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', csrftoken);
+      
+      const response = await fetch(`/authors/${authorSerial}/follow/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: formData,
+        credentials: 'same-origin'
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        showMessage('Server returned an invalid response. Please try again.', true);
+        return;
+      }
+      
+      if (response.ok && data.success) {
+        showMessage(data.message || 'Follow request sent successfully', false);
+        updateButtonState(data.status || 'requesting', {
+          authorSerial: authorSerial,
+          requestId: data.request_id,
+          followId: data.follow_id
+        });
+        // Refresh counts after successful follow
+        await refreshProfileCounts(authorSerial);
+      } else {
+        // Handle error cases - might be "already following" or other errors
+        if (response.status === 400 && data.status) {
+          // Already following or already friends - update button state but don't show error
+          updateButtonState(data.status, {
+            authorSerial: authorSerial,
+            followId: data.follow_id,
+            friendshipId: data.friendship_id
+          });
+          // Don't show error message for "already following" - just update the button
+          if (data.message && !data.message.includes('Already')) {
+            showMessage(data.message, true);
+          }
+        } else {
+          showMessage(data.message || 'Failed to send follow request', true);
+          if (data.status) {
+            updateButtonState(data.status, {
+              authorSerial: authorSerial,
+              followId: data.follow_id,
+              friendshipId: data.friendship_id
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage('An error occurred. Please try again.', true);
+    }
+  }
+
+  // Handle unfollow action
+  async function handleUnfollow(authorSerial, followId) {
+    try {
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', csrftoken);
+      formData.append('action', 'unfollow');
+      
+      const url = `/authors/${authorSerial}/${followId}/unfollow`;
+      console.log('Unfollowing at:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: formData,
+        credentials: 'same-origin'
+      });
+
+      // Handle 404 specifically
+      if (response.status === 404) {
+        showMessage('The following relationship was not found. It may have already been removed.', true);
+        updateButtonState('none', { authorSerial: authorSerial });
+        return;
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        showMessage('Server returned an invalid response. Please try again.', true);
+        return;
+      }
+      
+      if (response.ok && data.success) {
+        showMessage(data.message || 'Unfollowed successfully', false);
+        updateButtonState(data.status || 'none', {
+          authorSerial: authorSerial
+        });
+        // Refresh counts after successful unfollow
+        await refreshProfileCounts(authorSerial);
+      } else {
+        showMessage(data.message || 'Failed to unfollow', true);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage('An error occurred. Please try again.', true);
+    }
+  }
+
+  // Handle cancel follow request
+  async function handleCancelRequest(authorSerial, requestId) {
+    try {
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', csrftoken);
+      
+      const url = `/authors/${authorSerial}/${requestId}/cancel_request`;
+      console.log('Cancelling follow request at:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: formData,
+        credentials: 'same-origin'
+      });
+
+      // Handle 404 specifically
+      if (response.status === 404) {
+        showMessage('The follow request was not found. It may have already been cancelled.', true);
+        // Update button to follow state since request doesn't exist
+        updateButtonState('none', { authorSerial: authorSerial });
+        return;
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError);
+        showMessage('Server returned an invalid response. Please try again.', true);
+        return;
+      }
+      
+      if (response.ok && data.success) {
+        showMessage(data.message || 'Follow request cancelled successfully', false);
+        updateButtonState(data.status || 'none', {
+          authorSerial: authorSerial
+        });
+        // Refresh counts after successful cancel
+        await refreshProfileCounts(authorSerial);
+      } else {
+        showMessage(data.message || 'Failed to cancel follow request', true);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage('An error occurred. Please try again.', true);
+    }
+  }
+
+  // Attach event listeners to follow buttons
+  function attachFollowButtonListeners() {
+    const followButton = document.querySelector('.follow_button');
+    const unfollowButton = document.querySelector('.unfollow_button');
+    const unfriendButton = document.querySelector('.unfriend_button');
+    const cancelButton = document.querySelector('.unrequest_button');
+
+    if (followButton) {
+      followButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        const authorSerial = this.getAttribute('data-author-serial');
+        handleFollow(authorSerial);
+      });
+    }
+
+    if (unfollowButton || unfriendButton) {
+      const button = unfollowButton || unfriendButton;
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const authorSerial = this.getAttribute('data-author-serial');
+        const followId = this.getAttribute('data-follow-id');
+        handleUnfollow(authorSerial, followId);
+      });
+    }
+
+    if (cancelButton) {
+      cancelButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        const authorSerial = this.getAttribute('data-author-serial');
+        const requestId = this.getAttribute('data-request-id');
+        handleCancelRequest(authorSerial, requestId);
+      });
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
+    // Loading animation for external profile
+    const loadingContainer = document.querySelector("#loading_container");
+    const profileContentContainer = document.querySelector("#profile_content_container");
+    const loadingElements = document.querySelectorAll(".profile-loading");
+    
+    // Hide profile content container initially
+    if (profileContentContainer) {
+      profileContentContainer.style.opacity = "0";
+    }
+    
+    // Hide all profile-loading elements initially
+    loadingElements.forEach(el => {
+      el.style.opacity = "0";
+      el.style.visibility = "hidden";
+    });
+    
+    // Simulate a brief loading time for smooth animation (since data is already loaded)
+    // This ensures the spinner is visible briefly before content fades in
+    setTimeout(() => {
+      // Hide loading spinner with fade out
+      if (loadingContainer) {
+        loadingContainer.style.transition = "opacity 0.4s ease-out";
+        loadingContainer.style.opacity = "0";
+        
+        setTimeout(() => {
+          if (loadingContainer) loadingContainer.style.display = "none";
+          
+          // Show profile content container and fade in
+          if (profileContentContainer) {
+            profileContentContainer.style.opacity = "1";
+            profileContentContainer.classList.add("loaded");
+            
+            // Fade in all profile elements with stagger
+            setTimeout(() => {
+              loadingElements.forEach((el, index) => {
+                el.style.visibility = "visible";
+                el.style.transition = `opacity 0.5s ease-in ${index * 0.1}s, transform 0.5s ease-in ${index * 0.1}s`;
+                el.style.opacity = "1";
+                el.style.transform = "translateY(0)";
+              });
+            }, 200);
+          }
+        }, 400);
+      }
+    }, 300); // Small delay to show spinner briefly
+    
+    // Attach follow button listeners
+    attachFollowButtonListeners();
+    
+    // Share link functionality
     document.querySelectorAll('.share-link-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         const link = btn.getAttribute('data-link');
@@ -233,4 +704,12 @@
     });
   });
 </script>
+
+<!-- Follow Request Notification System -->
+{% if request.user.is_authenticated %}
+<script src="{% static 'js/follow_notification.js' %}"></script>
+{% endif %}
+
+<!-- Dark Mode Toggle -->
+<script src="{% static 'js/dark_mode.js' %}"></script>
         

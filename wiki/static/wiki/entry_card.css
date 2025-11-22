@@ -12,12 +12,13 @@ html, body, h1,h2,p{
     padding:1em;
     margin: 1.5em auto;
     background-color: #fff;
-    box-shadow: 0 0.125em 0.375em rgba(0, 0, 0, 0.086);
+    box-shadow: none; /* Remove paper-like shadow */
     text-decoration: none;
     justify-content: center;
     align-content: center;
     width:45em;
     max-height: fit-content;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s ease, box-shadow 0.5s ease;
 }
 
 .post-content.text-center img {
@@ -42,9 +43,13 @@ div.d-flex.align-items-center.mb-2.post-header{
  justify-content:space-evenly;
 }
 
-.post-card:hover{
-    transform: scale(1.03);
-    transition:transform 0.3s ease-in-out;
+.post-card:hover,
+.card.post-card:hover,
+.entry-item:hover,
+.entry-item .post-card:hover {
+    transform: scale(1.02) !important; /* Slightly less scale for smoother feel */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s ease, box-shadow 0.5s ease !important;
+    cursor: pointer;
 }
 
 .post-info{
