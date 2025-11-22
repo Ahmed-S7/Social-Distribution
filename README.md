@@ -15,7 +15,7 @@ Watch the full demonstration of the application's features:
 
 *Click the image above to watch the promotional video demonstrating the main features*
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -25,7 +25,7 @@ Watch the full demonstration of the application's features:
 - [Contributors](#contributors)
 - [License](#license)
 
-## 🔍 Overview
+##  Overview
 
 **SocialDistribution** is a modern, federated social networking platform built with **Django** and **Python**, featuring a responsive frontend powered by **HTML5**, **CSS3**, and **JavaScript**. The application implements an ActivityPub-like protocol, enabling seamless cross-node communication and interaction between users across distributed servers. 
 
@@ -39,7 +39,7 @@ Built with a RESTful architecture and a comprehensive API (60+ endpoints), Socia
 - **GitHub Integration**: Automatic post creation from GitHub public events
 - **Privacy Controls**: Fine-grained visibility settings for posts (Public, Friends, Unlisted)
 
-## ✨ Key Features
+## Key Features
 
 ### Core Social Features
 
@@ -103,7 +103,7 @@ Built with a RESTful architecture and a comprehensive API (60+ endpoints), Socia
 - **Git**: Version control
 - **Django Admin**: Administrative interface
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -178,7 +178,7 @@ Comprehensive API documentation is available in the [project Wiki](https://githu
 
 See the [project description page](https://uofa-cmput404.github.io/general/project.html) for course project details.
 
-## 👥 Contributors
+##  Contributors
 
 ### Authors
 
@@ -194,7 +194,7 @@ See the [project description page](https://uofa-cmput404.github.io/general/proje
 
 **Ahmed Shittu** - Current maintainer and active contributor
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for license rights and limitations.
 
