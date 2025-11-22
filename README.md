@@ -1,8 +1,6 @@
 # Hello, I'm Ahmed Shittu
 
 
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/ahmed-shittu)
 [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Ahmed-S7)
 [![Gmail](https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:your-email@gmail.com)
 
@@ -182,8 +180,7 @@ A mock library database system with full working functionalities. Utilizes Pytho
 
 I'm always open to collaborating on interesting projects and discussing new ideas. Feel free to reach out!
 
-- 📧 Email: ahmedshittu02@gmail.com
+-  📧 Email: ahmedshittu02@gmail.com
 
-- 💼 LinkedIn: [Ahmed Shittu](https://www.linkedin.com/in/ahmed-shittu-28128a273/)
 
 ---
