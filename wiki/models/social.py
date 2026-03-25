@@ -98,7 +98,7 @@ class AuthorFriend(BaseModel):
                 raise ValidationError("You cannot send yourself a friend request")
 
             #corrected using ChatGPT: "How do I prevent duplicate friendships in reverse order?": https://chatgpt.com/, June 15, 2025
-            #lower id is first so that a friendship A-B cannot also be friendship B-A
+            #follower id is first so that a friendship A-B cannot also be friendship B-A
             if self.friending.id > self.friended.id:
                 self.friending, self.friended = self.friended, self.friending
                 
